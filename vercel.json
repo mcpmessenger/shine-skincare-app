@@ -19,7 +19,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "backend/run_vercel.py"
+      "dest": "backend/api.py"
     },
     {
       "src": "/(.*)",
@@ -29,4 +29,4 @@
   "env": {
     "FLASK_ENV": "production"
   }
-} 
+}
