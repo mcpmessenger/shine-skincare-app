@@ -1,30 +1,29 @@
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Camera, Upload, CheckCircle, Sparkles } from "lucide-react"
-import Image from "next/image"
-import { useState } from "react"
-import { CameraCapture } from "./camera-capture"
-import { useAuth } from "@/hooks/useAuth"
-import { useRouter } from "next/navigation"
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Camera, Upload, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { CameraCapture } from "@/components/camera-capture";
+import { apiClient } from "@/lib/api";
 
 export default function SkinAnalysisCard() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const router = useRouter();
   const [showCamera, setShowCamera] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisComplete, setAnalysisComplete] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const handleImageCapture = async (imageData: string) => {
     setCapturedImage(imageData);
     setShowCamera(false);
+    setAnalysisError(null);
     
-    if (!isAuthenticated) {
-      // For non-authenticated users, just show the image
-      return;
-    }
-    
-    // Start analysis
+    // Allow both authenticated and guest users to analyze
     setIsAnalyzing(true);
     
     try {
@@ -32,46 +31,32 @@ export default function SkinAnalysisCard() {
       const response = await fetch(imageData);
       const blob = await response.blob();
       
-      // Create form data
-      const formData = new FormData();
-      formData.append('image', blob, 'selfie.jpg');
+      // Create a File object from the blob
+      const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
       
-      const token = localStorage.getItem('token');
-      const headers: Record<string,string> = {};
-      if (token && token !== 'guest') {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      // Call the enhanced analysis API
+      const analysisResponse = await apiClient.analyzeSkinEnhanced(file);
       
-      // Call the analysis API
-      const analysisResponse = await fetch('/api/analysis/skin', {
-        method: 'POST',
-        body: formData,
-        headers: headers,
-      });
-      
-      if (analysisResponse.ok) {
-        const analysisData = await analysisResponse.json();
-        
+      if (analysisResponse.success) {
         // Store analysis ID in localStorage for the results page
-        if (analysisData.analysis_id) {
-          localStorage.setItem('lastAnalysisId', analysisData.analysis_id);
+        if (analysisResponse.data?.image_id) {
+          localStorage.setItem('lastAnalysisId', analysisResponse.data.image_id);
         }
         
         setIsAnalyzing(false);
         setAnalysisComplete(true);
         
         // Redirect to results page
-        router.push(`/analysis-results?analysisId=${analysisData.analysis_id}`);
+        router.push(`/analysis-results?analysisId=${analysisResponse.data.image_id}`);
       } else {
-        const errorData = await analysisResponse.json();
-        console.error('Analysis failed:', errorData);
+        console.error('Analysis failed:', analysisResponse);
         setIsAnalyzing(false);
-        // You could show an error message here
+        setAnalysisError('Analysis failed. Please try again.');
       }
     } catch (error) {
       console.error('Error during analysis:', error);
       setIsAnalyzing(false);
-      // You could show an error message here
+      setAnalysisError('Network error. Please check your connection and try again.');
     }
   };
 
@@ -82,55 +67,35 @@ export default function SkinAnalysisCard() {
       reader.onload = async (e) => {
         const result = e.target?.result as string;
         setCapturedImage(result);
+        setAnalysisError(null);
         
-        if (!isAuthenticated) {
-          // For non-authenticated users, just show the image
-          return;
-        }
-        
+        // Allow both authenticated and guest users to analyze
         setIsAnalyzing(true);
         
         try {
-          // Create form data
-          const formData = new FormData();
-          formData.append('image', file);
+          // Call the enhanced analysis API directly with the file
+          const analysisResponse = await apiClient.analyzeSkinEnhanced(file);
           
-          const token = localStorage.getItem('token');
-          const headers: Record<string,string> = {};
-          if (token && token !== 'guest') {
-            headers['Authorization'] = `Bearer ${token}`;
-          }
-          
-          // Call the analysis API
-          const analysisResponse = await fetch('/api/analysis/skin', {
-            method: 'POST',
-            body: formData,
-            headers: headers,
-          });
-          
-          if (analysisResponse.ok) {
-            const analysisData = await analysisResponse.json();
-            
+          if (analysisResponse.success) {
             // Store analysis ID in localStorage for the results page
-            if (analysisData.analysis_id) {
-              localStorage.setItem('lastAnalysisId', analysisData.analysis_id);
+            if (analysisResponse.data?.image_id) {
+              localStorage.setItem('lastAnalysisId', analysisResponse.data.image_id);
             }
             
             setIsAnalyzing(false);
             setAnalysisComplete(true);
             
             // Redirect to results page
-            router.push(`/analysis-results?analysisId=${analysisData.analysis_id}`);
+            router.push(`/analysis-results?analysisId=${analysisResponse.data.image_id}`);
           } else {
-            const errorData = await analysisResponse.json();
-            console.error('Analysis failed:', errorData);
+            console.error('Analysis failed:', analysisResponse);
             setIsAnalyzing(false);
-            // You could show an error message here
+            setAnalysisError('Analysis failed. Please try again.');
           }
         } catch (error) {
           console.error('Error during analysis:', error);
           setIsAnalyzing(false);
-          // You could show an error message here
+          setAnalysisError('Network error. Please check your connection and try again.');
         }
       };
       reader.readAsDataURL(file);
@@ -138,148 +103,153 @@ export default function SkinAnalysisCard() {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle>Skin Analysis</CardTitle>
-        <CardDescription>Capture a selfie to get a detailed analysis of your skin.</CardDescription>
+        <CardTitle className="flex items-center gap-2">
+          <Camera className="h-5 w-5" />
+          Skin Analysis
+        </CardTitle>
+        <CardDescription>
+          Upload a photo or take a selfie to get personalized skincare recommendations
+        </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4">
-        <div className="relative w-full h-48 bg-muted rounded-lg flex items-center justify-center overflow-hidden">
-          {capturedImage ? (
-            <Image
-              src={capturedImage}
-              alt="Captured Selfie"
-              width={200}
-              height={200}
-              className="object-cover w-full h-full"
-            />
-          ) : (
-            <Image
-              src="/placeholder.svg?height=200&width=200"
-              alt="Selfie Placeholder"
-              width={200}
-              height={200}
-              className="object-cover w-full h-full"
-            />
-          )}
-          {/* Overlay */}
-          {(!capturedImage || isAnalyzing || analysisComplete) && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white text-center p-4">
-              {isAnalyzing ? (
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                  <p>Analyzing your skin...</p>
+      <CardContent className="space-y-4">
+        {!capturedImage ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Button
+                onClick={() => setShowCamera(true)}
+                className="flex items-center gap-2"
+                disabled={isAnalyzing}
+              >
+                <Camera className="h-4 w-4" />
+                Take Photo
+              </Button>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={isAnalyzing}
+                />
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2 w-full"
+                  disabled={isAnalyzing}
+                >
+                  <Upload className="h-4 w-4" />
+                  Upload Photo
+                </Button>
+              </div>
+            </div>
+            {!isAuthenticated && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="text-blue-800 font-medium">Try our service for free!</p>
+                    <p className="text-blue-700">
+                      You can test the skin analysis now. Sign up for personalized recommendations and save your results.
+                    </p>
+                  </div>
                 </div>
-              ) : analysisComplete ? (
-                <div className="text-center">
-                  <Sparkles className="h-8 w-8 mx-auto mb-2 text-yellow-400" />
-                  <p>Analysis complete!</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="relative">
+              <img
+                src={capturedImage}
+                alt="Captured skin"
+                className="w-full h-64 object-cover rounded-lg"
+              />
+              {isAnalyzing && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                  <div className="text-center text-white">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                    <p>Analyzing your skin...</p>
+                  </div>
                 </div>
-              ) : (
-                <p>Click "Capture Selfie" to begin your analysis.</p>
+              )}
+              {analysisComplete && (
+                <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center rounded-lg">
+                  <div className="text-center text-green-600">
+                    <CheckCircle className="h-8 w-8 mx-auto mb-2" />
+                    <p>Analysis complete!</p>
+                  </div>
+                </div>
               )}
             </div>
-          )}
-        </div>
-        <div className="flex flex-col gap-2">
-          <Button 
-            className="w-full" 
-            onClick={() => setShowCamera(true)}
-            disabled={isAnalyzing}
-          >
-            <Camera className="mr-2 h-4 w-4" />
-            Capture Selfie
-          </Button>
-          <label htmlFor="image-upload">
-            <Button variant="outline" className="w-full bg-transparent" asChild>
-              <div>
-                <Upload className="mr-2 h-4 w-4" />
-                Upload Image
+            
+            {analysisError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-red-800">
+                    {analysisError}
+                  </div>
+                </div>
               </div>
-            </Button>
-          </label>
-          <input
-            id="image-upload"
-            type="file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-        </div>
-
-        {/* Authenticated User Info */}
-        {isAuthenticated && user && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <span className="text-sm text-green-800">
-                Signed in as {user.email}
-              </span>
+            )}
+            
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setCapturedImage(null);
+                  setAnalysisComplete(false);
+                  setAnalysisError(null);
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                Try Again
+              </Button>
+              {analysisComplete && (
+                <Button
+                  onClick={() => router.push('/analysis-results')}
+                  className="flex-1"
+                >
+                  View Results
+                </Button>
+              )}
+            </div>
+            
+            {!isAuthenticated && analysisComplete && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="text-green-800 font-medium">Great! Your analysis is ready.</p>
+                    <p className="text-green-700">
+                      Sign up to save your results and get personalized recommendations.
+                    </p>
+                    <Button 
+                      size="sm" 
+                      className="mt-2"
+                      onClick={() => router.push('/auth/signup')}
+                    >
+                      Sign Up Now
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {showCamera && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
+              <CameraCapture
+                onImageCapture={handleImageCapture}
+                onClose={() => setShowCamera(false)}
+              />
             </div>
           </div>
         )}
-        <div className="grid gap-2 text-sm text-muted-foreground">
-          {capturedImage ? (
-            <>
-              <p className="flex items-center gap-1">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                Image captured successfully
-              </p>
-              <p className="flex items-center gap-1">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                Ready for analysis
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="flex items-center gap-1">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                Good lighting detected
-              </p>
-              <p className="flex items-center gap-1">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                Face in frame
-              </p>
-            </>
-          )}
-          <p>Ensure a clear, well-lit photo for best results.</p>
-        </div>
       </CardContent>
-      <CardFooter className="flex justify-end">
-        {!isAuthenticated ? (
-          <Button 
-            variant="secondary" 
-            disabled={!capturedImage}
-            onClick={() => {
-              // Navigate to analysis results page
-              router.push('/analysis-results');
-            }}
-          >
-            <Sparkles className="mr-2 h-4 w-4" />
-            View Analysis Results
-          </Button>
-        ) : (
-          <Button 
-            variant="secondary" 
-            disabled={!analysisComplete}
-            onClick={() => {
-              // Navigate to analysis results page
-              router.push('/analysis-results');
-            }}
-          >
-            <Sparkles className="mr-2 h-4 w-4" />
-            View Analysis Results
-          </Button>
-        )}
-      </CardFooter>
-      
-      {/* Camera Modal */}
-      {showCamera && (
-        <CameraCapture
-          onImageCapture={handleImageCapture}
-          onClose={() => setShowCamera(false)}
-        />
-      )}
     </Card>
-  )
+  );
 }

@@ -37,7 +37,7 @@ export default function HomePage() {
   const loadTrendingProducts = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.getTrendingProducts(3);
+      const response = await apiClient.getTrendingProducts();
       
       // Handle the API response structure
       if (response && response.data && Array.isArray(response.data)) {
@@ -163,9 +163,9 @@ export default function HomePage() {
               <Link href="/skin-analysis">
                 <Button size="lg">Start Skin Analysis</Button>
               </Link>
-              <Link href="/camera-test">
+              <Link href="/similarity-search">
                 <Button size="lg" variant="outline">
-                  Test Camera
+                  Find Similar Conditions
                 </Button>
               </Link>
               <Link href="/recommendations">

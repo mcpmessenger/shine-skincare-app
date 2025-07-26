@@ -1,7 +1,0 @@
-vercel env add NEXT_PUBLIC_SUPABASE_URL
-vercel env add SUPABASE_SERVICE_ROLE_KEY
-vercel env add GOOGLE_CLIENT_ID
-vercel env add GOOGLE_CLIENT_SECRET
-vercel env add GOOGLE_CLOUD_PROJECT_ID
-vercel env add STRIPE_SECRET_KEY
-vercel env add STRIPE_PUBLISHABLE_KEY
