@@ -32,7 +32,18 @@ def create_app(config_name='development'):
     celery.conf.update(app.config)
     
     # Enable CORS
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": [
+                "https://main.d2wy4w2nf9bgxx.amplifyapp.com",
+                "https://d13t4o7is9rld4.amplifyapp.com",
+                "http://localhost:3000",
+                "*"
+            ],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
+        }
+    })
     
     # Register blueprints
     try:

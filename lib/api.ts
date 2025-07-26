@@ -26,7 +26,7 @@ class ApiClient {
 
   constructor() {
     // Use the real backend URL from environment variables
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend-bibycgjww-williamtflynn-2750s-projects.vercel.app';
+    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend-e7bwdoxjq-williamtflynn-2750s-projects.vercel.app';
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
