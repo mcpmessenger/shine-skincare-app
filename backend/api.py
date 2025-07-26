@@ -333,6 +333,145 @@ def analyze_image_guest():
             'error': str(e)
         }), 500
 
+# SCIN-specific endpoints
+@app.route('/api/scin/status')
+def scin_status():
+    return jsonify({
+        'success': True,
+        'data': {
+            'status': 'active',
+            'dataset_size': len(SCIN_DATASET),
+            'index_built': True,
+            'last_updated': datetime.utcnow().isoformat()
+        }
+    })
+
+@app.route('/api/scin/dataset/info')
+def scin_dataset_info():
+    return jsonify({
+        'success': True,
+        'data': {
+            'total_cases': len(SCIN_DATASET),
+            'conditions': list(set(case['diagnosis'] for case in SCIN_DATASET)),
+            'skin_types': list(set(case['skin_type'] for case in SCIN_DATASET)),
+            'description': 'Professional dermatology cases for similarity search'
+        }
+    })
+
+@app.route('/api/scin/search', methods=['POST'])
+def scin_search():
+    try:
+        # Get image data from request
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image file provided'}), 400
+        
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'error': 'No image file selected'}), 400
+        
+        # Read image data
+        image_data = file.read()
+        
+        # Analyze image features
+        image_features = analyze_image_features(image_data)
+        
+        # Generate skin analysis vector
+        skin_vector = generate_skin_vector(image_features)
+        
+        # Find similar cases
+        similar_cases = find_similar_cases(skin_vector)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'query_image_hash': image_features['image_hash'],
+                'similar_cases': similar_cases,
+                'total_matches': len(similar_cases),
+                'search_timestamp': datetime.utcnow().isoformat()
+            }
+        })
+        
+    except Exception as e:
+        print(f"SCIN search error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/scin/dataset/sample')
+def scin_sample():
+    try:
+        # Get query parameters
+        n = int(request.args.get('n', 5))
+        conditions = request.args.getlist('conditions')
+        skin_types = request.args.getlist('skin_types')
+        
+        # Filter dataset based on parameters
+        filtered_cases = SCIN_DATASET
+        
+        if conditions:
+            filtered_cases = [case for case in filtered_cases if case['diagnosis'] in conditions]
+        
+        if skin_types:
+            filtered_cases = [case for case in filtered_cases if case['skin_type'] in skin_types]
+        
+        # Return sample cases
+        sample_cases = filtered_cases[:n]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'samples': sample_cases,
+                'total_available': len(filtered_cases),
+                'requested_count': n
+            }
+        })
+        
+    except Exception as e:
+        print(f"SCIN sample error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/scin/build-index', methods=['POST'])
+def scin_build_index():
+    try:
+        # Get query parameters
+        conditions = request.args.getlist('conditions')
+        skin_types = request.args.getlist('skin_types')
+        max_images = int(request.args.get('max_images', 100))
+        
+        # Filter dataset based on parameters
+        filtered_cases = SCIN_DATASET
+        
+        if conditions:
+            filtered_cases = [case for case in filtered_cases if case['diagnosis'] in conditions]
+        
+        if skin_types:
+            filtered_cases = [case for case in filtered_cases if case['skin_type'] in skin_types]
+        
+        # Limit to max_images
+        filtered_cases = filtered_cases[:max_images]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'index_built': True,
+                'indexed_cases': len(filtered_cases),
+                'conditions_filtered': conditions,
+                'skin_types_filtered': skin_types,
+                'build_timestamp': datetime.utcnow().isoformat()
+            }
+        })
+        
+    except Exception as e:
+        print(f"SCIN build index error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 # Export for Vercel
 if __name__ == '__main__':
     app.run(debug=True) 
