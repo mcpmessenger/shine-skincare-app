@@ -1,49 +1,40 @@
 # Shine - AI-Powered Skincare Analysis
 
+## How to Trigger an Amplify Redeploy
+
+1. Make any change to this README or your frontend code.
+2. Commit and push to GitHub:
+   ```
+   git add README.md
+   git commit -m "Trigger Amplify redeploy"
+   git push
+   ```
+3. AWS Amplify will automatically rebuild and redeploy your frontend.
+
+## Backend API
+
+The frontend communicates with the backend API at:
+`https://shine-skincare-rdrp39n2c-williamtflynn-2750s-projects.vercel.app`
+
+# Shine - AI-Powered Skincare Analysis
+
 A modern web application that provides AI-powered skin analysis and personalized skincare recommendations using advanced computer vision and machine learning.
 
 ## 🌟 Features
 
 ### **AI-Powered Skin Analysis**
-- **Google Vision AI Integration** - Professional skin condition detection
-- **FAISS Similarity Search** - Find similar skin conditions from professional dataset
-- **SCIN Dataset Integration** - Access to 5,033 professional dermatology cases
-- **Real-time Image Processing** - Instant analysis with vectorization
 
 ### **Professional Features**
-- **Similarity Search** - Find similar skin conditions from professional dataset
-- **Personalized Recommendations** - AI-powered product suggestions
-- **Professional Annotations** - Dermatologist-verified case information
-- **Advanced Filtering** - Filter by skin type, conditions, demographics
 
 ### **User Experience**
-- **Camera Integration** - Take photos or upload images
-- **Real-time Analysis** - Instant results with confidence scores
-- **Responsive Design** - Works on desktop, tablet, and mobile
-- **Guest Access** - Try features without signing up
-- **Authentication** - Secure Google OAuth login
 
 ## 🚀 Tech Stack
 
 ### **Frontend**
-- **Next.js 15** - React framework with App Router
-- **TypeScript** - Type-safe development
-- **Tailwind CSS** - Modern styling
-- **Shadcn/ui** - Beautiful component library
-- **AWS Amplify** - Hosting and CI/CD
 
 ### **Backend**
-- **Flask** - Python web framework
-- **Google Vision AI** - Professional image analysis
-- **FAISS** - High-performance similarity search
-- **Supabase** - PostgreSQL database and storage
-- **Stripe** - Payment processing
-- **Vercel** - Serverless hosting
 
 ### **AI & ML**
-- **ResNet-50** - Image vectorization model
-- **Cosine Similarity** - Advanced similarity matching
-- **Professional Dataset** - 5,033 dermatology cases
 
 ## 📱 Live Demo
 
@@ -52,8 +43,6 @@ Visit the live application: [Shine Skincare App](https://main.d2wy4w2nf9bgxx.amp
 ## 🚀 Deployment Configuration
 
 ### **Production URLs**
-- **Frontend**: https://main.d2wy4w2nf9bgxx.amplifyapp.com
-- **Backend**: https://backend-7yqorv3fz-williamtflynn-2750s-projects.vercel.app
 
 ### **Environment Variables**
 
@@ -84,11 +73,6 @@ GOOGLE_APPLICATION_CREDENTIALS=your_google_credentials_json
 ## 🔧 Quick Start
 
 ### Prerequisites
-- Node.js 18+
-- Python 3.11+
-- Git
-- Vercel CLI
-- AWS Amplify CLI
 
 ### Installation
 
@@ -176,16 +160,8 @@ When the backend URL changes:
 ## 🔧 Development Workflow
 
 ### **Efficient Development**
-- **Batch Changes**: Group multiple related changes before pushing
-- **Environment Variables**: Use Amplify Console for configuration changes
-- **Local Testing**: Test changes locally before pushing
-- **Backend Updates**: Use Vercel CLI directly (no GitHub push needed)
 
 ### **Testing**
-- **Guest Access**: Test features without authentication
-- **API Health**: Check `/api/health` endpoint
-- **CORS**: Verify cross-origin requests work
-- **Image Analysis**: Test skin analysis functionality
 
 ## 📁 Project Structure
 
@@ -207,17 +183,9 @@ shine-skincare-app/
 
 ## 🔒 Security
 
-- **Environment Variables**: All secrets stored securely
-- **CORS Configuration**: Properly configured for production domains
-- **Authentication**: Google OAuth with JWT tokens
-- **Guest Access**: Limited features for unauthenticated users
 
 ## 🚀 Performance
 
-- **Serverless Backend**: Auto-scaling with Vercel
-- **CDN**: Global content delivery with Amplify
-- **Image Optimization**: Next.js automatic optimization
-- **Caching**: Efficient caching strategies
 
 ## 📞 Support
 
@@ -227,6 +195,5 @@ For issues or questions:
 3. Test API endpoints directly
 4. Check Vercel function logs for backend issues
 
----
 
 **Built with ❤️ using Next.js, Flask, and AI-powered skin analysis**
