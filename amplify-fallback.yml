@@ -1,0 +1,19 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - echo "Starting preBuild phase"
+        - echo "Using npm for maximum compatibility"
+        - npm install
+        - echo "PreBuild phase completed"
+    build:
+      commands:
+        - echo "Starting build phase"
+        - echo "Building with npm"
+        - npm run build
+        - echo "Build phase completed"
+  artifacts:
+    baseDirectory: out
+    files:
+      - '**/*' 

@@ -1,0 +1,65 @@
+{
+  "timestamp": "2025-07-25T23:43:35.122822",
+  "test_results": {
+    "passed": 5,
+    "failed": 2,
+    "errors": [
+      "SCIN service not available",
+      "SCIN service not available"
+    ],
+    "warnings": [
+      "Sample index build failed: ['SCIN dataset not loaded']",
+      "FAISS index not populated, skipping similarity search test",
+      "Some services are not healthy"
+    ],
+    "test_details": {
+      "vectorization_service": {
+        "model_name": "resnet50",
+        "feature_dimension": 2048,
+        "device": "cpu",
+        "available": true,
+        "cache_dir": "vector_cache"
+      },
+      "faiss_service": {
+        "total_vectors": 0,
+        "dimension": 2048,
+        "index_path": "faiss_index",
+        "image_ids_count": 0
+      },
+      "api_endpoints": {
+        "services_healthy": false,
+        "scin_loaded": false,
+        "vectors_generated": false,
+        "faiss_populated": false
+      }
+    }
+  },
+  "integration_status": {
+    "scin_loaded": false,
+    "vectors_generated": false,
+    "faiss_populated": false,
+    "last_update": "2025-07-25T23:43:35.121816",
+    "services": {
+      "scin_service": false,
+      "vectorization_service": true,
+      "faiss_service": true
+    },
+    "faiss_info": {
+      "total_vectors": 0,
+      "dimension": 2048,
+      "index_path": "faiss_index",
+      "image_ids_count": 0
+    },
+    "vectorization_info": {
+      "model_name": "resnet50",
+      "feature_dimension": 2048,
+      "device": "cpu",
+      "available": true,
+      "cache_dir": "vector_cache"
+    },
+    "cache_info": {
+      "cached_vectors": 0,
+      "cache_size_mb": 0.0
+    }
+  }
+}

@@ -1,0 +1,32 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - echo "Starting preBuild phase"
+        - npm install -g pnpm@latest
+        - echo "pnpm version:"
+        - pnpm --version
+        - echo "Clearing any existing node_modules"
+        - rm -rf node_modules
+        - echo "Installing dependencies with pnpm"
+        - pnpm install --no-frozen-lockfile
+        - echo "PreBuild phase completed"
+    build:
+      commands:
+        - echo "Starting build phase"
+        - echo "Node version:"
+        - node --version
+        - echo "pnpm version:"
+        - pnpm --version
+        - echo "Building the application"
+        - pnpm run build
+        - echo "Build phase completed"
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/* 

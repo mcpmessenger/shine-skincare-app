@@ -1,0 +1,15 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-shineskincareapp-dev-e835f-authRole",
+      "UnauthRoleArn": "arn:aws:iam::396608803476:role/amplify-shineskincareapp-dev-e835f-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::396608803476:role/amplify-shineskincareapp-dev-e835f-authRole",
+      "Region": "us-east-2",
+      "DeploymentBucketName": "amplify-shineskincareapp-dev-e835f-deployment",
+      "UnauthRoleName": "amplify-shineskincareapp-dev-e835f-unauthRole",
+      "StackName": "amplify-shineskincareapp-dev-e835f",
+      "StackId": "arn:aws:cloudformation:us-east-2:396608803476:stack/amplify-shineskincareapp-dev-e835f/7c2a9830-6903-11f0-bb2f-0ad8ef37860d",
+      "AmplifyAppId": "d13t4o7is9rld4"
+    }
+  }
+}
