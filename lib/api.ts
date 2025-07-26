@@ -26,15 +26,14 @@ class ApiClient {
 
   constructor() {
     // Use the real backend URL from environment variables
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend-jet-mu.vercel.app';
+    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend-57afozc7k-williamtflynn-2750s-projects.vercel.app';
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     
-    const defaultHeaders = {
+    const defaultHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
     };
 
     // Add auth token if available
@@ -43,10 +42,16 @@ class ApiClient {
       defaultHeaders['Authorization'] = `Bearer ${token}`;
     }
 
+    // Merge with options headers
+    const finalHeaders = {
+      ...defaultHeaders,
+      ...(options.headers as Record<string, string>),
+    };
+
     try {
       const response = await fetch(url, {
         ...options,
-        headers: defaultHeaders,
+        headers: finalHeaders,
       });
 
       if (!response.ok) {
