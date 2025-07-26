@@ -8,7 +8,6 @@ import json
 import hashlib
 
 app = Flask(__name__)
-# Enable CORS for Amplify frontend only
 CORS(app, resources={r"/api/*": {"origins": "https://main.d2wy4w2nf9bgxx.amplifyapp.com"}})
 
 # Professional SCIN dataset for similarity search
@@ -472,4 +471,4 @@ def scin_build_index():
 
 # Export for Vercel
 if __name__ == '__main__':
-    app.run(debug=True) 
+    app.run(debug=True)
