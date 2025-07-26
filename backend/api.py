@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 from datetime import datetime
 import os
 import base64
@@ -9,9 +8,14 @@ import hashlib
 
 app = Flask(__name__)
 
-# Enable CORS for all routes
-CORS(app, origins="*", methods=["GET", "POST", "OPTIONS"], 
-     allow_headers=["Content-Type", "Authorization", "X-Requested-With"])
+# Manual CORS handling
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
 
 # Professional SCIN dataset for similarity search
 SCIN_DATASET = [

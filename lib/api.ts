@@ -26,7 +26,7 @@ class ApiClient {
 
   constructor() {
     // Use the real backend URL from environment variables
-    this.baseUrl = 'https://backend-47pvujw5k-williamtflynn-2750s-projects.vercel.app';
+    this.baseUrl = 'https://backend-79dx9yos5-williamtflynn-2750s-projects.vercel.app';
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
