@@ -1,3 +1,10 @@
+import nextPWA from 'next-pwa';
+
+const withPWA = nextPWA({
+  dest: 'public',
+  disable: process.env.NODE_ENV === 'development',
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Remove static export for Vercel API routes compatibility
@@ -19,6 +26,7 @@ const nextConfig = {
   experimental: {
     // Remove invalid option
   },
+
 }
 
-export default nextConfig
+export default withPWA(nextConfig);

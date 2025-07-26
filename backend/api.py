@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from datetime import datetime
 import os
 import base64
@@ -7,15 +8,8 @@ import json
 import hashlib
 
 app = Flask(__name__)
-
-# Manual CORS handling
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response
+# Enable CORS for Amplify frontend only
+CORS(app, resources={r"/api/*": {"origins": "https://main.d2wy4w2nf9bgxx.amplifyapp.com"}})
 
 # Professional SCIN dataset for similarity search
 SCIN_DATASET = [
