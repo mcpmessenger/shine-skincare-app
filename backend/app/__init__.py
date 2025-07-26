@@ -35,21 +35,24 @@ def create_app(config_name='development'):
     CORS(app, resources={r"/api/*": {"origins": "*"}})
     
     # Register blueprints
-    from app.auth import auth_bp
-    from app.image_analysis import image_bp
-    from app.recommendations import recommendations_bp
-    from app.payments import payments_bp
-    from app.mcp import mcp_bp
-    from app.enhanced_image_analysis import enhanced_image_bp
-    from app.simple_skin_analysis import simple_skin_bp
-    
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(image_bp, url_prefix='/api/analysis')
-    app.register_blueprint(recommendations_bp, url_prefix='/api/recommendations')
-    app.register_blueprint(payments_bp, url_prefix='/api/payments')
-    app.register_blueprint(mcp_bp, url_prefix='/api/mcp')
-    app.register_blueprint(enhanced_image_bp, url_prefix='/api/v2')
-    app.register_blueprint(simple_skin_bp, url_prefix='/api/simple')
+    try:
+        from app.auth import auth_bp
+        from app.image_analysis import image_bp
+        from app.recommendations import recommendations_bp
+        from app.payments import payments_bp
+        from app.mcp import mcp_bp
+        from app.enhanced_image_analysis import enhanced_image_bp
+        from app.simple_skin_analysis import simple_skin_bp
+        
+        app.register_blueprint(auth_bp, url_prefix='/api/auth')
+        app.register_blueprint(image_bp, url_prefix='/api/analysis')
+        app.register_blueprint(recommendations_bp, url_prefix='/api/recommendations')
+        app.register_blueprint(payments_bp, url_prefix='/api/payments')
+        app.register_blueprint(mcp_bp, url_prefix='/api/mcp')
+        app.register_blueprint(enhanced_image_bp, url_prefix='/api/v2')
+        app.register_blueprint(simple_skin_bp, url_prefix='/api/simple')
+    except Exception as e:
+        print(f"Warning: Could not register all blueprints: {e}")
 
     # Health check endpoint
     @app.route('/api/health')
@@ -57,9 +60,17 @@ def create_app(config_name='development'):
         from datetime import datetime
         return {'status': 'healthy', 'timestamp': datetime.utcnow().isoformat()}
     
-    # Create database tables
-    with app.app_context():
-        db.create_all()
+    # Root endpoint
+    @app.route('/')
+    def root():
+        return {'message': 'Shine Skincare API', 'status': 'running'}
+    
+    # Create database tables (only if database is available)
+    try:
+        with app.app_context():
+            db.create_all()
+    except Exception as e:
+        print(f"Warning: Could not create database tables: {e}")
     
     return app
 
