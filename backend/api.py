@@ -299,13 +299,19 @@ def analyze_image_guest():
         else:
             confidence = 0.7
         
+        # Add similarity scores for transparency
+        similarity_scores = [case.get('similarity_score', None) for case in similar_cases]
+
+        # Get race/ethnicity from request (optional)
+        user_race = request.form.get('race', None)
+
         # Create comprehensive response
         response = {
             'success': True,
             'data': {
                 'image_id': f'guest_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}',
                 'analysis': {
-                    'skin_type': skin_type,
+                    'skin_type': skin_type,  # Always descriptive label
                     'concerns': concerns,
                     'hydration': int(skin_vector[3] * 100),
                     'oiliness': int(skin_vector[4] * 100),
@@ -313,10 +319,12 @@ def analyze_image_guest():
                     'confidence': confidence,
                     'ai_analysis_used': True,
                     'similarity_search_used': len(similar_cases) > 0,
-                    'image_features': image_features
+                    'image_features': image_features,
+                    'user_race': user_race  # New field for user-inputted race/ethnicity
                 },
                 'recommendations': unique_recommendations,
                 'similar_cases': similar_cases[:2],  # Top 2 similar cases
+                'similarity_scores': similarity_scores,  # Show all similarity scores
                 'message': 'AI-powered analysis completed! Your skin has been analyzed using advanced image processing and matched against professional dermatology cases. Sign up to save your results and get personalized recommendations.'
             }
         }
@@ -468,6 +476,10 @@ def scin_build_index():
             'success': False,
             'error': str(e)
         }), 500
+
+
+# Remove MVP analysis endpoint if present
+# (No explicit MVP endpoint found in this file, so nothing to delete here)
 
 # Export for Vercel
 if __name__ == '__main__':

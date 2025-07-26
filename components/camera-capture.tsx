@@ -38,8 +38,8 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 720 },
+          height: { ideal: 1280 }
         }
       });
 
