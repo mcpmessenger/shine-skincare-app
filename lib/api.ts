@@ -76,8 +76,11 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    // Use guest endpoint if not authenticated
+    const endpoint = token && token !== 'guest' ? '/api/v2/analyze' : '/api/v2/analyze/guest';
+
     try {
-      const response = await fetch(`${this.baseUrl}/api/v2/analyze`, {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
         method: 'POST',
         body: formData,
         headers: headers,

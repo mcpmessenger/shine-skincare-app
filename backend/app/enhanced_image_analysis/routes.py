@@ -378,6 +378,61 @@ def analyze_skin():
             'status': 'error'
         }), 500
 
+@enhanced_image_bp.route('/analyze/guest', methods=['POST'])
+def analyze_image_guest():
+    """
+    Guest-friendly image analysis endpoint (no authentication required)
+    """
+    try:
+        # Check if image file is present
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image file provided'}), 400
+        
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'error': 'No image file selected'}), 400
+        
+        # Validate file type
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'bmp'}
+        if not ('.' in file.filename and 
+                file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
+            return jsonify({'error': 'Invalid file type'}), 400
+        
+        # Read image data
+        image_data = file.read()
+        
+        # Analyze with Google Vision AI
+        logger.info("Analyzing image with Google Vision AI (guest)")
+        vision_result = google_vision_service.analyze_image_from_bytes(image_data)
+        
+        if vision_result.get('status') == 'success':
+            # Process skin analysis
+            skin_analysis = _process_skin_analysis(vision_result, 'guest')
+            
+            # Generate a temporary image ID for guest
+            temp_image_id = f"guest_{uuid.uuid4().hex[:8]}"
+            
+            return jsonify({
+                'success': True,
+                'data': {
+                    'image_id': temp_image_id,
+                    'analysis': skin_analysis,
+                    'message': 'Guest analysis completed. Sign up to save your results!'
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to analyze image'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error in guest analysis: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error'
+        }), 500
+
 def _process_skin_analysis(vision_result, user_id):
     """
     Process Google Vision results into frontend-expected format
