@@ -20,6 +20,7 @@ A modern web application that provides AI-powered skin analysis and personalized
 - **Camera Integration** - Take photos or upload images
 - **Real-time Analysis** - Instant results with confidence scores
 - **Responsive Design** - Works on desktop, tablet, and mobile
+- **Guest Access** - Try features without signing up
 - **Authentication** - Secure Google OAuth login
 
 ## 🚀 Tech Stack
@@ -29,6 +30,7 @@ A modern web application that provides AI-powered skin analysis and personalized
 - **TypeScript** - Type-safe development
 - **Tailwind CSS** - Modern styling
 - **Shadcn/ui** - Beautiful component library
+- **AWS Amplify** - Hosting and CI/CD
 
 ### **Backend**
 - **Flask** - Python web framework
@@ -36,6 +38,7 @@ A modern web application that provides AI-powered skin analysis and personalized
 - **FAISS** - High-performance similarity search
 - **Supabase** - PostgreSQL database and storage
 - **Stripe** - Payment processing
+- **Vercel** - Serverless hosting
 
 ### **AI & ML**
 - **ResNet-50** - Image vectorization model
@@ -46,12 +49,46 @@ A modern web application that provides AI-powered skin analysis and personalized
 
 Visit the live application: [Shine Skincare App](https://main.d2wy4w2nf9bgxx.amplifyapp.com)
 
+## 🚀 Deployment Configuration
+
+### **Production URLs**
+- **Frontend**: https://main.d2wy4w2nf9bgxx.amplifyapp.com
+- **Backend**: https://backend-7yqorv3fz-williamtflynn-2750s-projects.vercel.app
+
+### **Environment Variables**
+
+#### **Frontend (AWS Amplify)**
+Set these in Amplify Console → Environment Variables:
+
+```env
+NEXT_PUBLIC_API_URL=https://backend-7yqorv3fz-williamtflynn-2750s-projects.vercel.app
+NEXT_PUBLIC_APP_URL=https://main.d2wy4w2nf9bgxx.amplifyapp.com
+```
+
+#### **Backend (Vercel)**
+Set these in Vercel Dashboard → Environment Variables:
+
+```env
+DATABASE_URL=your_supabase_database_url
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+JWT_SECRET_KEY=your_jwt_secret
+STRIPE_SECRET_KEY=your_stripe_secret
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_service_key
+SUPABASE_ANON_KEY=your_supabase_anon_key
+GOOGLE_CLOUD_PROJECT_ID=your_google_cloud_project_id
+GOOGLE_APPLICATION_CREDENTIALS=your_google_credentials_json
+```
+
 ## 🔧 Quick Start
 
 ### Prerequisites
 - Node.js 18+
 - Python 3.11+
 - Git
+- Vercel CLI
+- AWS Amplify CLI
 
 ### Installation
 
@@ -75,7 +112,7 @@ Visit the live application: [Shine Skincare App](https://main.d2wy4w2nf9bgxx.amp
 4. **Set up environment variables**
    ```bash
    # Frontend (.env.local)
-   NEXT_PUBLIC_API_URL=https://backend-jet-mu.vercel.app
+   NEXT_PUBLIC_API_URL=https://backend-7yqorv3fz-williamtflynn-2750s-projects.vercel.app
    NEXT_PUBLIC_APP_URL=https://main.d2wy4w2nf9bgxx.amplifyapp.com
    
    # Backend (.env)
@@ -100,62 +137,96 @@ Visit the live application: [Shine Skincare App](https://main.d2wy4w2nf9bgxx.amp
    - Frontend: http://localhost:3000
    - Backend: http://localhost:5000
 
-## 🎯 Core Features
+## 🚀 Deployment
 
-### **Skin Analysis**
-Upload a photo to get:
-- Skin type detection
-- Condition analysis
-- Hydration and oiliness metrics
-- Personalized recommendations
+### **Frontend Deployment (AWS Amplify)**
+1. Connect your GitHub repository to Amplify
+2. Configure build settings:
+   ```yaml
+   version: 1
+   frontend:
+     phases:
+       preBuild:
+         commands:
+           - npm ci
+       build:
+         commands:
+           - npm run build
+     artifacts:
+       baseDirectory: .next
+       files:
+         - '**/*'
+   ```
+3. Set environment variables in Amplify Console
+4. Deploy automatically on push to main branch
 
-### **Similarity Search**
-Find similar skin conditions from:
-- 5,033 professional dermatology cases
-- Professional annotations
-- Filtered by skin type and conditions
-- Similarity scores with confidence
+### **Backend Deployment (Vercel)**
+1. Install Vercel CLI: `npm i -g vercel`
+2. Navigate to backend directory: `cd backend`
+3. Link to Vercel project: `vercel link`
+4. Deploy: `vercel --prod`
+5. Set environment variables in Vercel Dashboard
 
-### **Product Recommendations**
-Get personalized suggestions based on:
-- Skin analysis results
-- Similar case outcomes
-- Professional dermatology data
-- User preferences
+### **Updating Backend URL**
+When the backend URL changes:
+1. Deploy new backend: `vercel --prod` (in backend directory)
+2. Update `NEXT_PUBLIC_API_URL` in Amplify Console
+3. No code push required!
+
+## 🔧 Development Workflow
+
+### **Efficient Development**
+- **Batch Changes**: Group multiple related changes before pushing
+- **Environment Variables**: Use Amplify Console for configuration changes
+- **Local Testing**: Test changes locally before pushing
+- **Backend Updates**: Use Vercel CLI directly (no GitHub push needed)
+
+### **Testing**
+- **Guest Access**: Test features without authentication
+- **API Health**: Check `/api/health` endpoint
+- **CORS**: Verify cross-origin requests work
+- **Image Analysis**: Test skin analysis functionality
+
+## 📁 Project Structure
+
+```
+shine-skincare-app/
+├── app/                    # Next.js app directory
+│   ├── api/               # API routes
+│   ├── auth/              # Authentication pages
+│   ├── skin-analysis/     # Skin analysis pages
+│   └── similarity-search/ # Similarity search page
+├── backend/               # Flask backend
+│   ├── app/              # Flask application
+│   ├── api.py            # Vercel entry point
+│   └── vercel.json       # Vercel configuration
+├── components/           # React components
+├── lib/                  # Utilities and API client
+└── hooks/                # Custom React hooks
+```
 
 ## 🔒 Security
 
-- **OAuth 2.0** - Secure Google authentication
-- **JWT Tokens** - Stateless authentication
-- **Environment Variables** - Secure credential management
-- **HTTPS** - Encrypted data transmission
+- **Environment Variables**: All secrets stored securely
+- **CORS Configuration**: Properly configured for production domains
+- **Authentication**: Google OAuth with JWT tokens
+- **Guest Access**: Limited features for unauthenticated users
 
-## 📊 Performance
+## 🚀 Performance
 
-- **FAISS Index** - Sub-second similarity search
-- **Vector Caching** - Optimized image processing
-- **CDN** - Fast global content delivery
-- **Database Optimization** - Efficient queries
+- **Serverless Backend**: Auto-scaling with Vercel
+- **CDN**: Global content delivery with Amplify
+- **Image Optimization**: Next.js automatic optimization
+- **Caching**: Efficient caching strategies
 
-## 🤝 Contributing
+## 📞 Support
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 🙏 Acknowledgments
-
-- **SCIN Dataset** - Professional dermatology cases
-- **Google Vision AI** - Advanced image analysis
-- **Supabase** - Database and storage infrastructure
-- **Stripe** - Payment processing
+For issues or questions:
+1. Check the deployment logs in Amplify Console
+2. Verify environment variables are set correctly
+3. Test API endpoints directly
+4. Check Vercel function logs for backend issues
 
 ---
 
-**Built with ❤️ for better skincare**
+**Built with ❤️ using Next.js, Flask, and AI-powered skin analysis**
