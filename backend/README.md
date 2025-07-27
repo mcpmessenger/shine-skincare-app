@@ -302,3 +302,9 @@ build-backend = "setuptools.build_meta"
 ```
 
 This ensures pip can build source packages correctly in the AWS environment. 
+
+## Frontend API URL Best Practice
+
+- Set `NEXT_PUBLIC_BACKEND_URL` in Amplify to the root backend URL (e.g., `https://shine-backend-poc-env.eba-bpcnncyq.us-east-1.elasticbeanstalk.com`).
+- Do **not** include any endpoint path in this variable.
+- The frontend code will append the endpoint as needed. 
