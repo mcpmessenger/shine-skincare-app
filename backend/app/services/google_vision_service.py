@@ -226,32 +226,31 @@ class GoogleVisionService:
     
     def _detect_faces(self, image) -> Dict[str, Any]:
         """Detect faces in the image"""
-        if types is not None:
-            try:
-                response = self.client.face_detection(image=image)
-                faces = response.face_annotations
-                
-                face_data = []
-                for face in faces:
-                    face_info = {
-                        'confidence': face.detection_confidence,
-                        'joy_likelihood': face.joy_likelihood,
-                        'sorrow_likelihood': face.sorrow_likelihood,
-                        'anger_likelihood': face.anger_likelihood,
-                        'surprise_likelihood': face.surprise_likelihood,
-                        'bounding_poly': self._convert_vertices(face.bounding_poly.vertices)
-                    }
-                    face_data.append(face_info)
-                
-                return {
-                    'faces_found': len(faces),
-                    'face_data': face_data
-                }
-            except Exception as e:
-                logger.error(f"Error detecting faces: {e}")
-                return {'error': str(e)}
-        else:
+        if types is None:
             raise RuntimeError("Google Vision is not available")
+        try:
+            response = self.client.face_detection(image=image)
+            faces = response.face_annotations
+            
+            face_data = []
+            for face in faces:
+                face_info = {
+                    'confidence': face.detection_confidence,
+                    'joy_likelihood': face.joy_likelihood,
+                    'sorrow_likelihood': face.sorrow_likelihood,
+                    'anger_likelihood': face.anger_likelihood,
+                    'surprise_likelihood': face.surprise_likelihood,
+                    'bounding_poly': self._convert_vertices(face.bounding_poly.vertices)
+                }
+                face_data.append(face_info)
+                
+            return {
+                'faces_found': len(faces),
+                'face_data': face_data
+            }
+        except Exception as e:
+            logger.error(f"Error detecting faces: {e}")
+            return {'error': str(e)}
     
     def _get_image_properties(self, image) -> Dict[str, Any]:
         """Get image properties including dominant colors"""
