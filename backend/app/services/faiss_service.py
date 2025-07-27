@@ -5,6 +5,7 @@ import faiss
 import pickle
 from typing import List, Tuple, Optional, Dict, Any
 from datetime import datetime
+from ..performance import measure_performance, cached, vector_cache, cache_key
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class FAISSService:
         self._initialize_index()
     
     def _initialize_index(self):
-        """Initialize the FAISS index"""
+        """Initialize the FAISS index with Inner Product for cosine similarity"""
         try:
             # Try to load existing index
             if os.path.exists(f"{self.index_path}.index"):
@@ -34,14 +35,14 @@ class FAISSService:
                 self._load_image_ids()
                 logger.info(f"Loaded existing FAISS index with {self.index.ntotal} vectors")
             else:
-                # Create new index
-                self.index = faiss.IndexFlatL2(self.dimension)
-                logger.info(f"Created new FAISS index with dimension {self.dimension}")
+                # Create new index using Inner Product for cosine similarity
+                self.index = faiss.IndexFlatIP(self.dimension)
+                logger.info(f"Created new FAISS IP index with dimension {self.dimension}")
                 
         except Exception as e:
             logger.error(f"Failed to initialize FAISS index: {e}")
             # Fallback to new index
-            self.index = faiss.IndexFlatL2(self.dimension)
+            self.index = faiss.IndexFlatIP(self.dimension)
     
     def _load_image_ids(self):
         """Load image IDs from file"""
@@ -63,9 +64,39 @@ class FAISSService:
         except Exception as e:
             logger.error(f"Failed to save image IDs: {e}")
     
+    def _normalize_vector(self, vector: np.ndarray) -> np.ndarray:
+        """
+        L2-normalize vector for cosine similarity
+        
+        Args:
+            vector: Input vector as numpy array
+            
+        Returns:
+            L2-normalized vector
+        """
+        try:
+            # Calculate L2 norm
+            vector_norm = np.linalg.norm(vector)
+            
+            # Handle zero vector case
+            if vector_norm > 0:
+                normalized_vector = vector / vector_norm
+            else:
+                # Handle zero vector case - return original vector
+                # This is unlikely for feature embeddings but provides graceful handling
+                logger.warning("Encountered zero vector during normalization")
+                normalized_vector = vector
+                
+            return normalized_vector
+            
+        except Exception as e:
+            logger.error(f"Error normalizing vector: {e}")
+            return vector
+    
+    @measure_performance('faiss.add_vector')
     def add_vector(self, vector: np.ndarray, image_id: str) -> bool:
         """
-        Add a vector to the FAISS index
+        Add a normalized vector to the FAISS index for cosine similarity
         
         Args:
             vector: Feature vector as numpy array
@@ -84,8 +115,11 @@ class FAISSService:
                 logger.error(f"Vector dimension {vector.shape[1]} doesn't match index dimension {self.dimension}")
                 return False
             
-            # Add to index
-            self.index.add(vector)
+            # Normalize vector for cosine similarity
+            normalized_vector = self._normalize_vector(vector)
+            
+            # Add normalized vector to index
+            self.index.add(normalized_vector)
             
             # Store image ID
             self.image_ids.append(image_id)
@@ -94,23 +128,24 @@ class FAISSService:
             self._save_index()
             self._save_image_ids()
             
-            logger.info(f"Added vector for image {image_id} to FAISS index")
+            logger.info(f"Added normalized vector for image {image_id} to FAISS index")
             return True
             
         except Exception as e:
             logger.error(f"Error adding vector to FAISS index: {e}")
             return False
     
+    @measure_performance('faiss.search_similar')
     def search_similar(self, query_vector: np.ndarray, k: int = 5) -> List[Tuple[str, float]]:
         """
-        Search for similar vectors
+        Search for similar vectors using cosine similarity
         
         Args:
             query_vector: Query vector as numpy array
             k: Number of similar vectors to return
             
         Returns:
-            List of tuples (image_id, distance)
+            List of tuples (image_id, distance) where distance is converted from similarity
         """
         try:
             if self.index.ntotal == 0:
@@ -126,14 +161,20 @@ class FAISSService:
                 logger.error(f"Query vector dimension {query_vector.shape[1]} doesn't match index dimension {self.dimension}")
                 return []
             
-            # Search
-            distances, indices = self.index.search(query_vector, min(k, self.index.ntotal))
+            # Normalize query vector for cosine similarity
+            normalized_query = self._normalize_vector(query_vector)
             
-            # Convert to results
+            # Search returns cosine similarities (higher = more similar)
+            similarities, indices = self.index.search(normalized_query, min(k, self.index.ntotal))
+            
+            # Convert to results format
             results = []
-            for i, (distance, idx) in enumerate(zip(distances[0], indices[0])):
+            for i, (sim, idx) in enumerate(zip(similarities[0], indices[0])):
                 if idx < len(self.image_ids):
                     image_id = self.image_ids[idx]
+                    # Convert similarity to distance for backward compatibility
+                    # (higher similarity = lower distance)
+                    distance = 2 - 2 * sim  # Convert cosine similarity to distance
                     results.append((image_id, float(distance)))
             
             return results
@@ -240,7 +281,7 @@ class FAISSService:
     def clear_index(self):
         """Clear the entire index"""
         try:
-            self.index = faiss.IndexFlatL2(self.dimension)
+            self.index = faiss.IndexFlatIP(self.dimension)
             self.image_ids = []
             self._save_index()
             self._save_image_ids()

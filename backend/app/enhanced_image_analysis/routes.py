@@ -9,20 +9,33 @@ import numpy as np
 from datetime import datetime
 
 from . import enhanced_image_bp
-from app.services import (
-    GoogleVisionService, 
-    ImageVectorizationService, 
-    FAISSService, 
-    SupabaseService
+from app.service_manager import service_manager
+from app.error_handlers import (
+    APIError, ServiceError, ValidationError, ResourceNotFoundError,
+    safe_service_call, create_error_context
 )
+from app.logging_config import get_service_logger, log_service_operation, log_api_request
 
 logger = logging.getLogger(__name__)
 
-# Initialize services
-google_vision_service = GoogleVisionService()
-vectorization_service = ImageVectorizationService()
-faiss_service = FAISSService()
-supabase_service = SupabaseService()
+# Service getter functions for cleaner code
+def get_google_vision_service():
+    return service_manager.get_service('google_vision')
+
+def get_vectorization_service():
+    return service_manager.get_service('vectorization')
+
+def get_faiss_service():
+    return service_manager.get_service('faiss')
+
+def get_supabase_service():
+    return service_manager.get_service('supabase')
+
+def get_demographic_search_service():
+    return service_manager.get_service('demographic_search')
+
+def get_skin_classifier_service():
+    return service_manager.get_service('skin_classifier')
 
 @enhanced_image_bp.route('/analyze', methods=['POST'])
 @jwt_required()
@@ -64,16 +77,19 @@ def analyze_image():
         
         # Step 1: Upload to Supabase Storage
         logger.info(f"Uploading image for user {current_user_id}")
+        supabase_service = get_supabase_service()
         image_url = supabase_service.upload_image(image_data, filename)
         if not image_url:
             return jsonify({'error': 'Failed to upload image'}), 500
         
         # Step 2: Analyze with Google Vision AI
         logger.info("Analyzing image with Google Vision AI")
+        google_vision_service = get_google_vision_service()
         vision_result = google_vision_service.analyze_image_from_bytes(image_data)
         
         # Step 3: Vectorize image
         logger.info("Vectorizing image")
+        vectorization_service = get_vectorization_service()
         vector = vectorization_service.vectorize_image_from_bytes(image_data)
         if not vector:
             return jsonify({'error': 'Failed to vectorize image'}), 500
@@ -115,6 +131,7 @@ def analyze_image():
         
         # Step 5: Add to FAISS index
         logger.info("Adding to FAISS index")
+        faiss_service = get_faiss_service()
         faiss_success = faiss_service.add_vector(vector, image_id)
         
         # Update image record with FAISS index ID
@@ -157,6 +174,10 @@ def find_similar_images(image_id):
         # Get number of similar images to return
         k = request.args.get('k', 5, type=int)
         k = min(k, 20)  # Limit to 20 results
+        
+        # Get services
+        supabase_service = get_supabase_service()
+        faiss_service = get_faiss_service()
         
         # Get the query image record
         image_record = supabase_service.get_image_by_id(image_id)
@@ -212,6 +233,7 @@ def get_user_images():
         current_user_id = get_jwt_identity()
         
         # Get user's images
+        supabase_service = get_supabase_service()
         images = supabase_service.get_images_by_user(current_user_id)
         
         # Add analysis and vector info for each image
@@ -252,6 +274,7 @@ def get_image_analysis(image_id):
         current_user_id = get_jwt_identity()
         
         # Get image record
+        supabase_service = get_supabase_service()
         image_record = supabase_service.get_image_by_id(image_id)
         if not image_record:
             return jsonify({'error': 'Image not found'}), 404
@@ -284,6 +307,12 @@ def get_image_analysis(image_id):
 def health_check():
     """Health check for enhanced image analysis services"""
     try:
+        # Get services
+        google_vision_service = get_google_vision_service()
+        vectorization_service = get_vectorization_service()
+        faiss_service = get_faiss_service()
+        supabase_service = get_supabase_service()
+        
         services_status = {
             'google_vision': google_vision_service.is_available(),
             'vectorization': vectorization_service.is_available(),
@@ -358,6 +387,7 @@ def analyze_skin():
         
         # Analyze with Google Vision AI
         logger.info("Analyzing skin with Google Vision AI")
+        google_vision_service = get_google_vision_service()
         vision_result = google_vision_service.analyze_image_from_bytes(image_data)
         
         if vision_result.get('status') != 'success':
@@ -381,33 +411,48 @@ def analyze_skin():
 @enhanced_image_bp.route('/analyze/guest', methods=['POST'])
 def analyze_image_guest():
     """
-    Guest-friendly image analysis endpoint (no authentication required)
+    Enhanced guest-friendly image analysis endpoint with improved skin classification
     """
     try:
         # Check if image file is present
         if 'image' not in request.files:
-            return jsonify({'error': 'No image file provided'}), 400
+            raise ValidationError('No image file provided', field='image')
         
         file = request.files['image']
         if file.filename == '':
-            return jsonify({'error': 'No image file selected'}), 400
+            raise ValidationError('No image file selected', field='image')
+        
+        # Get optional ethnicity from form data
+        ethnicity = request.form.get('ethnicity', '')
         
         # Validate file type
         allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'bmp'}
         if not ('.' in file.filename and 
                 file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
-            return jsonify({'error': 'Invalid file type'}), 400
+            raise ValidationError('Invalid file type. Allowed: png, jpg, jpeg, gif, bmp', field='image')
         
         # Read image data
         image_data = file.read()
         
         # Analyze with Google Vision AI
         logger.info("Analyzing image with Google Vision AI (guest)")
-        vision_result = google_vision_service.analyze_image_from_bytes(image_data)
+        google_vision_service = get_google_vision_service()
+        vision_result = safe_service_call(
+            'google_vision', 'analyze_image_from_bytes',
+            google_vision_service.analyze_image_from_bytes, image_data
+        )
         
         if vision_result.get('status') == 'success':
-            # Process skin analysis
-            skin_analysis = _process_skin_analysis(vision_result, 'guest')
+            # Enhanced skin type classification
+            skin_classifier_service = get_skin_classifier_service()
+            skin_classification = skin_classifier_service.classify_skin_type(
+                image_data, ethnicity=ethnicity if ethnicity else None
+            )
+            
+            # Process skin analysis with enhanced classification
+            skin_analysis = _process_enhanced_skin_analysis(
+                vision_result, skin_classification, 'guest'
+            )
             
             # Generate a temporary image ID for guest
             temp_image_id = f"guest_{uuid.uuid4().hex[:8]}"
@@ -417,13 +462,15 @@ def analyze_image_guest():
                 'data': {
                     'image_id': temp_image_id,
                     'analysis': skin_analysis,
+                    'skin_classification': skin_classification,
                     'message': 'Guest analysis completed. Sign up to save your results!'
                 }
             })
         else:
             return jsonify({
                 'success': False,
-                'error': 'Failed to analyze image'
+                'error': 'Failed to analyze image',
+                'details': vision_result.get('error', 'Unknown error')
             }), 500
             
     except Exception as e:
@@ -432,6 +479,60 @@ def analyze_image_guest():
             'success': False,
             'error': 'Internal server error'
         }), 500
+
+def _process_enhanced_skin_analysis(vision_result, skin_classification, user_id):
+    """
+    Process Google Vision results with enhanced skin classification into frontend-expected format
+    """
+    try:
+        results = vision_result.get('results', {})
+        face_data = results.get('face_detection', {})
+        image_props = results.get('image_properties', {})
+        labels = results.get('label_detection', {})
+        
+        # Use enhanced skin classification results
+        skin_type = _map_fitzpatrick_to_skin_type(skin_classification.get('fitzpatrick_type', 'III'))
+        
+        # Determine skin concerns (enhanced with classification data)
+        concerns = _determine_enhanced_skin_concerns(face_data, labels, skin_classification)
+        
+        # Calculate enhanced metrics
+        metrics = _calculate_enhanced_skin_metrics(face_data, image_props, skin_classification)
+        
+        # Generate enhanced recommendations
+        recommendations = _generate_enhanced_recommendations(skin_type, concerns, metrics, skin_classification)
+        
+        # Get product recommendations
+        products = _get_product_recommendations(skin_type, concerns)
+        
+        return {
+            'status': 'success',
+            'skinType': skin_type,
+            'concerns': concerns,
+            'hydration': metrics['hydration'],
+            'oiliness': metrics['oiliness'],
+            'sensitivity': metrics['sensitivity'],
+            'recommendations': recommendations,
+            'products': products,
+            'enhanced_classification': {
+                'fitzpatrick_type': skin_classification.get('fitzpatrick_type'),
+                'fitzpatrick_description': skin_classification.get('fitzpatrick_description'),
+                'monk_tone': skin_classification.get('monk_tone'),
+                'monk_description': skin_classification.get('monk_description'),
+                'confidence': skin_classification.get('confidence'),
+                'ethnicity_considered': skin_classification.get('ethnicity_considered', False)
+            },
+            'user_id': user_id,
+            'timestamp': datetime.utcnow().isoformat(),
+            'analysis_id': str(uuid.uuid4())
+        }
+        
+    except Exception as e:
+        logger.error(f"Error processing enhanced skin analysis: {str(e)}")
+        return {
+            'error': str(e),
+            'status': 'error'
+        }
 
 def _process_skin_analysis(vision_result, user_id):
     """
@@ -628,4 +729,284 @@ def _get_product_recommendations(skin_type, concerns):
         }
     ]
     
-    return products 
+    return products
+
+def _map_fitzpatrick_to_skin_type(fitzpatrick_type):
+    """Map Fitzpatrick type to general skin type"""
+    mapping = {
+        'I': 'Very Fair',
+        'II': 'Fair', 
+        'III': 'Light',
+        'IV': 'Medium',
+        'V': 'Dark',
+        'VI': 'Very Dark'
+    }
+    return mapping.get(fitzpatrick_type, 'Medium')
+
+def _determine_enhanced_skin_concerns(face_data, labels, skin_classification):
+    """Determine skin concerns enhanced with classification data"""
+    concerns = _determine_skin_concerns(face_data, labels)
+    
+    # Add concerns based on skin classification
+    fitzpatrick_type = skin_classification.get('fitzpatrick_type', 'III')
+    confidence = skin_classification.get('confidence', 0.5)
+    
+    # Low confidence might indicate skin irregularities
+    if confidence < 0.6:
+        if 'Uneven Texture' not in concerns:
+            concerns.append('Uneven Texture')
+    
+    # Darker skin types are more prone to hyperpigmentation
+    if fitzpatrick_type in ['V', 'VI']:
+        if 'Hyperpigmentation' not in concerns:
+            concerns.append('Hyperpigmentation')
+    
+    # Lighter skin types are more prone to sun damage
+    if fitzpatrick_type in ['I', 'II']:
+        if 'Sun Protection' not in concerns:
+            concerns.append('Sun Protection')
+    
+    return concerns[:3]  # Limit to top 3 concerns
+
+def _calculate_enhanced_skin_metrics(face_data, image_props, skin_classification):
+    """Calculate enhanced skin metrics using classification data"""
+    metrics = _calculate_skin_metrics(face_data, image_props)
+    
+    # Adjust metrics based on skin classification
+    fitzpatrick_type = skin_classification.get('fitzpatrick_type', 'III')
+    confidence = skin_classification.get('confidence', 0.5)
+    
+    # Higher confidence generally indicates better skin condition
+    confidence_bonus = (confidence - 0.5) * 20  # Scale confidence to 0-10 range
+    
+    # Adjust hydration based on skin type
+    if fitzpatrick_type in ['I', 'II']:
+        metrics['hydration'] = max(60, metrics['hydration'] - 10)  # Lighter skin tends to be drier
+        metrics['sensitivity'] = min(100, metrics['sensitivity'] + 15)  # More sensitive
+    elif fitzpatrick_type in ['V', 'VI']:
+        metrics['hydration'] = min(100, metrics['hydration'] + 10)  # Darker skin tends to be more hydrated
+        metrics['oiliness'] = min(100, metrics['oiliness'] + 10)  # May have more oil production
+    
+    # Apply confidence bonus
+    for key in metrics:
+        metrics[key] = max(0, min(100, metrics[key] + confidence_bonus))
+    
+    return metrics
+
+def _generate_enhanced_recommendations(skin_type, concerns, metrics, skin_classification):
+    """Generate enhanced recommendations using classification data"""
+    recommendations = _generate_recommendations(skin_type, concerns, metrics)
+    
+    # Add recommendations based on skin classification
+    fitzpatrick_type = skin_classification.get('fitzpatrick_type', 'III')
+    ethnicity = skin_classification.get('ethnicity', '')
+    confidence = skin_classification.get('confidence', 0.5)
+    
+    # Add Fitzpatrick-specific recommendations
+    if fitzpatrick_type in ['I', 'II']:
+        recommendations.append('Use broad-spectrum SPF 50+ daily - your skin burns easily')
+    elif fitzpatrick_type in ['V', 'VI']:
+        recommendations.append('Focus on products for hyperpigmentation and uneven tone')
+    
+    # Add ethnicity-specific recommendations if available
+    if ethnicity:
+        ethnicity_lower = ethnicity.lower()
+        if ethnicity_lower == 'african':
+            recommendations.append('Look for products specifically formulated for melanin-rich skin')
+        elif ethnicity_lower == 'east_asian':
+            recommendations.append('Consider products that address sensitivity and brightening')
+    
+    # Add confidence-based recommendations
+    if confidence < 0.7:
+        recommendations.append('Consider consulting a dermatologist for personalized advice')
+    
+    return recommendations[:5]  # Allow up to 5 enhanced recommendations 
+
+@enhanced_image_bp.route('/similarity/demographic', methods=['POST'])
+@jwt_required()
+def similarity_search_demographic():
+    """
+    Demographic-weighted similarity search endpoint
+    """
+    try:
+        current_user_id = get_jwt_identity()
+        
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+        
+        image_id = data.get('image_id')
+        user_demographics = data.get('demographics', {})
+        k = data.get('k', 10)
+        k = min(k, 20)  # Limit to 20 results
+        
+        if not image_id:
+            return jsonify({'error': 'image_id is required'}), 400
+        
+        # Get services
+        supabase_service = get_supabase_service()
+        demographic_search_service = get_demographic_search_service()
+        
+        # Get the query image record
+        image_record = supabase_service.get_image_by_id(image_id)
+        if not image_record:
+            return jsonify({'error': 'Image not found'}), 404
+        
+        # Check if user owns the image
+        if image_record['user_id'] != current_user_id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        # Get the vector for the query image
+        vector_record = supabase_service.get_vector_by_image_id(image_id)
+        if not vector_record:
+            return jsonify({'error': 'Image vector not found'}), 404
+        
+        # Convert vector data to numpy array
+        query_vector = np.array(vector_record['vector_data'])
+        
+        # Perform demographic-weighted search
+        logger.info(f"Performing demographic-weighted search for image {image_id}")
+        similar_results = demographic_search_service.search_with_demographics(
+            query_vector, user_demographics, k
+        )
+        
+        # Get details for similar images
+        similar_images = []
+        for similar_image_id, weighted_distance in similar_results:
+            if similar_image_id != image_id:  # Exclude the query image
+                similar_image_record = supabase_service.get_image_by_id(similar_image_id)
+                if similar_image_record:
+                    # Get demographic info for the result
+                    analysis_record = supabase_service.get_analysis_by_image_id(similar_image_id)
+                    result_demographics = {}
+                    if analysis_record:
+                        result_demographics = demographic_search_service._extract_demographics(analysis_record)
+                    
+                    similar_images.append({
+                        'image_id': similar_image_id,
+                        'image_url': similar_image_record['image_url'],
+                        'weighted_distance': weighted_distance,
+                        'similarity_score': max(0, 1.0 - (weighted_distance / 4.0)),  # Normalize to 0-1
+                        'demographics': result_demographics
+                    })
+        
+        response_data = {
+            'query_image_id': image_id,
+            'user_demographics': user_demographics,
+            'similar_images': similar_images,
+            'total_found': len(similar_images),
+            'search_type': 'demographic_weighted',
+            'demographic_weight': demographic_search_service.demographic_weight
+        }
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        logger.error(f"Error in demographic similarity search: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@enhanced_image_bp.route('/classify/skin-type', methods=['POST'])
+def classify_skin_type_enhanced():
+    """
+    Enhanced skin type classification endpoint
+    """
+    try:
+        # Check if image file is present
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image file provided'}), 400
+        
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'error': 'No image file selected'}), 400
+        
+        # Get optional ethnicity from form data
+        ethnicity = request.form.get('ethnicity', '')
+        
+        # Validate file type
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'bmp'}
+        if not ('.' in file.filename and 
+                file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
+            return jsonify({'error': 'Invalid file type'}), 400
+        
+        # Read image data
+        image_data = file.read()
+        
+        # Perform enhanced skin type classification
+        logger.info(f"Performing enhanced skin type classification with ethnicity: {ethnicity}")
+        skin_classifier_service = get_skin_classifier_service()
+        classification_result = skin_classifier_service.classify_skin_type(
+            image_data, ethnicity=ethnicity if ethnicity else None
+        )
+        
+        # Check for classification errors
+        if 'error' in classification_result:
+            return jsonify({
+                'error': 'Classification failed',
+                'details': classification_result['error']
+            }), 500
+        
+        # Add additional metadata
+        response_data = {
+            'success': True,
+            'classification': classification_result,
+            'supported_ethnicities': skin_classifier_service.get_supported_ethnicities(),
+            'classifier_info': skin_classifier_service.get_model_info()
+        }
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        logger.error(f"Error in enhanced skin type classification: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error'
+        }), 500
+
+@enhanced_image_bp.route('/health/enhanced', methods=['GET'])
+def enhanced_health_check():
+    """Enhanced health check including new services"""
+    try:
+        # Get services
+        google_vision_service = get_google_vision_service()
+        vectorization_service = get_vectorization_service()
+        faiss_service = get_faiss_service()
+        supabase_service = get_supabase_service()
+        demographic_search_service = get_demographic_search_service()
+        skin_classifier_service = get_skin_classifier_service()
+        
+        services_status = {
+            'google_vision': google_vision_service.is_available(),
+            'vectorization': vectorization_service.is_available(),
+            'faiss': faiss_service.is_available(),
+            'supabase': supabase_service.is_available(),
+            'demographic_search': demographic_search_service.is_available(),
+            'skin_classifier': skin_classifier_service.is_available()
+        }
+        
+        # Get service information
+        faiss_info = faiss_service.get_index_info()
+        vectorization_info = vectorization_service.get_model_info()
+        demographic_config = demographic_search_service.get_configuration()
+        classifier_info = skin_classifier_service.get_model_info()
+        
+        return jsonify({
+            'status': 'healthy',
+            'services': services_status,
+            'service_info': {
+                'faiss_index': faiss_info,
+                'vectorization_model': vectorization_info,
+                'demographic_search_config': demographic_config,
+                'skin_classifier': classifier_info
+            },
+            'enhanced_features': {
+                'cosine_similarity': True,
+                'demographic_weighting': True,
+                'enhanced_skin_classification': True,
+                'ethnicity_context': True
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error in enhanced health check: {e}")
+        return jsonify({'error': 'Enhanced health check failed'}), 500
