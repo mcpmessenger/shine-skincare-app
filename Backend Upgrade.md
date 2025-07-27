@@ -6,6 +6,40 @@ As your lead full-stack developer, I've compiled a comprehensive set of instruct
 
 I encourage you to be proactive in building what you can and scaffolding what you must. Utilize me for human guidance and testing as needed. This document will serve as your primary reference for the technical implementation details.
 
+## Deployment Environment (Updated July 2025)
+
+- **Frontend:** Deployed via AWS Amplify, integrated with GitHub for CI/CD.
+- **Backend:** Deployed via AWS Elastic Beanstalk (EB CLI, Python platform, no Docker). Vercel and Railway are no longer used for backend deployment.
+
+---
+
+## Project Status (as of July 2025)
+
+### ✅ Completed
+- Enhanced FAISS service with cosine similarity and vector normalization
+- Demographic-weighted search service
+- Google Vision API integration service
+- Production FAISS service with persistence and thread safety
+- Enhanced skin type classifier service
+- Updated API endpoints for enhanced analysis
+- Integration of services with existing infrastructure
+- Comprehensive error handling and logging
+- Performance optimization and AWS deployment
+
+### 🟡 In Progress / Remaining
+- Validation and testing framework (cross-demographic, performance, accuracy)
+- Gradual service replacement strategy (feature flags, health monitoring, rollback)
+- Production environment and credentials setup (Google Vision, Supabase, secure creds, monitoring)
+- Documentation and deployment configuration (API docs, deployment guide, troubleshooting, monitoring)
+- Final integration and validation testing (end-to-end, performance, regression, backward compatibility)
+
+---
+
+**Note:**
+- The backend is now fully migrated to AWS Elastic Beanstalk for scalable, production-grade deployment.
+- The frontend is managed via AWS Amplify with GitHub integration for continuous deployment.
+- See `.kiro/specs/backend-ai-upgrade/tasks.md` for the most granular and up-to-date task tracking.
+
 ### Backend Deployment Environment: Vercel
 
 Our backend services will be deployed on Vercel. This platform offers excellent support for serverless functions and API deployments, which aligns well with our current and future architectural needs. Ensure that all backend code is compatible with the Vercel environment and follows best practices for serverless function development (e.g., statelessness, efficient cold starts, proper error handling).

@@ -8,13 +8,15 @@ __pycache__/
 *.index
 vector_cache/
 instance/
-.google-vision-key.json
-shine-466907-09b8909d49ec.json
-credentials.json
-service-account.json
 *.log
 *.bak
 *.db
-# Ignore test and local files
-*.test*
-*.pytest_cache/ 
+.pytest_cache/
+.vercel/
+*.avif
+*.png
+*.jpg
+*.jpeg
+*.zip
+*.tar
+*.gz 

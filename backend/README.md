@@ -2,6 +2,17 @@
 
 This is the backend API for the Shine skincare application, built with Flask and following a microservices architecture.
 
+## Security & Environment Variables
+
+- Never commit `.env`, `.env.local`, or any secret files to GitHub.
+- All production secrets and environment variables should be set in the AWS Elastic Beanstalk Console (backend) and AWS Amplify Console (frontend).
+- Ensure `.env*` files are listed in `.gitignore` and `.ebignore`.
+
+## Pre-commit Checklist
+
+- Run `git status` and `git diff` to ensure no secrets are staged.
+- Optionally, run `npx trufflehog filesystem .` or `gitleaks detect` to scan for secrets.
+
 ## Features
 
 - **Authentication Service**: Google OAuth integration with JWT tokens
@@ -193,23 +204,24 @@ backend/
 
 ## Deployment
 
-### Docker Deployment
+### Production Deployment
+
+1. Set environment variables for production in the AWS Console (do not commit secrets).
+2. Use production database.
+3. Configure reverse proxy (nginx) if needed.
+4. Set up SSL certificates.
+5. Configure monitoring and logging.
+
+### Docker Deployment (Optional/Local Dev Only)
 
 ```bash
 # Build Docker image
+# (For local development only; not used in production)
 docker build -t shine-backend .
 
 # Run container
 docker run -p 5000:5000 shine-backend
 ```
-
-### Production Deployment
-
-1. Set environment variables for production
-2. Use production database
-3. Configure reverse proxy (nginx)
-4. Set up SSL certificates
-5. Configure monitoring and logging
 
 ## Contributing
 
@@ -229,37 +241,43 @@ We welcome security researchers and contributors! If you find a vulnerability or
 
 To report a bug or vulnerability, please open an issue or email the maintainers directly.
 
-# Deployment (No Docker)
+## Deployment Overview (Updated July 2025)
 
-## Recommended: AWS Elastic Beanstalk (Python Platform)
-- Remove any Dockerfile from the backend directory.
-- Ensure you have a `requirements.txt` and a `Procfile` (should be: `web: gunicorn api:app`).
-- Zip your backend directory (excluding venv, .git, .pytest_cache, __pycache__, and any secrets).
-- Deploy to AWS Elastic Beanstalk using the Python 3.11 platform.
-- Set all required environment variables in the AWS Console.
+- **Frontend:** Deployed via AWS Amplify, with all environment variables managed in the Amplify Console. Do not commit secrets to the repo.
+- **Backend:** Deployed via AWS Elastic Beanstalk (EB CLI, Python platform, no Docker). Vercel and Railway are no longer used for backend deployment.
 
-## Security Best Practices
-- **Never commit secrets or credentials** (API keys, service account JSON, etc.) to version control.
-- Add all secrets to your `.gitignore` and `.ebignore` files.
-- Use environment variables for all sensitive information. 
+## Health Check
 
-## Known Deployment Issue (July 2025)
+- The backend provides a health check endpoint at `/api/health` for monitoring.
 
-**Issue:**
-- AWS Elastic Beanstalk deployment fails at the dependency installation step.
-- This is likely due to heavy ML dependencies (torch, torchvision, faiss-cpu) failing to build or install on the default Python environment.
-- Increasing the disk size (e.g., to 30GB) is required, but sometimes the environment upgrade can take a long time or get stuck.
+---
 
-**Troubleshooting Steps:**
-- Check Beanstalk logs for pip errors or missing system packages.
-- Try pinning torch, torchvision, and faiss-cpu to specific versions in requirements.txt.
-- If faiss-cpu fails, add a .ebextensions/python.config file to install system packages (e.g., libomp, gcc, python3-devel).
-- If the instance runs out of memory or disk, try a larger instance type and/or increase the root volume size.
-- If the environment upgrade (disk size increase) takes too long or fails, consider terminating the environment and creating a new one with the desired disk size from the start.
+## Project Status (as of July 2025)
 
-**Next:**
-- See the logs for the exact error and adjust requirements or system packages as needed.
-- If stuck, start a fresh environment with the correct settings. 
+### ✅ Completed
+- Enhanced FAISS service with cosine similarity and vector normalization
+- Demographic-weighted search service
+- Google Vision API integration service
+- Production FAISS service with persistence and thread safety
+- Enhanced skin type classifier service
+- Updated API endpoints for enhanced analysis
+- Integration of services with existing infrastructure
+- Comprehensive error handling and logging
+- Performance optimization and AWS deployment
+
+### 🟡 In Progress / Remaining
+- Validation and testing framework (cross-demographic, performance, accuracy)
+- Gradual service replacement strategy (feature flags, health monitoring, rollback)
+- Production environment and credentials setup (Google Vision, Supabase, secure creds, monitoring)
+- Documentation and deployment configuration (API docs, deployment guide, troubleshooting, monitoring)
+- Final integration and validation testing (end-to-end, performance, regression, backward compatibility)
+
+---
+
+**Note:**
+- The backend is now fully migrated to AWS Elastic Beanstalk for scalable, production-grade deployment.
+- The frontend is managed via AWS Amplify with GitHub integration for continuous deployment.
+- See `.kiro/specs/backend-ai-upgrade/tasks.md` for the most granular and up-to-date task tracking. 
 
 - If you see 'Cannot import setuptools.build_meta' or build backend errors during deployment, add a `pyproject.toml` file to your backend directory with:
 
