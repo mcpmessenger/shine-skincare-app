@@ -106,7 +106,10 @@ class GoogleVisionService:
                 content = image_file.read()
             
             # Create image object
-            image = types.Image(content=content)
+            if types is not None:
+                image = types.Image(content=content)
+            else:
+                raise RuntimeError("Google Vision is not available")
             
             # Perform analysis
             results = {
@@ -162,7 +165,10 @@ class GoogleVisionService:
             return []
         
         try:
-            image = types.Image(content=image_data)
+            if types is not None:
+                image = types.Image(content=image_data)
+            else:
+                raise RuntimeError("Google Vision is not available")
             result = self._execute_with_retry(self._detect_faces_with_landmarks, image)
             return result.get('faces', [])
         except Exception as e:
@@ -184,7 +190,10 @@ class GoogleVisionService:
             return {}
         
         try:
-            image = types.Image(content=image_data)
+            if types is not None:
+                image = types.Image(content=image_data)
+            else:
+                raise RuntimeError("Google Vision is not available")
             return self._execute_with_retry(self._extract_comprehensive_properties, image)
         except Exception as e:
             logger.error(f"Error in extract_image_properties: {e}")
@@ -205,7 +214,10 @@ class GoogleVisionService:
             return []
         
         try:
-            image = types.Image(content=image_data)
+            if types is not None:
+                image = types.Image(content=image_data)
+            else:
+                raise RuntimeError("Google Vision is not available")
             result = self._execute_with_retry(self._detect_skin_related_labels, image)
             return result.get('labels', [])
         except Exception as e:
@@ -241,8 +253,10 @@ class GoogleVisionService:
         else:
             raise RuntimeError("Google Vision is not available")
     
-    def _get_image_properties(self, image: types.Image) -> Dict[str, Any]:
+    def _get_image_properties(self, image) -> Dict[str, Any]:
         """Get image properties including dominant colors"""
+        if types is None:
+            raise RuntimeError("Google Vision is not available")
         try:
             response = self.client.image_properties(image=image)
             properties = response.image_properties_annotation
@@ -266,8 +280,10 @@ class GoogleVisionService:
             logger.error(f"Error getting image properties: {e}")
             return {'error': str(e)}
     
-    def _detect_labels(self, image: types.Image) -> Dict[str, Any]:
+    def _detect_labels(self, image) -> Dict[str, Any]:
         """Detect labels in the image"""
+        if types is None:
+            raise RuntimeError("Google Vision is not available")
         try:
             response = self.client.label_detection(image=image)
             labels = response.label_annotations
@@ -289,8 +305,10 @@ class GoogleVisionService:
             logger.error(f"Error detecting labels: {e}")
             return {'error': str(e)}
     
-    def _detect_safe_search(self, image: types.Image) -> Dict[str, Any]:
+    def _detect_safe_search(self, image) -> Dict[str, Any]:
         """Detect safe search annotations"""
+        if types is None:
+            raise RuntimeError("Google Vision is not available")
         try:
             response = self.client.safe_search_detection(image=image)
             safe = response.safe_search_annotation
@@ -362,7 +380,10 @@ class GoogleVisionService:
             Dictionary containing comprehensive analysis results
         """
         try:
-            image = types.Image(content=image_data)
+            if types is not None:
+                image = types.Image(content=image_data)
+            else:
+                raise RuntimeError("Google Vision is not available")
             
             # Perform comprehensive analysis
             results = {
@@ -383,7 +404,7 @@ class GoogleVisionService:
             logger.error(f"Error in internal image analysis: {e}")
             raise e
     
-    def _detect_faces_with_landmarks(self, image: types.Image) -> Dict[str, Any]:
+    def _detect_faces_with_landmarks(self, image) -> Dict[str, Any]:
         """
         Enhanced face detection with facial landmarks and bounding boxes
         
@@ -393,6 +414,8 @@ class GoogleVisionService:
         Returns:
             Dictionary containing detailed face detection results
         """
+        if types is None:
+            raise RuntimeError("Google Vision is not available")
         try:
             response = self.client.face_detection(image=image)
             faces = response.face_annotations
@@ -437,7 +460,7 @@ class GoogleVisionService:
             logger.error(f"Error in enhanced face detection: {e}")
             raise e
     
-    def _extract_comprehensive_properties(self, image: types.Image) -> Dict[str, Any]:
+    def _extract_comprehensive_properties(self, image) -> Dict[str, Any]:
         """
         Extract comprehensive image properties including color, brightness, and texture data
         
@@ -447,6 +470,8 @@ class GoogleVisionService:
         Returns:
             Dictionary containing detailed image properties
         """
+        if types is None:
+            raise RuntimeError("Google Vision is not available")
         try:
             response = self.client.image_properties(image=image)
             properties = response.image_properties_annotation
@@ -487,7 +512,7 @@ class GoogleVisionService:
             logger.error(f"Error extracting comprehensive properties: {e}")
             raise e
     
-    def _detect_skin_related_labels(self, image: types.Image) -> Dict[str, Any]:
+    def _detect_skin_related_labels(self, image) -> Dict[str, Any]:
         """
         Detect labels with focus on skin-related features
         
@@ -497,6 +522,8 @@ class GoogleVisionService:
         Returns:
             Dictionary containing skin-related labels and features
         """
+        if types is None:
+            raise RuntimeError("Google Vision is not available")
         try:
             response = self.client.label_detection(image=image)
             labels = response.label_annotations
