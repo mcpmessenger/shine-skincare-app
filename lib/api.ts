@@ -25,8 +25,8 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // Use the Railway backend URL from environment variables
-    this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://shine-production-5687.up.railway.app';
+    // Use the AWS EB backend URL from environment variables
+    this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://Shine-backend-poc-env.eba-bpcnncyq.us-east-1.elasticbeanstalk.com';
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

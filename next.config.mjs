@@ -20,7 +20,7 @@ const nextConfig = {
     unoptimized: true,
   },
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://Shine-backend-poc-env.eba-bpcnncyq.us-east-1.elasticbeanstalk.com',
   },
   // Disable static optimization for auth pages
   experimental: {

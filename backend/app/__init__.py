@@ -213,6 +213,11 @@ def _register_blueprints(app):
         app.register_blueprint(enhanced_image_bp, url_prefix='/api/enhanced')
         logger.info("Enhanced image analysis blueprint registered")
         
+        # Register recommendations blueprint
+        from .recommendations import recommendations_bp
+        app.register_blueprint(recommendations_bp, url_prefix='/api/recommendations')
+        logger.info("Recommendations blueprint registered")
+        
         # Register other blueprints as needed
         # from .other_module import other_bp
         # app.register_blueprint(other_bp, url_prefix='/api/other')

@@ -36,13 +36,13 @@ git push origin main
 ### 3. Update API Endpoints in Frontend
 ```typescript
 // Update API base URL in frontend
-const API_BASE_URL = 'https://your-backend.railway.app'
+const API_BASE_URL = 'https://your-backend.eba-bpcnncyq.us-east-1.elasticbeanstalk.com'
 ```
 
 ## Current Deployment Setup (Monorepo)
 If keeping monorepo, configure:
 
-### Railway Settings:
+### AWS EB Settings:
 - Root Directory: `backend`
 - Watch Paths: `backend/**`
 

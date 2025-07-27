@@ -15,10 +15,10 @@ shine-skincare-frontend/     (AWS Amplify)
 ├── public/
 └── package.json
 
-shine-skincare-backend/      (Railway)
+shine-skincare-backend/      (AWS Elastic Beanstalk)
 ├── app/
 ├── requirements.txt
-├── railway.json
+├── .ebextensions/
 └── api.py
 ```
 
@@ -41,8 +41,8 @@ on:
       - '.github/workflows/backend.yml'
 ```
 
-### Option B: Railway Root Directory Configuration
-- Set Railway to only watch `backend/` directory
+### Option B: AWS EB Root Directory Configuration
+- Set EB to only watch `backend/` directory
 - Configure AWS Amplify to ignore `backend/` changes
 
 ## Security Measures Applied

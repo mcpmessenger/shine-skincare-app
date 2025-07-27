@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend-Backend Connection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Frontend-Backend Connection Test</h1>
+    
+    <div class="test-result info">
+        <strong>Backend URL:</strong> <span id="backend-url">Loading...</span>
+    </div>
+    
+    <button onclick="testHealthEndpoint()">Test Health Endpoint</button>
+    <button onclick="testTrendingEndpoint()">Test Trending Products</button>
+    <button onclick="testAllEndpoints()">Test All Endpoints</button>
+    
+    <div id="results"></div>
+
+    <script>
+        const BACKEND_URL = 'https://Shine-backend-poc-env.eba-bpcnncyq.us-east-1.elasticbeanstalk.com';
+        
+        document.getElementById('backend-url').textContent = BACKEND_URL;
+        
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            resultsDiv.appendChild(resultDiv);
+        }
+        
+        async function testHealthEndpoint() {
+            addResult('Testing health endpoint...', 'info');
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult(`✅ Health endpoint working! Status: ${data.status}`, 'success');
+                } else {
+                    addResult(`❌ Health endpoint failed with status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ Health endpoint error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testTrendingEndpoint() {
+            addResult('Testing trending products endpoint...', 'info');
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/recommendations/trending`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult(`✅ Trending endpoint working! Found ${data.data?.length || 0} products`, 'success');
+                } else {
+                    addResult(`❌ Trending endpoint failed with status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ Trending endpoint error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testAllEndpoints() {
+            addResult('Testing all endpoints...', 'info');
+            
+            const endpoints = [
+                { name: 'Health', path: '/api/health' },
+                { name: 'Trending', path: '/api/recommendations/trending' },
+                { name: 'Root', path: '/' }
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(`${BACKEND_URL}${endpoint.path}`);
+                    
+                    if (response.ok) {
+                        addResult(`✅ ${endpoint.name} endpoint working!`, 'success');
+                    } else {
+                        addResult(`❌ ${endpoint.name} endpoint failed: ${response.status}`, 'error');
+                    }
+                } catch (error) {
+                    addResult(`❌ ${endpoint.name} endpoint error: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        // Auto-test on page load
+        window.onload = function() {
+            addResult('Page loaded. Click buttons to test endpoints.', 'info');
+        };
+    </script>
+</body>
+</html> 

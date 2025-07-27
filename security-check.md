@@ -9,12 +9,12 @@
 
 ### Files Sanitized (Safe for GitHub):
 - `.env` ✅ Credentials removed
-- `backend/RAILWAY_DEPLOYMENT_GUIDE.md` ✅ Credentials removed
+- Railway deployment files removed (migrated to AWS EB)
 
-### Railway Backend URL for Amplify:
+### AWS EB Backend URL for Amplify:
 ```
-NEXT_PUBLIC_BACKEND_URL=https://shine-production-5687.up.railway.app
-NEXT_PUBLIC_API_URL=https://shine-production-5687.up.railway.app
+NEXT_PUBLIC_BACKEND_URL=https://Shine-backend-poc-env.eba-bpcnncyq.us-east-1.elasticbeanstalk.com
+NEXT_PUBLIC_API_URL=https://Shine-backend-poc-env.eba-bpcnncyq.us-east-1.elasticbeanstalk.com
 ```
 
 ## Next Steps:
@@ -23,8 +23,8 @@ NEXT_PUBLIC_API_URL=https://shine-production-5687.up.railway.app
 3. ✅ Redeploy frontend
 4. ✅ Test integration
 
-## Railway Backend Status:
+## AWS EB Backend Status:
 - ✅ Deployed and running
-- ✅ URL: https://shine-production-5687.up.railway.app
+- ✅ URL: https://Shine-backend-poc-env.eba-bpcnncyq.us-east-1.elasticbeanstalk.com
 - ✅ Health check passing
 - ✅ Image analysis working

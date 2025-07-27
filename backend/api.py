@@ -1,20 +1,17 @@
 """
-Main API entry point - redirects to Railway app for deployment
+Main API entry point for AWS Elastic Beanstalk deployment
 """
 import os
 import sys
 
-# For Railway deployment, redirect to railway_app.py
+# For AWS EB deployment, import the main Flask app
 if __name__ == "__main__":
-    # Import and run the railway app
-    from railway_app import app
+    # Import and run the main app
+    from app import create_app
+    app = create_app('production')
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
 else:
-    # For other imports, try to import the full app
-    try:
-        from app import create_app
-        app = create_app('production')
-    except ImportError:
-        # If full app fails, import railway app
-        from railway_app import app
+    # For other imports, import the full app
+    from app import create_app
+    app = create_app('production')
