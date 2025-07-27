@@ -239,16 +239,30 @@ This project is licensed under the MIT License.
 
 We welcome security researchers and contributors! If you find a vulnerability or security issue, please report it responsibly. Do not publicly disclose vulnerabilities without first contacting the maintainers. Responsible disclosures may be eligible for a reward.
 
-To report a bug or vulnerability, please open an issue or email the maintainers directly.
+## What We've Tried (Security & Deployment)
+- All secrets and environment variables are managed via the AWS Console (Elastic Beanstalk for backend, Amplify for frontend) and are never committed to GitHub.
+- `.env*` files are included in `.gitignore` and `.ebignore` to prevent accidental leaks.
+- We run pre-commit checks and recommend using tools like `trufflehog` or `gitleaks` to scan for secrets before pushing.
+- The backend is deployed on AWS Elastic Beanstalk (Python platform, no Docker), and the frontend is deployed via AWS Amplify with GitHub integration.
+- All dependencies are pinned and reviewed for security updates.
+- We monitor deployment logs and health checks for anomalies.
 
-## Deployment Overview (Updated July 2025)
+If you discover a bug or vulnerability, please open an issue or email the maintainers directly. We appreciate responsible disclosure and will work with you to resolve any issues.
 
-- **Frontend:** Deployed via AWS Amplify, with all environment variables managed in the Amplify Console. Do not commit secrets to the repo.
-- **Backend:** Deployed via AWS Elastic Beanstalk (EB CLI, Python platform, no Docker). Vercel and Railway are no longer used for backend deployment.
+# Deployment Flow
 
-## Health Check
+## Frontend (AWS Amplify)
+- Source code is managed in GitHub.
+- On push to the main branch, AWS Amplify automatically builds and deploys the frontend.
+- All frontend environment variables (e.g., `NEXT_PUBLIC_BACKEND_URL`) are set in the Amplify Console, not in the repo.
+- No secrets are ever committed to GitHub.
 
-- The backend provides a health check endpoint at `/api/health` for monitoring.
+## Backend (AWS Elastic Beanstalk)
+- Source code is managed in GitHub.
+- Backend is deployed using the EB CLI (`eb deploy`) to an Elastic Beanstalk environment (Python platform, no Docker).
+- All backend environment variables and secrets are set in the AWS Console for the EB environment.
+- Pre-commit checks and secret scans are run before every push.
+- After deployment, health checks and logs are monitored to ensure the app is running correctly.
 
 ---
 
