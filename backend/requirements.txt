@@ -1,7 +1,13 @@
-Flask==3.0.0
-flask-cors==4.0.0
-requests==2.31.0
-python-dotenv==1.0.0
-google-cloud-vision==3.4.4
+setuptools
+wheel
+flask
 numpy==1.24.3
 Pillow==10.0.1
+torch==2.0.1
+torchvision==0.15.2
+faiss-cpu==1.7.4
+scikit-learn
+# Optional: Add Flask extensions if used in your app
+# flask-cors
+# flask-jwt-extended
+# flask-restful

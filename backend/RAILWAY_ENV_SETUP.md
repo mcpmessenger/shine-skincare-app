@@ -67,3 +67,79 @@ curl https://your-railway-app.railway.app/api/health
 ```
 
 Should return service status and configuration info.
+
+---
+
+You are now successfully linked to your Railway project (`believable-wholeness`) in the `production` environment!
+
+To open your Railway project dashboard (and see your deployment URL), use the correct command:
+```sh
+railway open
+```
+*(You had a typo with an extra backtick in your previous command.)*
+
+---
+
+### Once you run `railway open`:
+- Your browser will open the Railway dashboard for your project.
+- At the top of the dashboard, you’ll see your public deployment URL, which will look like:
+  ```
+  https://believable-wholeness.up.railway.app
+  ```
+  or similar.
+
+---
+
+### To get your backend health status from the terminal:
+You can also run:
+```sh
+<code_block_to_apply_changes_from>
+```
+or, if your service is at a different subdomain, use the correct URL as shown in your dashboard.
+
+---
+
+**Let me know if you want to verify the health endpoint or need help with anything else!**
+
+---
+
+## What is `SECRET_KEY`?
+- It should be a long, random string.
+- It does **not** need to be a credential from a third-party service.
+- You can generate it yourself.
+
+---
+
+## How to Generate a Secure `SECRET_KEY`
+
+### **Option 1: Use Python**
+Open a Python shell and run:
+```python
+import secrets
+print(secrets.token_urlsafe(32))
+```
+Copy the output and use it as your `SECRET_KEY`.
+
+### **Option 2: Use an Online Generator**
+You can use any secure random string generator, such as:
+- [https://randomkeygen.com/](https://randomkeygen.com/)
+- [https://djecrety.ir/](https://djecrety.ir/)
+
+Choose a long, random string (at least 32 characters).
+
+---
+
+## Example
+```
+SECRET_KEY=QwErTyUiOp1234567890!@#$%^&*()_+zxcvbnmASDFGHJKL
+```
+Or, if you used Python:
+```
+SECRET_KEY=3Qw8n2kL9pXz7vB5sT1rY6uJ0oP4mC2dF8gH5jK1lM0nQ3wR
+```
+
+---
+
+**Add this to your Railway environment variables, save, and redeploy.**
+
+Let me know if you want me to generate one for you or if you need help with any other variable!

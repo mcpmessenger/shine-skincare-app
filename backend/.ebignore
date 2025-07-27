@@ -2,6 +2,7 @@ venv/
 .env
 .env.*
 __pycache__/
+.git/
 *.pyc
 *.pkl
 *.index
@@ -14,7 +15,6 @@ service-account.json
 *.log
 *.bak
 *.db
-# Ignore Elastic Beanstalk config except YAML
-.elasticbeanstalk/*
-!.elasticbeanstalk/*.cfg.yml
-!.elasticbeanstalk/*.global.yml
+# Ignore test and local files
+*.test*
+*.pytest_cache/ 

@@ -38,9 +38,11 @@ export default function SkinAnalysisCard() {
       const analysisResponse = await apiClient.analyzeSkinEnhanced(file);
       
       if (analysisResponse.success) {
-        // Store analysis ID in localStorage for the results page
+        // Store analysis ID and results in localStorage for the results page
         if (analysisResponse.data?.image_id) {
           localStorage.setItem('lastAnalysisId', analysisResponse.data.image_id);
+          // Cache the full analysis results
+          localStorage.setItem(`analysis_${analysisResponse.data.image_id}`, JSON.stringify(analysisResponse.data));
         }
         
         setIsAnalyzing(false);
@@ -77,9 +79,11 @@ export default function SkinAnalysisCard() {
           const analysisResponse = await apiClient.analyzeSkinEnhanced(file);
           
           if (analysisResponse.success) {
-            // Store analysis ID in localStorage for the results page
+            // Store analysis ID and results in localStorage for the results page
             if (analysisResponse.data?.image_id) {
               localStorage.setItem('lastAnalysisId', analysisResponse.data.image_id);
+              // Cache the full analysis results
+              localStorage.setItem(`analysis_${analysisResponse.data.image_id}`, JSON.stringify(analysisResponse.data));
             }
             
             setIsAnalyzing(false);

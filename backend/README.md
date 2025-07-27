@@ -222,3 +222,51 @@ docker run -p 5000:5000 shine-backend
 ## License
 
 This project is licensed under the MIT License. 
+
+# Bug Bounty
+
+We welcome security researchers and contributors! If you find a vulnerability or security issue, please report it responsibly. Do not publicly disclose vulnerabilities without first contacting the maintainers. Responsible disclosures may be eligible for a reward.
+
+To report a bug or vulnerability, please open an issue or email the maintainers directly.
+
+# Deployment (No Docker)
+
+## Recommended: AWS Elastic Beanstalk (Python Platform)
+- Remove any Dockerfile from the backend directory.
+- Ensure you have a `requirements.txt` and a `Procfile` (should be: `web: gunicorn api:app`).
+- Zip your backend directory (excluding venv, .git, .pytest_cache, __pycache__, and any secrets).
+- Deploy to AWS Elastic Beanstalk using the Python 3.11 platform.
+- Set all required environment variables in the AWS Console.
+
+## Security Best Practices
+- **Never commit secrets or credentials** (API keys, service account JSON, etc.) to version control.
+- Add all secrets to your `.gitignore` and `.ebignore` files.
+- Use environment variables for all sensitive information. 
+
+## Known Deployment Issue (July 2025)
+
+**Issue:**
+- AWS Elastic Beanstalk deployment fails at the dependency installation step.
+- This is likely due to heavy ML dependencies (torch, torchvision, faiss-cpu) failing to build or install on the default Python environment.
+- Increasing the disk size (e.g., to 30GB) is required, but sometimes the environment upgrade can take a long time or get stuck.
+
+**Troubleshooting Steps:**
+- Check Beanstalk logs for pip errors or missing system packages.
+- Try pinning torch, torchvision, and faiss-cpu to specific versions in requirements.txt.
+- If faiss-cpu fails, add a .ebextensions/python.config file to install system packages (e.g., libomp, gcc, python3-devel).
+- If the instance runs out of memory or disk, try a larger instance type and/or increase the root volume size.
+- If the environment upgrade (disk size increase) takes too long or fails, consider terminating the environment and creating a new one with the desired disk size from the start.
+
+**Next:**
+- See the logs for the exact error and adjust requirements or system packages as needed.
+- If stuck, start a fresh environment with the correct settings. 
+
+- If you see 'Cannot import setuptools.build_meta' or build backend errors during deployment, add a `pyproject.toml` file to your backend directory with:
+
+```toml
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+```
+
+This ensures pip can build source packages correctly in the AWS environment. 

@@ -45,15 +45,20 @@ export default function AnalysisResultsPage() {
             headers['Authorization'] = `Bearer ${token}`;
           }
           
-          const response = await fetch(`/api/analysis/skin/${analysisId}`, {
-            headers: headers,
-          });
+          // Since Railway backend doesn't store analysis results,
+          // we'll check if we have cached results in localStorage
+          const cachedResults = localStorage.getItem(`analysis_${analysisId}`);
           
-          if (response.ok) {
-            const data = await response.json();
-            setAnalysisData(data);
+          if (cachedResults) {
+            try {
+              const data = JSON.parse(cachedResults);
+              setAnalysisData(data);
+            } catch (error) {
+              console.error('Failed to parse cached analysis data');
+              setMockData();
+            }
           } else {
-            console.error('Failed to fetch analysis data');
+            console.log('No cached analysis data found for ID:', analysisId);
             // Fall back to mock data for now
             setMockData();
           }
