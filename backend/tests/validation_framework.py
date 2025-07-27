@@ -1,18 +1,26 @@
-import unittest
-import numpy as np
+"""
+Validation framework for comprehensive error scenario testing
+"""
+import pytest
 import time
-import json
+import threading
+import random
 import logging
-from typing import Dict, List, Any, Tuple, Optional
-from datetime import datetime
-import sys
+import unittest
+import json
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from typing import Dict, Any, List, Callable, Optional
+from unittest.mock import Mock, patch
+from dataclasses import dataclass
+from enum import Enum
+from datetime import datetime
+import numpy as np
 
+from app.error_handlers import ServiceError, APIError
 from app.service_manager import service_manager
-from app.services import (
-    FAISSService, DemographicWeightedSearch, EnhancedSkinTypeClassifier
-)
+from app.services.production_faiss_service import ProductionFAISSService as FAISSService
+from app.services.demographic_search_service import DemographicWeightedSearch
+from app.services.skin_classifier_service import EnhancedSkinTypeClassifier
 
 logger = logging.getLogger(__name__)
 

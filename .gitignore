@@ -276,6 +276,10 @@ amplifytools.xcconfig
 backend/google-vision-key.json
 backend/google-vision-key*.json
 *.json.key
+shine-466907-09b8909d49ec.json
+backend/shine-466907-09b8909d49ec.json
+**/shine-466907-09b8909d49ec.json
+./shine-466907-09b8909d49ec.json
 REAL_OAUTH_DEPLOYMENT_GUIDE.md
 REAL_OAUTH_SETUP_COMPLETE.md
 backend/start_backend.ps1

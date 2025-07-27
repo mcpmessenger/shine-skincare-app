@@ -44,7 +44,35 @@ The Shine Skin Collective platform requires significant backend AI upgrades to i
 5. WHEN skin regions are extracted THEN the system SHALL focus on relevant facial areas for classification
 6. WHEN returning classification results THEN the system SHALL include both classification scales and confidence metrics
 
-### Requirement 4: Service Integration and Architecture
+### Requirement 4: Google Vision API Integration for Face Detection
+
+**User Story:** As a user uploading images for skin analysis, I want the system to use professional-grade computer vision to detect and analyze facial features so that I receive accurate skin condition assessment.
+
+#### Acceptance Criteria
+
+1. WHEN an image is uploaded THEN the system SHALL use Google Vision API for face detection and analysis
+2. WHEN faces are detected THEN the system SHALL extract facial landmarks and skin regions for analysis
+3. WHEN image properties are analyzed THEN the system SHALL capture color information, brightness, and texture data
+4. WHEN label detection is performed THEN the system SHALL identify skin-related features and conditions
+5. WHEN API credentials are configured THEN the system SHALL authenticate securely with Google Cloud services
+6. WHEN API limits are reached THEN the system SHALL handle rate limiting gracefully with appropriate fallbacks
+7. WHEN network issues occur THEN the system SHALL retry requests with exponential backoff
+
+### Requirement 5: Production FAISS Implementation
+
+**User Story:** As a system administrator, I want the vector similarity search to use production-grade FAISS implementation so that the system can handle large-scale vector operations efficiently and accurately.
+
+#### Acceptance Criteria
+
+1. WHEN the system initializes THEN it SHALL use real FAISS library with IndexFlatIP for cosine similarity
+2. WHEN vectors are stored THEN they SHALL be persisted to disk for durability across restarts
+3. WHEN the index grows large THEN the system SHALL maintain efficient search performance
+4. WHEN multiple concurrent searches occur THEN FAISS SHALL handle thread safety appropriately
+5. WHEN the system restarts THEN the FAISS index SHALL be loaded from persistent storage
+6. WHEN index corruption occurs THEN the system SHALL detect and rebuild the index automatically
+7. WHEN memory usage becomes high THEN the system SHALL implement appropriate memory management strategies
+
+### Requirement 6: Service Integration and Architecture
 
 **User Story:** As a developer maintaining the system, I want the new AI services to integrate seamlessly with existing infrastructure so that the upgrade doesn't disrupt current functionality.
 
@@ -55,8 +83,10 @@ The Shine Skin Collective platform requires significant backend AI upgrades to i
 3. WHEN API endpoints are called THEN they SHALL use the new enhanced services transparently
 4. WHEN errors occur THEN the system SHALL provide meaningful error messages and graceful degradation
 5. WHEN the system is deployed THEN existing functionality SHALL remain unaffected during the transition
+6. WHEN mock services are used THEN they SHALL provide the same interface as production services
+7. WHEN transitioning from mock to production THEN the system SHALL support gradual service replacement
 
-### Requirement 5: Performance and Scalability
+### Requirement 7: Performance and Scalability
 
 **User Story:** As a user of the platform, I want the enhanced AI features to perform efficiently so that my analysis results are delivered quickly without degraded performance.
 
@@ -67,3 +97,5 @@ The Shine Skin Collective platform requires significant backend AI upgrades to i
 3. WHEN multiple classification models are used THEN the system SHALL optimize resource usage
 4. WHEN the system handles concurrent requests THEN performance SHALL scale appropriately
 5. WHEN caching is applicable THEN the system SHALL implement appropriate caching strategies for improved performance
+6. WHEN Google Vision API is called THEN requests SHALL be optimized to minimize latency and cost
+7. WHEN FAISS operations are performed THEN memory usage SHALL be monitored and optimized

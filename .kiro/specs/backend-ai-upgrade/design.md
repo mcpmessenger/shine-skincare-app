@@ -41,24 +41,70 @@ graph TB
 
 ## Components and Interfaces
 
-### 1. Enhanced FAISS Service
+### 1. Google Vision API Integration Service
 
-**Purpose**: Implement cosine similarity-based vector search with proper normalization
+**Purpose**: Leverage Google Cloud Vision API for professional-grade image analysis and face detection
 
 **Key Methods**:
 ```python
-class FAISSService:
-    def __init__(self, dimension: int = 2048)
-    def add_vector(self, vector: np.ndarray, image_id: str) -> bool
-    def search_similar(self, query_vector: np.ndarray, k: int = 5) -> List[Tuple[str, float]]
-    def _normalize_vector(self, vector: np.ndarray) -> np.ndarray
+class GoogleVisionService:
+    def __init__(self, credentials_path: str = None)
+    def analyze_image_from_bytes(self, image_data: bytes) -> Dict[str, Any]
+    def detect_faces(self, image_data: bytes) -> List[Dict[str, Any]]
+    def extract_image_properties(self, image_data: bytes) -> Dict[str, Any]
+    def detect_labels(self, image_data: bytes) -> List[Dict[str, str]]
+    def _authenticate_client(self) -> vision.ImageAnnotatorClient
 ```
 
 **Implementation Details**:
-- Uses `faiss.IndexFlatIP` for inner product calculations
-- All vectors are L2-normalized before indexing and searching
-- Handles zero-vector edge cases gracefully
-- Converts similarity scores to distance format for backward compatibility
+- Uses Google Cloud Vision API v1 for image analysis
+- Supports face detection with landmark extraction
+- Extracts color properties, brightness, and dominant colors
+- Provides label detection for skin-related features
+- Implements retry logic with exponential backoff
+- Handles API rate limiting and quota management
+- Secure credential management via environment variables or service account keys
+
+**API Features Utilized**:
+- **Face Detection**: Facial landmarks, bounding boxes, confidence scores
+- **Image Properties**: Dominant colors, color information, brightness analysis
+- **Label Detection**: Object and feature recognition for skin analysis
+- **Safe Search**: Content filtering for appropriate image analysis
+
+### 2. Production FAISS Service
+
+**Purpose**: Implement production-grade cosine similarity-based vector search with persistence and scalability
+
+**Key Methods**:
+```python
+class ProductionFAISSService:
+    def __init__(self, dimension: int = 2048, index_path: str = "faiss_index")
+    def add_vector(self, vector: np.ndarray, image_id: str) -> bool
+    def search_similar(self, query_vector: np.ndarray, k: int = 5) -> List[Tuple[str, float]]
+    def save_index(self) -> bool
+    def load_index(self) -> bool
+    def rebuild_index(self) -> bool
+    def get_index_stats(self) -> Dict[str, Any]
+    def _normalize_vector(self, vector: np.ndarray) -> np.ndarray
+    def _validate_vector_dimension(self, vector: np.ndarray) -> bool
+```
+
+**Production Implementation Details**:
+- Uses `faiss.IndexFlatIP` for exact cosine similarity search
+- Implements persistent storage with automatic save/load functionality
+- Thread-safe operations for concurrent access
+- Memory-mapped file support for large indices
+- Index corruption detection and automatic rebuilding
+- Comprehensive logging and monitoring
+- Batch operations for efficient bulk insertions
+- Index optimization for memory usage and search speed
+
+**Scalability Features**:
+- **Index Persistence**: Automatic saving to disk after modifications
+- **Memory Management**: Efficient memory usage with configurable limits
+- **Concurrent Access**: Thread-safe operations for multi-user scenarios
+- **Index Rebuilding**: Automatic recovery from corruption or errors
+- **Performance Monitoring**: Detailed metrics for search latency and throughput
 
 ### 2. Demographic Weighted Search Service
 
@@ -240,3 +286,100 @@ CLASSIFICATION_CONFIDENCE_THRESHOLD=0.7
 - **Error Rates**: Monitor classification and search failures
 - **Usage Analytics**: Track demographic search adoption
 - **Model Performance**: Monitor classification confidence trends
+
+## Production Transition Strategy
+
+### Phase 1: MVP with Mock Services (Current State)
+- **Status**: ✅ Completed
+- **Services**: Simple Flask app with hash-based analysis
+- **Deployment**: Vercel with minimal dependencies
+- **Functionality**: Basic skin analysis with consistent results
+
+### Phase 2: Google Vision API Integration
+- **Goal**: Replace mock image analysis with professional computer vision
+- **Implementation**: 
+  - Set up Google Cloud project and Vision API credentials
+  - Implement GoogleVisionService with face detection and image properties
+  - Add retry logic and error handling for API calls
+  - Update skin analysis to use real facial landmark data
+- **Benefits**: Accurate face detection, color analysis, and feature recognition
+
+### Phase 3: Production FAISS Implementation
+- **Goal**: Replace mock vector similarity with real FAISS library
+- **Implementation**:
+  - Integrate faiss-cpu library with IndexFlatIP for cosine similarity
+  - Add persistent storage for vector indices
+  - Implement thread-safe operations and memory management
+  - Add index corruption detection and rebuilding capabilities
+- **Benefits**: Scalable vector search, persistent storage, production reliability
+
+### Phase 4: Enhanced Services Integration
+- **Goal**: Combine all production services for full functionality
+- **Implementation**:
+  - Integrate Google Vision with enhanced skin classifier
+  - Connect production FAISS with demographic weighted search
+  - Add comprehensive error handling and fallback mechanisms
+  - Implement performance monitoring and optimization
+- **Benefits**: Full AI-powered analysis with demographic personalization
+
+### Service Replacement Strategy
+
+```mermaid
+graph LR
+    A[Mock Services] --> B[Google Vision API]
+    B --> C[Production FAISS]
+    C --> D[Enhanced Integration]
+    
+    A1[Hash-based Analysis] --> B1[Real Face Detection]
+    A2[In-memory Vectors] --> C1[Persistent FAISS Index]
+    A3[Simple Classification] --> D1[Multi-scale Classification]
+    
+    style A fill:#ffcdd2
+    style B fill:#fff3e0
+    style C fill:#e8f5e8
+    style D fill:#e1f5fe
+```
+
+### Environment Configuration Strategy
+
+**Development Environment**:
+```bash
+# Use mock services for rapid development
+USE_MOCK_SERVICES=true
+GOOGLE_VISION_ENABLED=false
+FAISS_PERSISTENCE_ENABLED=false
+```
+
+**Staging Environment**:
+```bash
+# Mix of production and mock services for testing
+USE_MOCK_SERVICES=false
+GOOGLE_VISION_ENABLED=true
+FAISS_PERSISTENCE_ENABLED=true
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/staging-credentials.json
+```
+
+**Production Environment**:
+```bash
+# Full production services
+USE_MOCK_SERVICES=false
+GOOGLE_VISION_ENABLED=true
+FAISS_PERSISTENCE_ENABLED=true
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/production-credentials.json
+FAISS_INDEX_PATH=/persistent/storage/faiss_index
+DEMOGRAPHIC_WEIGHT=0.3
+```
+
+### Rollback and Recovery Procedures
+
+**Service Rollback**:
+1. **Immediate Fallback**: Automatic fallback to mock services on production service failures
+2. **Configuration Rollback**: Environment variable changes to disable problematic services
+3. **Code Rollback**: Git-based rollback to previous stable deployment
+4. **Index Recovery**: FAISS index rebuilding from database vectors
+
+**Monitoring and Alerts**:
+- **Service Health**: Monitor Google Vision API response times and error rates
+- **FAISS Performance**: Track vector search latency and memory usage
+- **Classification Accuracy**: Monitor confidence scores and user feedback
+- **Cost Monitoring**: Track Google Vision API usage and costs

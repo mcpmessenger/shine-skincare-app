@@ -37,14 +37,8 @@ export default function Header() {
         <Link href="/skin-analysis" className="hover:underline underline-offset-4" prefetch={false}>
           Skin Analysis
         </Link>
-        <Link href="/skin-analysis-mvp" className="hover:underline underline-offset-4" prefetch={false}>
-          MVP Analysis
-        </Link>
         <Link href="/recommendations" className="hover:underline underline-offset-4" prefetch={false}>
           Recommendations
-        </Link>
-        <Link href="/routines" className="hover:underline underline-offset-4" prefetch={false}>
-          Routines
         </Link>
         <Link href="/cart" className="hover:underline underline-offset-4" prefetch={false}>
           Cart
@@ -104,9 +98,6 @@ export default function Header() {
                 </Link>
                 <Link href="/recommendations" className="hover:underline underline-offset-4" prefetch={false}>
                   Recommendations
-                </Link>
-                <Link href="/routines" className="hover:underline underline-offset-4" prefetch={false}>
-                  Routines
                 </Link>
                 <Link href="/cart" className="hover:underline underline-offset-4" prefetch={false}>
                   Cart

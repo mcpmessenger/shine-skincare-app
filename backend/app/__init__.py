@@ -9,6 +9,17 @@ from .performance import (
     optimize_for_cold_start, configure_performance_monitoring,
     performance_monitor, cleanup_resources
 )
+from .vercel_optimizations import (
+    optimize_for_vercel, vercel_performance_middleware, 
+    get_vercel_performance_stats
+)
+from .model_optimization import (
+    optimize_model_loading, get_model_performance_stats,
+    cleanup_model_resources
+)
+from .demographic_cache import (
+    demographic_cache_manager, preload_common_demographics
+)
 
 # Setup enhanced logging
 setup_logging(
@@ -21,11 +32,21 @@ logger = logging.getLogger(__name__)
 optimize_for_cold_start()
 
 def create_app(config_name='development'):
-    """Application factory pattern with enhanced service integration"""
+    """Application factory pattern with enhanced service integration and Vercel optimizations"""
     app = Flask(__name__)
     
     # Basic configuration
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'dev-secret-key'
+    
+    # Apply Vercel-specific optimizations
+    try:
+        optimize_for_vercel()
+        optimize_model_loading()
+        preload_common_demographics()
+        logger.info("Vercel optimizations applied successfully")
+    except Exception as e:
+        logger.error(f"Vercel optimization failed: {e}")
+        # Continue with app creation
     
     # Service configuration from environment variables
     service_config = {
@@ -62,6 +83,9 @@ def create_app(config_name='development'):
     
     # Configure performance monitoring
     configure_performance_monitoring(app)
+    
+    # Apply Vercel performance middleware
+    app = vercel_performance_middleware(app)
     
     # Health check endpoint
     @app.route('/api/health')
@@ -129,6 +153,47 @@ def create_app(config_name='development'):
                 'new_config': service_manager.get_service_info()
             })
             
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    # Performance monitoring endpoints
+    @app.route('/api/performance/vercel', methods=['GET'])
+    def get_vercel_performance():
+        """Get Vercel-specific performance statistics"""
+        try:
+            stats = get_vercel_performance_stats()
+            return jsonify(stats)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/performance/models', methods=['GET'])
+    def get_model_performance():
+        """Get model performance statistics"""
+        try:
+            stats = get_model_performance_stats()
+            return jsonify(stats)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/performance/cache', methods=['GET'])
+    def get_cache_performance():
+        """Get cache performance statistics"""
+        try:
+            stats = demographic_cache_manager.get_comprehensive_stats()
+            return jsonify(stats)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/performance/cleanup', methods=['POST'])
+    def cleanup_performance():
+        """Clean up resources to free memory"""
+        try:
+            cleanup_stats = {
+                'general_cleanup': cleanup_resources(),
+                'model_cleanup': cleanup_model_resources(),
+                'cache_cleanup': demographic_cache_manager.periodic_cleanup()
+            }
+            return jsonify(cleanup_stats)
         except Exception as e:
             return jsonify({'error': str(e)}), 500
     

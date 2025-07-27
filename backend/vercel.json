@@ -11,5 +11,8 @@
       "src": "/(.*)",
       "dest": "/simple_app.py"
     }
-  ]
+  ],
+  "env": {
+    "LOG_LEVEL": "INFO"
+  }
 } 

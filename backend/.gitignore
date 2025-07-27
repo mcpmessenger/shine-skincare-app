@@ -1,1 +1,50 @@
 .vercel
+
+# Credentials and sensitive files
+*.json
+shine-466907-09b8909d49ec.json
+credentials.json
+service-account.json
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# FAISS indices
+*.index
+*.pkl
+faiss_index*
+vector_cache/

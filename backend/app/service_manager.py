@@ -10,6 +10,14 @@ from app.services import (
     EnhancedSkinTypeClassifier
 )
 
+# Import production services
+try:
+    from app.services.production_faiss_service import ProductionFAISSService
+    PRODUCTION_FAISS_AVAILABLE = True
+except ImportError:
+    PRODUCTION_FAISS_AVAILABLE = False
+    ProductionFAISSService = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -56,83 +64,141 @@ class ServiceManager:
             raise
     
     def _initialize_core_services(self, config: Dict[str, Any]) -> None:
-        """Initialize core services with fallback to mock implementations"""
-        # Google Vision Service with fallback to mock
-        try:
-            self._services['google_vision'] = GoogleVisionService()
-            logger.info("Google Vision service initialized")
-        except Exception as e:
-            logger.warning(f"Failed to initialize Google Vision service: {e}")
-            logger.info("Falling back to Mock Google Vision service")
+        """Initialize core services with fallback to mock implementations and environment-based selection"""
+        # Check if we should use mock services (for development/testing)
+        use_mock_services = os.environ.get('USE_MOCK_SERVICES', 'false').lower() == 'true'
+        
+        # Google Vision Service with enhanced fallback
+        if use_mock_services:
+            logger.info("Using Mock Google Vision service (USE_MOCK_SERVICES=true)")
             from app.services.mock_google_vision_service import MockGoogleVisionService
             self._services['google_vision'] = MockGoogleVisionService()
-            logger.info("Mock Google Vision service initialized")
+        else:
+            try:
+                self._services['google_vision'] = GoogleVisionService()
+                logger.info("Google Vision service initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Google Vision service: {e}")
+                logger.info("Falling back to Mock Google Vision service")
+                from app.services.mock_google_vision_service import MockGoogleVisionService
+                self._services['google_vision'] = MockGoogleVisionService()
         
         # Image Vectorization Service with fallback to mock
-        try:
-            self._services['vectorization'] = ImageVectorizationService()
-            logger.info("Image vectorization service initialized")
-        except Exception as e:
-            logger.warning(f"Failed to initialize Image Vectorization service: {e}")
-            logger.info("Falling back to Mock Vectorization service")
+        if use_mock_services:
+            logger.info("Using Mock Vectorization service (USE_MOCK_SERVICES=true)")
             from app.services.mock_vectorization_service import MockVectorizationService
             self._services['vectorization'] = MockVectorizationService()
-            logger.info("Mock Vectorization service initialized")
+        else:
+            try:
+                self._services['vectorization'] = ImageVectorizationService()
+                logger.info("Image vectorization service initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Image Vectorization service: {e}")
+                logger.info("Falling back to Mock Vectorization service")
+                from app.services.mock_vectorization_service import MockVectorizationService
+                self._services['vectorization'] = MockVectorizationService()
         
-        # FAISS Service with fallback to mock
-        try:
-            faiss_dimension = config.get('faiss_dimension', 2048)
-            faiss_index_path = config.get('faiss_index_path', 'faiss_index')
-            self._services['faiss'] = FAISSService(
-                dimension=faiss_dimension,
-                index_path=faiss_index_path
-            )
-            logger.info(f"FAISS service initialized (dimension: {faiss_dimension})")
-        except Exception as e:
-            logger.warning(f"Failed to initialize FAISS service: {e}")
-            logger.info("Falling back to Mock FAISS service")
+        # FAISS Service with production and mock options
+        faiss_dimension = config.get('faiss_dimension', 2048)
+        faiss_index_path = config.get('faiss_index_path', 'faiss_index')
+        
+        if use_mock_services:
+            logger.info("Using Mock FAISS service (USE_MOCK_SERVICES=true)")
             from app.services.mock_faiss_service import MockFAISSService
-            faiss_dimension = config.get('faiss_dimension', 2048)
-            faiss_index_path = config.get('faiss_index_path', 'faiss_index')
             self._services['faiss'] = MockFAISSService(
                 dimension=faiss_dimension,
                 index_path=faiss_index_path
             )
-            logger.info("Mock FAISS service initialized")
+        else:
+            # Try production FAISS first, then regular FAISS, then mock
+            faiss_service = None
+            
+            # Try Production FAISS Service
+            if PRODUCTION_FAISS_AVAILABLE and os.environ.get('USE_PRODUCTION_FAISS', 'true').lower() == 'true':
+                try:
+                    faiss_service = ProductionFAISSService(
+                        dimension=faiss_dimension,
+                        index_path=faiss_index_path
+                    )
+                    if faiss_service.is_available():
+                        self._services['faiss'] = faiss_service
+                        logger.info(f"Production FAISS service initialized (dimension: {faiss_dimension})")
+                    else:
+                        faiss_service = None
+                except Exception as e:
+                    logger.warning(f"Failed to initialize Production FAISS service: {e}")
+                    faiss_service = None
+            
+            # Fallback to regular FAISS service
+            if faiss_service is None:
+                try:
+                    self._services['faiss'] = FAISSService(
+                        dimension=faiss_dimension,
+                        index_path=faiss_index_path
+                    )
+                    logger.info(f"Regular FAISS service initialized (dimension: {faiss_dimension})")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize regular FAISS service: {e}")
+                    logger.info("Falling back to Mock FAISS service")
+                    from app.services.mock_faiss_service import MockFAISSService
+                    self._services['faiss'] = MockFAISSService(
+                        dimension=faiss_dimension,
+                        index_path=faiss_index_path
+                    )
         
         # Supabase Service with fallback to mock
-        try:
-            supabase_url = config.get('supabase_url') or os.environ.get('SUPABASE_URL')
-            supabase_key = config.get('supabase_key') or os.environ.get('SUPABASE_KEY')
-            self._services['supabase'] = SupabaseService(
-                url=supabase_url,
-                key=supabase_key
-            )
-            logger.info("Supabase service initialized")
-        except Exception as e:
-            logger.warning(f"Failed to initialize Supabase service: {e}")
-            logger.info("Falling back to Mock Supabase service")
+        supabase_url = config.get('supabase_url') or os.environ.get('SUPABASE_URL')
+        supabase_key = config.get('supabase_key') or os.environ.get('SUPABASE_KEY')
+        
+        if use_mock_services:
+            logger.info("Using Mock Supabase service (USE_MOCK_SERVICES=true)")
             from app.services.mock_supabase_service import MockSupabaseService
-            supabase_url = config.get('supabase_url') or os.environ.get('SUPABASE_URL')
-            supabase_key = config.get('supabase_key') or os.environ.get('SUPABASE_KEY')
             self._services['supabase'] = MockSupabaseService(
                 url=supabase_url,
                 key=supabase_key
             )
-            logger.info("Mock Supabase service initialized")
+        else:
+            try:
+                self._services['supabase'] = SupabaseService(
+                    url=supabase_url,
+                    key=supabase_key
+                )
+                logger.info("Supabase service initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Supabase service: {e}")
+                logger.info("Falling back to Mock Supabase service")
+                from app.services.mock_supabase_service import MockSupabaseService
+                self._services['supabase'] = MockSupabaseService(
+                    url=supabase_url,
+                    key=supabase_key
+                )
     
     def _initialize_enhanced_services(self, config: Dict[str, Any]) -> None:
         """Initialize enhanced services with proper dependencies"""
-        # Enhanced Skin Type Classifier
-        try:
-            self._services['skin_classifier'] = EnhancedSkinTypeClassifier()
-            logger.info("Enhanced skin type classifier initialized")
-        except Exception as e:
-            logger.warning(f"Failed to initialize Enhanced Skin Type Classifier: {e}")
-            # Create a simple mock classifier
+        # Check if we should use mock services
+        use_mock_services = os.environ.get('USE_MOCK_SERVICES', 'false').lower() == 'true'
+        
+        # Enhanced Skin Type Classifier with Google Vision integration
+        if use_mock_services:
+            logger.info("Using Mock Skin Classifier service (USE_MOCK_SERVICES=true)")
             from app.services.mock_skin_classifier_service import MockSkinClassifierService
             self._services['skin_classifier'] = MockSkinClassifierService()
-            logger.info("Mock skin classifier initialized")
+        else:
+            try:
+                # Get Google Vision service for integration
+                google_vision_service = self._services.get('google_vision')
+                
+                # Initialize enhanced skin classifier with Google Vision integration
+                self._services['skin_classifier'] = EnhancedSkinTypeClassifier(
+                    google_vision_service=google_vision_service
+                )
+                logger.info("Enhanced skin type classifier initialized with Google Vision integration")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Enhanced Skin Type Classifier: {e}")
+                # Create a simple mock classifier
+                from app.services.mock_skin_classifier_service import MockSkinClassifierService
+                self._services['skin_classifier'] = MockSkinClassifierService()
+                logger.info("Mock skin classifier initialized")
         
         # Demographic Weighted Search (depends on FAISS and Supabase)
         try:

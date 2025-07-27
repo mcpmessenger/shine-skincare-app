@@ -2,8 +2,20 @@ import logging
 import numpy as np
 from typing import Dict, Any, Optional, Tuple, Union
 from datetime import datetime
+import cv2
+import io
+from PIL import Image
 
 logger = logging.getLogger(__name__)
+
+# Try to import Google Vision service
+try:
+    from .google_vision_service import GoogleVisionService
+    GOOGLE_VISION_AVAILABLE = True
+except ImportError:
+    logger.warning("Google Vision service not available for skin classifier")
+    GOOGLE_VISION_AVAILABLE = False
+    GoogleVisionService = None
 
 
 class EnhancedSkinTypeClassifier:
@@ -12,8 +24,18 @@ class EnhancedSkinTypeClassifier:
     and incorporates ethnicity context to improve classification accuracy.
     """
     
-    def __init__(self):
-        """Initialize the enhanced skin type classifier"""
+    def __init__(self, google_vision_service: Optional[GoogleVisionService] = None):
+        """Initialize the enhanced skin type classifier with Google Vision integration"""
+        # Initialize Google Vision service for face detection
+        self.google_vision_service = google_vision_service
+        if not self.google_vision_service and GOOGLE_VISION_AVAILABLE:
+            try:
+                self.google_vision_service = GoogleVisionService()
+                logger.info("Initialized Google Vision service for skin classifier")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Google Vision service: {e}")
+                self.google_vision_service = None
+        
         # In a real implementation, you would load pre-trained models here
         self.fitzpatrick_classifier = self._load_fitzpatrick_model()
         self.monk_classifier = self._load_monk_model()
@@ -160,124 +182,460 @@ class EnhancedSkinTypeClassifier:
                 'classification_timestamp': datetime.utcnow().isoformat()
             }
     
-    def _extract_skin_regions(self, image_data: Union[bytes, np.ndarray]) -> np.ndarray:
+    def _extract_skin_regions(self, image_data: Union[bytes, np.ndarray]) -> Dict[str, Any]:
         """
-        Extract skin regions from the image for classification
+        Extract skin regions from the image using Google Vision facial landmarks
         
         Args:
             image_data: Image data as bytes or numpy array
             
         Returns:
-            Processed skin regions as numpy array
+            Dictionary containing processed skin regions and metadata
         """
         try:
-            # Placeholder for actual implementation using a computer vision model
-            # In a real implementation, this would:
-            # 1. Convert image data to appropriate format
-            # 2. Use face detection to locate facial regions
-            # 3. Apply skin segmentation to extract skin pixels
-            # 4. Normalize and preprocess for classification
-            
-            logger.debug("Extracting skin regions from image (placeholder implementation)")
-            
-            # For now, return the original image data as a placeholder
-            if isinstance(image_data, bytes):
-                # In real implementation, would decode bytes to image array
-                return np.random.rand(224, 224, 3)  # Placeholder array
-            elif isinstance(image_data, np.ndarray):
-                return image_data
+            # Convert image data to bytes if needed
+            if isinstance(image_data, np.ndarray):
+                # Convert numpy array to bytes
+                pil_image = Image.fromarray((image_data * 255).astype(np.uint8))
+                img_byte_arr = io.BytesIO()
+                pil_image.save(img_byte_arr, format='JPEG')
+                image_bytes = img_byte_arr.getvalue()
+            elif isinstance(image_data, bytes):
+                image_bytes = image_data
             else:
                 raise ValueError(f"Unsupported image data type: {type(image_data)}")
+            
+            # Use Google Vision API for face detection if available
+            if self.google_vision_service and self.google_vision_service.is_available():
+                logger.debug("Using Google Vision API for skin region extraction")
+                
+                # Get face detection results
+                faces = self.google_vision_service.detect_faces(image_bytes)
+                
+                # Get image properties for color analysis
+                image_properties = self.google_vision_service.extract_image_properties(image_bytes)
+                
+                if faces and len(faces) > 0:
+                    # Use the first detected face
+                    face = faces[0]
+                    
+                    # Extract skin-relevant information from face landmarks
+                    landmarks = face.get('landmarks', {})
+                    
+                    # Get key facial landmarks for skin analysis
+                    skin_analysis_points = self._extract_skin_analysis_points(landmarks)
+                    
+                    # Combine face detection with image properties
+                    skin_regions_data = {
+                        'face_detected': True,
+                        'face_confidence': face.get('detection_confidence', 0.0),
+                        'landmarks': landmarks,
+                        'skin_analysis_points': skin_analysis_points,
+                        'image_properties': image_properties,
+                        'bounding_poly': face.get('bounding_poly', []),
+                        'face_angles': {
+                            'roll_angle': face.get('roll_angle', 0.0),
+                            'pan_angle': face.get('pan_angle', 0.0),
+                            'tilt_angle': face.get('tilt_angle', 0.0)
+                        },
+                        'face_quality': {
+                            'blurred_likelihood': face.get('blurred_likelihood', 'UNKNOWN'),
+                            'under_exposed_likelihood': face.get('under_exposed_likelihood', 'UNKNOWN')
+                        }
+                    }
+                    
+                    logger.debug(f"Extracted skin regions using Google Vision: "
+                               f"confidence={face.get('detection_confidence', 0.0):.3f}")
+                    
+                    return skin_regions_data
+                else:
+                    logger.warning("No faces detected by Google Vision API")
+                    # Fall back to image properties only
+                    return {
+                        'face_detected': False,
+                        'face_confidence': 0.0,
+                        'image_properties': image_properties,
+                        'fallback_reason': 'no_faces_detected'
+                    }
+            else:
+                logger.debug("Google Vision API not available, using fallback method")
+                # Fallback to basic image analysis
+                return self._extract_skin_regions_fallback(image_bytes)
                 
         except Exception as e:
             logger.error(f"Error extracting skin regions: {e}")
-            # Return a default placeholder array
-            return np.random.rand(224, 224, 3)
+            # Return fallback data
+            return {
+                'face_detected': False,
+                'face_confidence': 0.0,
+                'error': str(e),
+                'fallback_reason': 'extraction_error'
+            }
     
-    def _classify_fitzpatrick(self, skin_regions: np.ndarray) -> str:
+    def _extract_skin_analysis_points(self, landmarks: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Classify according to the Fitzpatrick scale
+        Extract key points from facial landmarks for skin tone analysis
         
         Args:
-            skin_regions: Processed skin regions
+            landmarks: Facial landmarks from Google Vision
+            
+        Returns:
+            Dictionary with skin analysis points
+        """
+        try:
+            # Key landmarks for skin tone analysis
+            skin_landmarks = [
+                'LEFT_CHEEK_CENTER', 'RIGHT_CHEEK_CENTER',
+                'NOSE_TIP', 'CHIN_GNATHION',
+                'FOREHEAD_GLABELLA'
+            ]
+            
+            analysis_points = {}
+            for landmark_name in skin_landmarks:
+                if landmark_name in landmarks:
+                    landmark = landmarks[landmark_name]
+                    analysis_points[landmark_name] = {
+                        'x': landmark.get('x', 0),
+                        'y': landmark.get('y', 0),
+                        'z': landmark.get('z', 0)
+                    }
+            
+            # Calculate skin region center points
+            if analysis_points:
+                center_x = np.mean([point['x'] for point in analysis_points.values()])
+                center_y = np.mean([point['y'] for point in analysis_points.values()])
+                
+                analysis_points['skin_center'] = {
+                    'x': center_x,
+                    'y': center_y,
+                    'point_count': len(analysis_points)
+                }
+            
+            return analysis_points
+            
+        except Exception as e:
+            logger.error(f"Error extracting skin analysis points: {e}")
+            return {}
+    
+    def _extract_skin_regions_fallback(self, image_bytes: bytes) -> Dict[str, Any]:
+        """
+        Fallback method for skin region extraction without Google Vision
+        
+        Args:
+            image_bytes: Image data as bytes
+            
+        Returns:
+            Dictionary with fallback skin region data
+        """
+        try:
+            # Convert bytes to PIL Image for basic analysis
+            pil_image = Image.open(io.BytesIO(image_bytes))
+            
+            # Convert to numpy array
+            image_array = np.array(pil_image)
+            
+            # Basic color analysis
+            if len(image_array.shape) == 3:
+                # RGB image
+                mean_color = np.mean(image_array, axis=(0, 1))
+                color_std = np.std(image_array, axis=(0, 1))
+            else:
+                # Grayscale image
+                mean_color = np.mean(image_array)
+                color_std = np.std(image_array)
+            
+            return {
+                'face_detected': False,
+                'face_confidence': 0.0,
+                'fallback_analysis': {
+                    'mean_color': mean_color.tolist() if hasattr(mean_color, 'tolist') else mean_color,
+                    'color_std': color_std.tolist() if hasattr(color_std, 'tolist') else color_std,
+                    'image_shape': image_array.shape
+                },
+                'fallback_reason': 'google_vision_unavailable'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in fallback skin region extraction: {e}")
+            return {
+                'face_detected': False,
+                'face_confidence': 0.0,
+                'error': str(e),
+                'fallback_reason': 'fallback_error'
+            }
+    
+    def _classify_fitzpatrick(self, skin_regions: Dict[str, Any]) -> str:
+        """
+        Classify according to the Fitzpatrick scale using Google Vision data
+        
+        Args:
+            skin_regions: Processed skin regions data from Google Vision
             
         Returns:
             Fitzpatrick type (I-VI)
         """
         try:
-            # Placeholder for actual model inference
-            # In a real implementation, this would:
-            # 1. Preprocess the skin regions for the model
-            # 2. Run inference using the trained Fitzpatrick classifier
-            # 3. Return the predicted class
+            logger.debug("Classifying Fitzpatrick type using enhanced analysis")
             
-            logger.debug("Classifying Fitzpatrick type (placeholder implementation)")
-            
-            # Placeholder logic based on image characteristics
-            # In reality, this would use a trained ML model
-            mean_intensity = np.mean(skin_regions)
-            
-            if mean_intensity < 0.2:
-                return "VI"
-            elif mean_intensity < 0.35:
-                return "V"
-            elif mean_intensity < 0.5:
-                return "IV"
-            elif mean_intensity < 0.65:
-                return "III"
-            elif mean_intensity < 0.8:
-                return "II"
+            # Use Google Vision data if available
+            if skin_regions.get('face_detected', False):
+                return self._classify_fitzpatrick_with_vision(skin_regions)
             else:
-                return "I"
+                return self._classify_fitzpatrick_fallback(skin_regions)
                 
         except Exception as e:
             logger.error(f"Error in Fitzpatrick classification: {e}")
             return "III"  # Default to middle type
     
-    def _classify_monk(self, skin_regions: np.ndarray) -> int:
+    def _classify_fitzpatrick_with_vision(self, skin_regions: Dict[str, Any]) -> str:
         """
-        Classify according to the Monk scale
+        Classify Fitzpatrick type using Google Vision facial analysis
         
         Args:
-            skin_regions: Processed skin regions
+            skin_regions: Google Vision analysis data
+            
+        Returns:
+            Fitzpatrick type (I-VI)
+        """
+        try:
+            # Extract color information from image properties
+            image_properties = skin_regions.get('image_properties', {})
+            dominant_colors = image_properties.get('dominant_colors', [])
+            
+            if not dominant_colors:
+                logger.warning("No dominant colors found, using fallback classification")
+                return self._classify_fitzpatrick_fallback(skin_regions)
+            
+            # Calculate weighted average brightness from dominant colors
+            total_brightness = 0
+            total_weight = 0
+            
+            for color in dominant_colors:
+                # Calculate luminance using standard formula
+                r, g, b = color['red'] / 255.0, color['green'] / 255.0, color['blue'] / 255.0
+                luminance = 0.299 * r + 0.587 * g + 0.114 * b
+                weight = color['pixel_fraction']
+                
+                total_brightness += luminance * weight
+                total_weight += weight
+            
+            if total_weight > 0:
+                avg_brightness = total_brightness / total_weight
+            else:
+                avg_brightness = 0.5  # Default
+            
+            # Enhanced classification using brightness and face quality
+            face_quality = skin_regions.get('face_quality', {})
+            under_exposed = face_quality.get('under_exposed_likelihood', 'UNKNOWN')
+            
+            # Adjust brightness based on exposure
+            if under_exposed in ['LIKELY', 'VERY_LIKELY']:
+                avg_brightness *= 1.2  # Compensate for under-exposure
+            elif under_exposed in ['UNLIKELY', 'VERY_UNLIKELY']:
+                avg_brightness *= 0.9  # Adjust for good exposure
+            
+            # Classify based on adjusted brightness
+            if avg_brightness < 0.15:
+                return "VI"
+            elif avg_brightness < 0.3:
+                return "V"
+            elif avg_brightness < 0.45:
+                return "IV"
+            elif avg_brightness < 0.6:
+                return "III"
+            elif avg_brightness < 0.75:
+                return "II"
+            else:
+                return "I"
+                
+        except Exception as e:
+            logger.error(f"Error in Google Vision Fitzpatrick classification: {e}")
+            return self._classify_fitzpatrick_fallback(skin_regions)
+    
+    def _classify_fitzpatrick_fallback(self, skin_regions: Dict[str, Any]) -> str:
+        """
+        Fallback Fitzpatrick classification without Google Vision
+        
+        Args:
+            skin_regions: Fallback analysis data
+            
+        Returns:
+            Fitzpatrick type (I-VI)
+        """
+        try:
+            fallback_analysis = skin_regions.get('fallback_analysis', {})
+            mean_color = fallback_analysis.get('mean_color', [128, 128, 128])
+            
+            # Convert to luminance if RGB
+            if isinstance(mean_color, list) and len(mean_color) == 3:
+                r, g, b = [c / 255.0 for c in mean_color]
+                luminance = 0.299 * r + 0.587 * g + 0.114 * b
+            else:
+                luminance = mean_color / 255.0 if isinstance(mean_color, (int, float)) else 0.5
+            
+            # Simple classification based on luminance
+            if luminance < 0.2:
+                return "VI"
+            elif luminance < 0.35:
+                return "V"
+            elif luminance < 0.5:
+                return "IV"
+            elif luminance < 0.65:
+                return "III"
+            elif luminance < 0.8:
+                return "II"
+            else:
+                return "I"
+                
+        except Exception as e:
+            logger.error(f"Error in fallback Fitzpatrick classification: {e}")
+            return "III"
+    
+    def _classify_monk(self, skin_regions: Dict[str, Any]) -> int:
+        """
+        Classify according to the Monk scale using Google Vision data
+        
+        Args:
+            skin_regions: Processed skin regions data from Google Vision
             
         Returns:
             Monk tone (1-10)
         """
         try:
-            # Placeholder for actual model inference
-            # In a real implementation, this would use a trained Monk scale classifier
+            logger.debug("Classifying Monk tone using enhanced analysis")
             
-            logger.debug("Classifying Monk tone (placeholder implementation)")
-            
-            # Placeholder logic based on image characteristics
-            mean_intensity = np.mean(skin_regions)
-            
-            # Map intensity to Monk scale (1-10)
-            if mean_intensity < 0.1:
-                return 10
-            elif mean_intensity < 0.2:
-                return 9
-            elif mean_intensity < 0.3:
-                return 8
-            elif mean_intensity < 0.4:
-                return 7
-            elif mean_intensity < 0.5:
-                return 6
-            elif mean_intensity < 0.6:
-                return 5
-            elif mean_intensity < 0.7:
-                return 4
-            elif mean_intensity < 0.8:
-                return 3
-            elif mean_intensity < 0.9:
-                return 2
+            # Use Google Vision data if available
+            if skin_regions.get('face_detected', False):
+                return self._classify_monk_with_vision(skin_regions)
             else:
-                return 1
+                return self._classify_monk_fallback(skin_regions)
                 
         except Exception as e:
             logger.error(f"Error in Monk classification: {e}")
             return 5  # Default to middle tone
+    
+    def _classify_monk_with_vision(self, skin_regions: Dict[str, Any]) -> int:
+        """
+        Classify Monk tone using Google Vision facial analysis
+        
+        Args:
+            skin_regions: Google Vision analysis data
+            
+        Returns:
+            Monk tone (1-10)
+        """
+        try:
+            # Extract color information from image properties
+            image_properties = skin_regions.get('image_properties', {})
+            dominant_colors = image_properties.get('dominant_colors', [])
+            
+            if not dominant_colors:
+                logger.warning("No dominant colors found for Monk classification, using fallback")
+                return self._classify_monk_fallback(skin_regions)
+            
+            # Calculate weighted average brightness and color characteristics
+            total_brightness = 0
+            total_weight = 0
+            color_variance = 0
+            
+            for color in dominant_colors:
+                # Calculate luminance
+                r, g, b = color['red'] / 255.0, color['green'] / 255.0, color['blue'] / 255.0
+                luminance = 0.299 * r + 0.587 * g + 0.114 * b
+                weight = color['pixel_fraction']
+                
+                total_brightness += luminance * weight
+                total_weight += weight
+                
+                # Calculate color variance for better tone classification
+                color_variance += weight * ((r - 0.5)**2 + (g - 0.5)**2 + (b - 0.5)**2)
+            
+            if total_weight > 0:
+                avg_brightness = total_brightness / total_weight
+                avg_variance = color_variance / total_weight
+            else:
+                avg_brightness = 0.5
+                avg_variance = 0.1
+            
+            # Enhanced Monk scale classification with more granular mapping
+            # Monk scale 1-10 (1 = lightest, 10 = darkest)
+            
+            # Adjust for color variance (higher variance might indicate mixed lighting)
+            brightness_adjustment = min(0.1, avg_variance * 0.5)
+            adjusted_brightness = avg_brightness + brightness_adjustment
+            
+            # Map to Monk scale with finer gradations
+            if adjusted_brightness >= 0.9:
+                return 1
+            elif adjusted_brightness >= 0.8:
+                return 2
+            elif adjusted_brightness >= 0.7:
+                return 3
+            elif adjusted_brightness >= 0.6:
+                return 4
+            elif adjusted_brightness >= 0.5:
+                return 5
+            elif adjusted_brightness >= 0.4:
+                return 6
+            elif adjusted_brightness >= 0.3:
+                return 7
+            elif adjusted_brightness >= 0.2:
+                return 8
+            elif adjusted_brightness >= 0.1:
+                return 9
+            else:
+                return 10
+                
+        except Exception as e:
+            logger.error(f"Error in Google Vision Monk classification: {e}")
+            return self._classify_monk_fallback(skin_regions)
+    
+    def _classify_monk_fallback(self, skin_regions: Dict[str, Any]) -> int:
+        """
+        Fallback Monk classification without Google Vision
+        
+        Args:
+            skin_regions: Fallback analysis data
+            
+        Returns:
+            Monk tone (1-10)
+        """
+        try:
+            fallback_analysis = skin_regions.get('fallback_analysis', {})
+            mean_color = fallback_analysis.get('mean_color', [128, 128, 128])
+            
+            # Convert to luminance if RGB
+            if isinstance(mean_color, list) and len(mean_color) == 3:
+                r, g, b = [c / 255.0 for c in mean_color]
+                luminance = 0.299 * r + 0.587 * g + 0.114 * b
+            else:
+                luminance = mean_color / 255.0 if isinstance(mean_color, (int, float)) else 0.5
+            
+            # Map luminance to Monk scale
+            if luminance >= 0.9:
+                return 1
+            elif luminance >= 0.8:
+                return 2
+            elif luminance >= 0.7:
+                return 3
+            elif luminance >= 0.6:
+                return 4
+            elif luminance >= 0.5:
+                return 5
+            elif luminance >= 0.4:
+                return 6
+            elif luminance >= 0.3:
+                return 7
+            elif luminance >= 0.2:
+                return 8
+            elif luminance >= 0.1:
+                return 9
+            else:
+                return 10
+                
+        except Exception as e:
+            logger.error(f"Error in fallback Monk classification: {e}")
+            return 5
     
     def _apply_ethnicity_context(self, fitzpatrick_type: str, monk_tone: int, 
                                 ethnicity: str) -> Tuple[str, int]:
@@ -374,29 +732,77 @@ class EnhancedSkinTypeClassifier:
             logger.warning(f"Invalid Fitzpatrick type comparison: {type1} vs {type2}")
             return 0
     
-    def _calculate_confidence(self, skin_regions: np.ndarray, ethnicity: Optional[str]) -> float:
+    def _calculate_confidence(self, skin_regions: Dict[str, Any], ethnicity: Optional[str]) -> float:
         """
-        Calculate a confidence score for the classification
+        Calculate a confidence score for the classification using Google Vision confidence integration
         
         Args:
-            skin_regions: Processed skin regions
+            skin_regions: Processed skin regions data from Google Vision
             ethnicity: Optional ethnicity information
             
         Returns:
             Confidence score between 0 and 1
         """
         try:
-            # Base confidence calculation (placeholder)
-            # In a real implementation, this would be based on:
-            # - Model prediction confidence
-            # - Image quality metrics
-            # - Skin region detection quality
-            # - Consistency between different models
+            # Base confidence from Google Vision face detection
+            face_confidence = skin_regions.get('face_confidence', 0.0)
             
-            base_confidence = 0.8
-            
-            # Image quality factors (placeholder)
-            image_quality_factor = min(np.std(skin_regions) * 2, 0.1)  # Higher std = better quality
+            if skin_regions.get('face_detected', False):
+                # Use Google Vision confidence as base
+                base_confidence = min(0.9, face_confidence + 0.1)  # Cap at 0.9, add small bonus
+                
+                # Image quality factors from Google Vision
+                face_quality = skin_regions.get('face_quality', {})
+                quality_factor = 0.0
+                
+                # Adjust based on image quality indicators
+                blurred = face_quality.get('blurred_likelihood', 'UNKNOWN')
+                under_exposed = face_quality.get('under_exposed_likelihood', 'UNKNOWN')
+                
+                if blurred in ['UNLIKELY', 'VERY_UNLIKELY']:
+                    quality_factor += 0.05  # Good image quality
+                elif blurred in ['LIKELY', 'VERY_LIKELY']:
+                    quality_factor -= 0.1  # Poor image quality
+                
+                if under_exposed in ['UNLIKELY', 'VERY_UNLIKELY']:
+                    quality_factor += 0.05  # Good exposure
+                elif under_exposed in ['LIKELY', 'VERY_LIKELY']:
+                    quality_factor -= 0.1  # Poor exposure
+                
+                # Color analysis quality from image properties
+                image_properties = skin_regions.get('image_properties', {})
+                dominant_colors = image_properties.get('dominant_colors', [])
+                
+                if len(dominant_colors) >= 3:
+                    quality_factor += 0.05  # Good color diversity
+                elif len(dominant_colors) == 0:
+                    quality_factor -= 0.15  # No color information
+                
+                # Landmark quality
+                landmarks = skin_regions.get('landmarks', {})
+                skin_analysis_points = skin_regions.get('skin_analysis_points', {})
+                
+                if len(skin_analysis_points) >= 3:
+                    quality_factor += 0.05  # Good landmark detection
+                elif len(skin_analysis_points) == 0:
+                    quality_factor -= 0.1  # No landmarks
+                
+            else:
+                # Fallback confidence calculation
+                base_confidence = 0.4  # Lower base confidence without face detection
+                quality_factor = 0.0
+                
+                # Try to assess fallback analysis quality
+                fallback_analysis = skin_regions.get('fallback_analysis', {})
+                if fallback_analysis:
+                    # Basic quality assessment from fallback
+                    color_std = fallback_analysis.get('color_std', [])
+                    if isinstance(color_std, list) and len(color_std) > 0:
+                        avg_std = np.mean(color_std)
+                        if avg_std > 20:  # Good color variation
+                            quality_factor += 0.1
+                        elif avg_std < 5:  # Very low variation
+                            quality_factor -= 0.1
             
             # Ethnicity context bonus
             ethnicity_bonus = 0.0
@@ -404,14 +810,14 @@ class EnhancedSkinTypeClassifier:
                 ethnicity_bonus = self.ethnicity_adjustments[ethnicity.lower()].get('confidence_bonus', 0.0)
             
             # Calculate final confidence
-            confidence = base_confidence + image_quality_factor + ethnicity_bonus
+            confidence = base_confidence + quality_factor + ethnicity_bonus
             
             # Ensure confidence is within valid range
-            confidence = max(0.0, min(1.0, confidence))
+            confidence = max(0.1, min(1.0, confidence))  # Minimum 0.1, maximum 1.0
             
             logger.debug(f"Calculated confidence: {confidence:.3f} "
-                        f"(base: {base_confidence}, quality: {image_quality_factor:.3f}, "
-                        f"ethnicity: {ethnicity_bonus:.3f})")
+                        f"(base: {base_confidence:.3f}, quality: {quality_factor:.3f}, "
+                        f"ethnicity: {ethnicity_bonus:.3f}, face_detected: {skin_regions.get('face_detected', False)})")
             
             return confidence
             
