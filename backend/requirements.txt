@@ -9,6 +9,6 @@ torchvision==0.15.2
 faiss-cpu==1.7.4
 scikit-learn
 # Optional: Add Flask extensions if used in your app
-# flask-cors
+flask-cors==3.0.10
 # flask-jwt-extended
 # flask-restful
