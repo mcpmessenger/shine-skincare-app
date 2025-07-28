@@ -44,7 +44,18 @@ class ApiClient {
     // Use environment variables for production, fallback to localhost for development
     this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     
+    // Debug: Log the actual URL being used
     console.log('🔧 API Client initialized with backend URL:', this.baseUrl);
+    console.log('🔧 Environment variables:', {
+      NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
+      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL
+    });
+    
+    // If we're in production and the URL is still localhost, use the correct backend
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && this.baseUrl.includes('localhost')) {
+      this.baseUrl = 'https://Shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com';
+      console.log('🔧 Overriding to correct backend URL:', this.baseUrl);
+    }
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
