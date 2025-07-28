@@ -56,6 +56,12 @@ class ApiClient {
       this.baseUrl = 'https://Shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com';
       console.log('🔧 Overriding to correct backend URL:', this.baseUrl);
     }
+    
+    // Fix case sensitivity issue - ensure we use the correct URL
+    if (this.baseUrl.includes('shine-backend-poc-env-new-env')) {
+      this.baseUrl = 'https://Shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com';
+      console.log('🔧 Fixed case sensitivity, using correct URL:', this.baseUrl);
+    }
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
