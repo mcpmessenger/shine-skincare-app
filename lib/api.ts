@@ -21,16 +21,28 @@ export interface User {
   updated_at: string;
 }
 
+export interface Product {
+  id: string;
+  name: string;
+  brand?: string;
+  price?: number;
+  rating?: number;
+  image_urls?: string[];
+  description?: string;
+  currency?: string;
+  availability_status?: string;
+  review_count?: number;
+  category?: string;
+  subcategory?: string;
+  ingredients?: string[];
+}
+
 class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // FORCE USE LOCAL BACKEND FOR IMMEDIATE TESTING
-    // TODO: Change back to environment variables once AWS backend is deployed
-    this.baseUrl = 'http://localhost:5000';
-    
-    // Original fallback logic (commented out for now):
-    // this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    // Use environment variables for production, fallback to localhost for development
+    this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     
     console.log('🔧 API Client initialized with backend URL:', this.baseUrl);
   }
@@ -99,6 +111,42 @@ class ApiClient {
       return await response.json();
     } catch (error) {
       console.error('Enhanced skin analysis failed:', error);
+      throw error;
+    }
+  }
+
+  // Enhanced Vector Analysis API
+  async analyzeSkinVector(imageFile: File, ethnicity?: string, age?: string): Promise<ApiResponse<any>> {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    
+    if (ethnicity) {
+      formData.append('ethnicity', ethnicity);
+    }
+    if (age) {
+      formData.append('age', age);
+    }
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const headers: Record<string, string> = {};
+    if (token && token !== 'guest') {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/api/enhanced-skin/analyze/vector`, {
+        method: 'POST',
+        body: formData,
+        headers: headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Enhanced vector analysis failed:', error);
       throw error;
     }
   }
@@ -215,6 +263,25 @@ class ApiClient {
 
   async getHealth(): Promise<ApiResponse<{ status: string; timestamp: string }>> {
     return this.request<ApiResponse<{ status: string; timestamp: string }>>('/api/health');
+  }
+
+  async getProfile(): Promise<ApiResponse<User>> {
+    return this.request<ApiResponse<User>>('/api/auth/profile');
+  }
+
+  async login(): Promise<ApiResponse<{ authorization_url: string }>> {
+    return this.request<ApiResponse<{ authorization_url: string }>>('/api/auth/login');
+  }
+
+  async logout(): Promise<ApiResponse<{ message: string }>> {
+    return this.request<ApiResponse<{ message: string }>>('/api/auth/logout');
+  }
+
+  async updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {
+    return this.request<ApiResponse<User>>('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
   }
 
   // Legacy methods for backward compatibility

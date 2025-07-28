@@ -1,0 +1,13 @@
+# Core Flask dependencies (proven to work)
+flask==3.1.1
+flask-cors==3.0.10
+gunicorn==21.2.0
+
+# Basic ML dependencies (lightweight)
+numpy==1.24.3
+pillow==10.1.0
+opencv-python-headless==4.8.1.78
+
+# Additional utilities
+requests==2.31.0
+python-dotenv==1.0.0 

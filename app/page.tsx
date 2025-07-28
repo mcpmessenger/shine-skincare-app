@@ -7,23 +7,7 @@ import ProductRecommendationCard from "@/components/product-recommendation-card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
-import { apiClient } from "@/lib/api"
-
-interface Product {
-  id: string;
-  name: string;
-  brand: string;
-  price: number;
-  rating: number;
-  image_urls: string[];
-  description: string;
-  category: string;
-  subcategory: string;
-  ingredients: string[];
-  currency: string;
-  availability_status: string;
-  review_count: number;
-}
+import { apiClient, Product } from "@/lib/api"
 
 export default function HomePage() {
   const { user, isAuthenticated } = useAuth();
@@ -47,9 +31,9 @@ export default function HomePage() {
       // Handle the API response structure
       if (response && response.data && Array.isArray(response.data)) {
         setTrendingProducts(response.data);
-      } else if (response && response.data && response.data.trending_products) {
+      } else if (response && response.data && typeof response.data === 'object' && 'trending_products' in response.data) {
         // Handle the new response structure from backend
-        setTrendingProducts(response.data.trending_products);
+        setTrendingProducts((response.data as any).trending_products);
       } else {
         console.warn('Invalid response structure, using fallback data');
         // Fallback to mock data if API fails
@@ -212,8 +196,8 @@ export default function HomePage() {
                     <p className="mt-2 text-muted-foreground">Loading recommendations...</p>
                   </div>
                 ) : trendingProducts && trendingProducts.length > 0 ? (
-                  trendingProducts.map((product) => (
-                    <ProductRecommendationCard key={product.id} product={product} />
+                  trendingProducts.map((product, index) => (
+                    <ProductRecommendationCard key={`${product.id}-${index}`} product={product} />
                   ))
                 ) : (
                   <div className="col-span-2 text-center py-8">

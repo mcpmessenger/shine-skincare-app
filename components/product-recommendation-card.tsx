@@ -55,9 +55,9 @@ export default function ProductRecommendationCard({ product }: ProductRecommenda
               className={`h-4 w-4 ${i < product.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
             />
           ))}
-          <span className="ml-1">({product.rating.toFixed(1)})</span>
+          <span className="ml-1">({(product.rating || 0).toFixed(1)})</span>
         </div>
-        <p className="text-xl font-bold">${product.price.toFixed(2)}</p>
+        <p className="text-xl font-bold">${(product.price || 0).toFixed(2)}</p>
         <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between items-center">

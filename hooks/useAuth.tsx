@@ -30,8 +30,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (typeof window !== 'undefined') {
         const token = localStorage.getItem('shine_token');
         if (token) {
-          const userProfile = await apiClient.getProfile();
-          setUser(userProfile);
+          const response = await apiClient.getProfile();
+          if (response.success && response.data) {
+            setUser(response.data);
+          }
         }
       }
     } catch (error) {
@@ -52,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiClient.login();
       console.log('Login response:', response);
       
-      const { authorization_url } = response;
+      const { authorization_url } = response.data;
       console.log('Authorization URL:', authorization_url);
       console.log('Authorization URL type:', typeof authorization_url);
       
@@ -102,8 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = async (data: Partial<User>) => {
     try {
-      const updatedUser = await apiClient.updateProfile(data);
-      setUser(updatedUser);
+      const response = await apiClient.updateProfile(data);
+      if (response.success && response.data) {
+        setUser(response.data);
+      }
     } catch (error) {
       console.error('Profile update failed:', error);
       throw error;

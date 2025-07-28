@@ -14,7 +14,7 @@ app = Flask(__name__)
 CORS(app, origins=[
     "http://localhost:3000",  # Local development
     "http://localhost:3001",  # Local development (port 3000 in use)
-    "https://main.d3oid65kfbmqt4.amplifyapp.com",  # Production frontend
+    "https://your-frontend-url.amplifyapp.com",  # Production frontend
     "https://main.d2wy4w2nf9bgxx.amplifyapp.com",  # Old production frontend
     "*"  # Allow all origins for now (can be restricted later)
 ])

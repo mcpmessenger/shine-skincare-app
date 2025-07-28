@@ -7,9 +7,24 @@ from flask_cors import CORS
 from datetime import datetime
 import hashlib
 import uuid
+import os
+import sys
+
+# Add the current directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Try to register enhanced analysis blueprint if available
+try:
+    from app.enhanced_analysis_router import enhanced_analysis_bp
+    app.register_blueprint(enhanced_analysis_bp)
+    print("✅ Enhanced analysis blueprint registered")
+except ImportError as e:
+    print(f"⚠️  Enhanced analysis blueprint not available: {e}")
+except Exception as e:
+    print(f"❌ Error registering enhanced analysis blueprint: {e}")
 
 def analyze_image_simple(image_data):
     """Simple image analysis using hash-based features"""

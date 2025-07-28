@@ -233,6 +233,11 @@ def _register_blueprints(app):
         app.register_blueprint(enhanced_image_bp, url_prefix='/api/enhanced')
         logger.info("Enhanced image analysis blueprint registered")
         
+        # Register enhanced skin analysis blueprint
+        from .enhanced_skin_analysis import enhanced_skin_bp
+        app.register_blueprint(enhanced_skin_bp, url_prefix='/api/enhanced-skin')
+        logger.info("Enhanced skin analysis blueprint registered")
+        
         # Register recommendations blueprint
         from .recommendations import recommendations_bp
         app.register_blueprint(recommendations_bp, url_prefix='/api/recommendations')

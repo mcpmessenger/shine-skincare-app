@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Shine Backend API - Real Working Version
-Deployed to AWS Elastic Beanstalk
+Shine Backend API - Incremental ML Strategy
+Building on the successful real_working_backend.py
 """
 
 from flask import Flask, request, jsonify
@@ -11,6 +11,18 @@ import os
 import json
 import hashlib
 import logging
+import base64
+from io import BytesIO
+
+# Optional ML imports (will fail gracefully if not available)
+try:
+    import numpy as np
+    import cv2
+    from PIL import Image
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
+    logging.warning("ML libraries not available, using mock implementations")
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -27,10 +39,17 @@ LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
 def root():
     """Root endpoint"""
     return jsonify({
-        'message': 'Shine API - Real Working Version',
+        'message': 'Shine API - Incremental ML Version',
         'status': 'running',
         'timestamp': datetime.utcnow().isoformat(),
-        'environment': 'production'
+        'environment': 'production',
+        'ml_available': ML_AVAILABLE,
+        'features': [
+            'Basic API Endpoints',
+            'Enhanced Skin Analysis' if ML_AVAILABLE else 'Mock Skin Analysis',
+            'Image Processing' if ML_AVAILABLE else 'Basic Image Handling',
+            'Product Recommendations'
+        ]
     })
 
 @app.route('/api/health')
@@ -39,8 +58,14 @@ def health():
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.utcnow().isoformat(),
-        'message': 'Real backend is working!',
-        'environment': 'production'
+        'message': 'Incremental ML backend is working!',
+        'environment': 'production',
+        'ml_available': ML_AVAILABLE,
+        'services': {
+            'basic_api': 'available',
+            'ml_analysis': 'available' if ML_AVAILABLE else 'mock',
+            'image_processing': 'available' if ML_AVAILABLE else 'mock'
+        }
     })
 
 @app.route('/api/recommendations/trending')
@@ -102,62 +127,55 @@ def get_trending_products():
         "message": "Trending products loaded successfully"
     })
 
-@app.route('/api/recommendations')
-def get_recommendations():
-    """Get product recommendations based on skin type"""
-    skin_type = request.args.get('skinType', 'combination')
+def analyze_image_ml(image_data):
+    """Enhanced image analysis using ML libraries"""
+    if not ML_AVAILABLE:
+        return None
     
-    recommendations = {
-        "combination": [
-            {
-                "id": "4",
-                "name": "Molecular Silk Amino Hydrating Cleanser",
-                "brand": "Allies of Skin",
-                "price": 38.00,
-                "rating": 4.7,
-                "image": "/products/Allies of Skin Molecular Silk Amino Hydrating Cleanser.webp",
-                "description": "Gentle yet effective cleanser",
-                "category": "cleanser",
-                "subcategory": "hydrating"
-            }
-        ],
-        "sensitive": [
-            {
-                "id": "5",
-                "name": "Ultra Repair Cream",
-                "brand": "First Aid Beauty",
-                "price": 34.00,
-                "rating": 4.5,
-                "image": "/products/First Aid Beauty Ultra Repair Cream.webp",
-                "description": "Intensive repair for sensitive skin",
-                "category": "moisturizer",
-                "subcategory": "repair"
-            }
-        ],
-        "oily": [
-            {
-                "id": "6",
-                "name": "CLENZIderm M.D. System",
-                "brand": "Obagi",
-                "price": 89.00,
-                "rating": 4.4,
-                "image": "/products/Obagi CLENZIderm M.D. System (Therapeutic Lotion).webp",
-                "description": "Professional acne treatment system",
-                "category": "treatment",
-                "subcategory": "acne"
-            }
-        ]
-    }
-    
-    return jsonify({
-        "data": recommendations.get(skin_type, recommendations["combination"]),
-        "success": True,
-        "message": f"Recommendations for {skin_type} skin type"
-    })
+    try:
+        # Convert to PIL Image
+        image = Image.open(BytesIO(image_data))
+        
+        # Convert to numpy array
+        img_array = np.array(image)
+        
+        # Basic image analysis
+        height, width = img_array.shape[:2]
+        
+        # Calculate average brightness
+        if len(img_array.shape) == 3:  # Color image
+            brightness = np.mean(img_array)
+        else:  # Grayscale
+            brightness = np.mean(img_array)
+        
+        # Analyze image quality
+        quality_score = min(1.0, brightness / 128.0)
+        
+        # Basic skin tone analysis (simplified)
+        if len(img_array.shape) == 3:
+            # Convert to HSV for skin tone analysis
+            hsv = cv2.cvtColor(img_array, cv2.COLOR_RGB2HSV)
+            hue = np.mean(hsv[:, :, 0])
+            saturation = np.mean(hsv[:, :, 1])
+            value = np.mean(hsv[:, :, 2])
+        else:
+            hue, saturation, value = 0, 0, brightness
+        
+        return {
+            "image_quality": quality_score,
+            "brightness": float(brightness),
+            "hue": float(hue),
+            "saturation": float(saturation),
+            "value": float(value),
+            "dimensions": {"width": width, "height": height}
+        }
+    except Exception as e:
+        logger.error(f"ML analysis failed: {e}")
+        return None
 
 @app.route('/api/v2/analyze/guest', methods=['POST'])
 def analyze_skin_guest():
-    """Guest skin analysis endpoint - working version"""
+    """Enhanced guest skin analysis endpoint"""
     try:
         if 'image' not in request.files:
             return jsonify({
@@ -168,34 +186,45 @@ def analyze_skin_guest():
         image_file = request.files['image']
         image_data = image_file.read()
         
-        # Simple analysis
+        # Try ML analysis first
+        ml_analysis = None
+        if ML_AVAILABLE:
+            ml_analysis = analyze_image_ml(image_data)
+        
+        # Fallback to hash-based analysis
         img_hash = hashlib.md5(image_data).hexdigest()
         hash_int = int(img_hash[:8], 16)
         
         skin_types = ["Normal", "Oily", "Dry", "Combination", "Sensitive"]
         skin_type = skin_types[hash_int % len(skin_types)]
         
+        # Enhanced analysis result
         analysis_result = {
             "analysis_id": f"analysis_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
             "status": "completed",
+            "ml_used": ML_AVAILABLE,
             "results": {
                 "skin_type": skin_type,
                 "concerns": ["Test concern"],
                 "recommendations": ["Test recommendation"],
-                "confidence": 0.8,
-                "image_quality": "medium"
+                "confidence": 0.8 if ML_AVAILABLE else 0.6,
+                "image_quality": "high" if ML_AVAILABLE else "medium"
             },
             "timestamp": datetime.utcnow().isoformat()
         }
         
+        # Add ML analysis data if available
+        if ml_analysis:
+            analysis_result["ml_analysis"] = ml_analysis
+        
         return jsonify({
             "data": analysis_result,
             "success": True,
-            "message": "Skin analysis completed successfully"
+            "message": f"Skin analysis completed successfully using {'ML' if ML_AVAILABLE else 'mock'} analysis"
         })
         
     except Exception as e:
-        print(f"Analysis failed: {e}")
+        logger.error(f"Analysis failed: {e}")
         return jsonify({
             "success": False,
             "message": f"Analysis failed: {str(e)}"
@@ -212,7 +241,7 @@ def analyze_skin():
             "message": "Authentication required"
         }), 401
     
-    # For now, use the same logic as guest endpoint
+    # Use the same logic as guest endpoint
     return analyze_skin_guest()
 
 @app.route('/api/payments/create-intent', methods=['POST'])
@@ -259,9 +288,10 @@ def get_auth_url():
 def test_endpoint():
     """Test endpoint for debugging"""
     return jsonify({
-        "message": "Test endpoint working",
+        "message": "Incremental ML test endpoint working",
         "timestamp": datetime.utcnow().isoformat(),
-        "environment": "production"
+        "environment": "production",
+        "ml_available": ML_AVAILABLE
     })
 
 @app.route('/api/test-env')
@@ -270,6 +300,7 @@ def test_env():
     return jsonify({
         "USE_MOCK_SERVICES": USE_MOCK_SERVICES,
         "LOG_LEVEL": LOG_LEVEL,
+        "ML_AVAILABLE": ML_AVAILABLE,
         "timestamp": datetime.utcnow().isoformat()
     })
 

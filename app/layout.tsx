@@ -6,6 +6,7 @@ import { AuthProvider } from '@/hooks/useAuth'
 import { CartProvider } from '@/hooks/useCart'
 import { ThemeProvider } from '@/components/theme-provider'
 import Header from '@/components/header'
+import ServiceDegradationBanner from '@/components/service-degradation-banner'
 
 export const metadata: Metadata = {
   title: 'Shine - AI-Powered Skincare',
@@ -72,6 +73,7 @@ html {
           <AuthProvider>
             <CartProvider>
               <Header />
+              <ServiceDegradationBanner />
               {children}
             </CartProvider>
           </AuthProvider>
