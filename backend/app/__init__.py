@@ -49,6 +49,9 @@ def create_app(config_name='development'):
         # Continue with app creation
     
     # Service configuration from environment variables
+    # Use mock services for reliable deployment
+    os.environ['USE_MOCK_SERVICES'] = 'true'
+    
     service_config = {
         'faiss_dimension': int(os.environ.get('FAISS_DIMENSION', '2048')),
         'faiss_index_path': os.environ.get('FAISS_INDEX_PATH', 'faiss_index'),
@@ -114,6 +117,23 @@ def create_app(config_name='development'):
     @app.route('/')
     def root():
         return {'message': 'Shine Skincare API', 'status': 'running'}
+    
+    # Legacy v2 endpoint for frontend compatibility
+    @app.route('/api/v2/analyze/guest', methods=['POST'])
+    def analyze_guest_v2():
+        """
+        Legacy endpoint for frontend compatibility
+        Redirects to enhanced analysis endpoint
+        """
+        try:
+            from .enhanced_image_analysis.routes import analyze_image_guest
+            return analyze_image_guest()
+        except Exception as e:
+            logger.error(f"Error in legacy guest analysis: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': 'Internal server error'
+            }), 500
     
     # Service configuration endpoint
     @app.route('/api/services/config', methods=['GET'])

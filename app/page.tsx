@@ -29,6 +29,7 @@ export default function HomePage() {
   const { user, isAuthenticated } = useAuth();
   const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadTrendingProducts();
@@ -37,11 +38,18 @@ export default function HomePage() {
   const loadTrendingProducts = async () => {
     try {
       setLoading(true);
+      setError(null);
+      console.log('🔧 Loading trending products...');
+      
       const response = await apiClient.getTrendingProducts();
+      console.log('🔧 API Response:', response);
       
       // Handle the API response structure
       if (response && response.data && Array.isArray(response.data)) {
         setTrendingProducts(response.data);
+      } else if (response && response.data && response.data.trending_products) {
+        // Handle the new response structure from backend
+        setTrendingProducts(response.data.trending_products);
       } else {
         console.warn('Invalid response structure, using fallback data');
         // Fallback to mock data if API fails
@@ -95,6 +103,7 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error('Failed to load trending products:', error);
+      setError('Failed to load recommendations. Please try again.');
       // Fallback to mock data if API fails
       setTrendingProducts([
         {
@@ -147,6 +156,19 @@ export default function HomePage() {
       setLoading(false);
     }
   };
+
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <div className="flex flex-col min-h-[100dvh] items-center justify-center">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold text-red-600">Something went wrong</h1>
+          <p className="text-muted-foreground">{error}</p>
+          <Button onClick={loadTrendingProducts}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-[100dvh]">

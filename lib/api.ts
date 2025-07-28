@@ -25,8 +25,14 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // Use the AWS EB backend URL from environment variables, fallback to local for development
-    this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    // FORCE USE LOCAL BACKEND FOR IMMEDIATE TESTING
+    // TODO: Change back to environment variables once AWS backend is deployed
+    this.baseUrl = 'http://localhost:5000';
+    
+    // Original fallback logic (commented out for now):
+    // this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    
+    console.log('🔧 API Client initialized with backend URL:', this.baseUrl);
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -173,7 +179,23 @@ class ApiClient {
 
   // Existing API methods (updated to use real backend)
   async getTrendingProducts(): Promise<ApiResponse<any[]>> {
-    return this.request<ApiResponse<any[]>>('/api/recommendations/trending');
+    try {
+      const response = await this.request<ApiResponse<any>>('/api/recommendations/trending');
+      
+      // Handle the new response structure from backend
+      if (response && response.data && response.data.trending_products) {
+        return {
+          data: response.data.trending_products,
+          success: response.success,
+          message: response.message
+        };
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('Failed to get trending products:', error);
+      throw error;
+    }
   }
 
   async getProductRecommendations(skinType: string): Promise<ApiResponse<any[]>> {

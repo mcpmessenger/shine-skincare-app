@@ -38,21 +38,24 @@ export default function AnalysisResultsPage() {
         const analysisId = urlParams.get('analysisId');
         
         if (analysisId) {
-          // Try to fetch specific analysis result
-          const token = localStorage.getItem('token');
-          const headers: Record<string, string> = {};
-          if (token && token !== 'guest') {
-            headers['Authorization'] = `Bearer ${token}`;
-          }
-          
-          // Since Railway backend doesn't store analysis results,
-          // we'll check if we have cached results in localStorage
+          // Try to fetch specific analysis result from localStorage
           const cachedResults = localStorage.getItem(`analysis_${analysisId}`);
           
           if (cachedResults) {
             try {
               const data = JSON.parse(cachedResults);
-              setAnalysisData(data);
+              // Handle the backend response structure
+              if (data.success && data.data && data.data.analysis) {
+                // Extract the analysis data from the backend response structure
+                setAnalysisData(data.data.analysis);
+              } else if (data.analysis) {
+                // Handle direct analysis data
+                setAnalysisData(data.analysis);
+              } else {
+                // Fallback to mock data
+                console.log('Invalid response structure, using fallback data');
+                setMockData();
+              }
             } catch (error) {
               console.error('Failed to parse cached analysis data');
               setMockData();
