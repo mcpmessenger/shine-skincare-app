@@ -41,8 +41,8 @@ export default function SkinAnalysisCard() {
         // Store analysis ID and results in localStorage for the results page
         if (analysisResponse.data?.image_id) {
           localStorage.setItem('lastAnalysisId', analysisResponse.data.image_id);
-          // Cache the full analysis results
-          localStorage.setItem(`analysis_${analysisResponse.data.image_id}`, JSON.stringify(analysisResponse.data));
+          // Cache the full analysis results (store the entire response)
+          localStorage.setItem(`analysis_${analysisResponse.data.image_id}`, JSON.stringify(analysisResponse));
         }
         
         setIsAnalyzing(false);
@@ -82,8 +82,8 @@ export default function SkinAnalysisCard() {
             // Store analysis ID and results in localStorage for the results page
             if (analysisResponse.data?.image_id) {
               localStorage.setItem('lastAnalysisId', analysisResponse.data.image_id);
-              // Cache the full analysis results
-              localStorage.setItem(`analysis_${analysisResponse.data.image_id}`, JSON.stringify(analysisResponse.data));
+              // Cache the full analysis results (store the entire response)
+              localStorage.setItem(`analysis_${analysisResponse.data.image_id}`, JSON.stringify(analysisResponse));
             }
             
             setIsAnalyzing(false);
