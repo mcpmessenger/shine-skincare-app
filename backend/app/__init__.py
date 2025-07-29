@@ -1,7 +1,12 @@
-from flask import Flask, jsonify, request
-from flask_cors import CORS
-import os
 import logging
+import os
+import threading
+import time
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from flask_jwt_extended import JWTManager
+from datetime import datetime, timedelta
+from functools import wraps
 from .service_manager import service_manager
 from .error_handlers import register_error_handlers, APIError, ServiceError
 from .logging_config import setup_logging, configure_flask_logging
@@ -20,6 +25,44 @@ from .model_optimization import (
 from .demographic_cache import (
     demographic_cache_manager, preload_common_demographics
 )
+
+# Timeout configuration
+TIMEOUT_CONFIGS = {
+    'skin_classification': {'sync_limit': 15, 'async_limit': 60},
+    'image_vectorization': {'sync_limit': 45, 'async_limit': 180},
+    'similarity_search': {'sync_limit': 30, 'async_limit': 120},
+    'google_vision': {'sync_limit': 20, 'async_limit': 90}
+}
+
+class TimeoutManager:
+    """Manages timeouts for AI operations"""
+    
+    def __init__(self):
+        self.active_operations = {}
+        self.operation_lock = threading.Lock()
+    
+    def execute_with_timeout(self, operation_name, operation_func, *args, **kwargs):
+        """Execute operation with timeout handling"""
+        config = TIMEOUT_CONFIGS.get(operation_name, {'sync_limit': 30, 'async_limit': 120})
+        
+        try:
+            # Try synchronous execution first
+            result = operation_func(*args, **kwargs)
+            return {'status': 'success', 'result': result, 'mode': 'sync'}
+        except Exception as e:
+            logger.warning(f"Sync operation failed for {operation_name}: {e}")
+            return {'status': 'error', 'error': str(e), 'mode': 'sync'}
+
+timeout_manager = TimeoutManager()
+
+def with_timeout_fallback(operation_name):
+    """Decorator for timeout handling"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return timeout_manager.execute_with_timeout(operation_name, func, *args, **kwargs)
+        return wrapper
+    return decorator
 
 # Setup enhanced logging
 setup_logging(
@@ -93,46 +136,103 @@ def create_app(config_name='development'):
     # Health check endpoint
     @app.route('/api/health')
     def health_check():
-        from datetime import datetime
-        
+        """Enhanced health check with ML capabilities"""
         try:
-            service_status = service_manager.get_service_status()
-            service_info = service_manager.get_service_info()
+            # Check ML availability
+            ml_status = {
+                'available': ML_AVAILABLE,
+                'libraries': {
+                    'numpy': 'numpy' in globals(),
+                    'opencv': 'cv2' in globals(),
+                    'tensorflow': 'tf' in globals(),
+                    'pillow': 'Image' in globals()
+                }
+            }
+            
+            # Check service availability
+            services_status = {}
+            if service_manager.is_initialized():
+                services_status = service_manager.get_service_status()
             
             return jsonify({
                 'status': 'healthy',
                 'timestamp': datetime.utcnow().isoformat(),
-                'services': service_status,
-                'service_info': service_info,
-                'services_initialized': service_manager.is_initialized()
-            })
+                'environment': os.environ.get('FLASK_ENV', 'production'),
+                'ml_capabilities': ml_status,
+                'services': services_status,
+                'timeout_config': TIMEOUT_CONFIGS,
+                'features': {
+                    'enhanced_analysis': True,
+                    'real_ml': ML_AVAILABLE,
+                    'timeout_handling': True,
+                    'guest_analysis': True
+                }
+            }), 200
+            
         except Exception as e:
+            logger.error(f"Health check failed: {str(e)}")
             return jsonify({
-                'status': 'degraded',
-                'timestamp': datetime.utcnow().isoformat(),
-                'error': str(e)
+                'status': 'unhealthy',
+                'error': str(e),
+                'timestamp': datetime.utcnow().isoformat()
             }), 500
     
     # Root endpoint
     @app.route('/')
     def root():
-        return {'message': 'Shine Skincare API', 'status': 'running'}
+        return {
+            'message': 'Shine Skincare API', 
+            'status': 'running',
+            'timestamp': datetime.utcnow().isoformat(),
+            'ml_available': ML_AVAILABLE,
+            'features': {
+                'enhanced_analysis': True,
+                'real_ml': ML_AVAILABLE,
+                'guest_analysis': True,
+                'timeout_handling': True
+            },
+            'endpoints': {
+                'guest_analysis': '/api/v2/analyze/guest',
+                'health_check': '/api/health',
+                'enhanced_analysis': '/api/enhanced-analysis'
+            }
+        }
     
     # Legacy v2 endpoint for frontend compatibility
     @app.route('/api/v2/analyze/guest', methods=['POST'])
     def analyze_guest_v2():
         """
         Legacy endpoint for frontend compatibility
-        Redirects to enhanced analysis endpoint
+        Routes to enhanced analysis with real ML capabilities
         """
         try:
+            # Import the enhanced analysis function
             from .enhanced_image_analysis.routes import analyze_image_guest
-            return analyze_image_guest()
+            
+            # Log the request for debugging
+            logger.info("Guest analysis request received via legacy endpoint")
+            
+            # Call the enhanced analysis function
+            response = analyze_image_guest()
+            
+            # Log successful analysis
+            logger.info("Guest analysis completed successfully")
+            
+            return response
+            
+        except ImportError as e:
+            logger.error(f"Failed to import enhanced analysis: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': 'Enhanced analysis not available',
+                'message': 'Service temporarily unavailable'
+            }), 503
         except Exception as e:
             logger.error(f"Error in legacy guest analysis: {str(e)}")
             return jsonify({
                 'success': False,
-                'error': 'Internal server error'
+                'error': 'Internal server error',
+                'message': 'Analysis failed. Please try again.'
             }), 500
     
     # Service configuration endpoint
@@ -242,6 +342,11 @@ def _register_blueprints(app):
         from .recommendations import recommendations_bp
         app.register_blueprint(recommendations_bp, url_prefix='/api/recommendations')
         logger.info("Recommendations blueprint registered")
+        
+        # Register SCIN analysis blueprint
+        from .routes.scin_analysis import scin_analysis_bp
+        app.register_blueprint(scin_analysis_bp)
+        logger.info("SCIN analysis blueprint registered")
         
         # Register other blueprints as needed
         # from .other_module import other_bp

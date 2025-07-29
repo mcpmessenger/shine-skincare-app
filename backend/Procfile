@@ -1,1 +1,1 @@
-web: python real_working_backend.py
+web: gunicorn backend.simple_server_no_tf:app --bind 0.0.0.0:5000 --workers 4 --timeout 300

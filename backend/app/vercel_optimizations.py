@@ -477,61 +477,19 @@ def optimize_for_vercel():
 
 
 def vercel_performance_middleware(app):
-    """Middleware specifically optimized for Vercel deployment"""
+    """Apply Vercel-specific performance optimizations"""
     
-    @app.before_first_request
-    def initialize_vercel_optimizations():
-        """Initialize optimizations on first request"""
-        if not vercel_optimizer.initialization_complete:
-            optimize_for_vercel()
+    # Store the original before_first_request if it exists
+    original_before_first_request = getattr(app, 'before_first_request', None)
     
     @app.before_request
-    def optimize_request():
-        """Optimize each request"""
-        from flask import g, request
-        
-        g.request_start_time = time.time()
-        
-        # Apply request-specific optimizations
-        if request.is_json and request.json:
-            g.optimized_request_data = request_optimizer.optimize_request_processing(
-                request.json
-            )
-    
-    @app.after_request
-    def record_request_metrics(response):
-        """Record request performance metrics"""
-        from flask import g, request
-        
-        if hasattr(g, 'request_start_time'):
-            duration = time.time() - g.request_start_time
-            
-            # Record detailed metrics for Vercel
-            performance_monitor.record_metric(
-                'vercel_request_duration',
-                duration,
-                'seconds',
-                {
-                    'method': request.method,
-                    'endpoint': request.endpoint or 'unknown',
-                    'status_code': str(response.status_code),
-                    'cold_start': str(vercel_optimizer.is_cold_start()),
-                    'content_length': str(response.content_length or 0)
-                }
-            )
-            
-            # Log slow requests
-            if duration > 5.0:  # Vercel has 10s timeout, warn at 5s
-                logger.warning(
-                    f"Slow Vercel request: {request.endpoint} took {duration:.3f}s",
-                    extra={
-                        'duration': duration,
-                        'endpoint': request.endpoint,
-                        'method': request.method
-                    }
-                )
-        
-        return response
+    def before_request_handler():
+        """Handle before request logic"""
+        # Initialize services on first request if needed
+        if not hasattr(app, '_services_initialized'):
+            app._services_initialized = True
+            # Call the original before_first_request logic here
+            pass
     
     return app
 

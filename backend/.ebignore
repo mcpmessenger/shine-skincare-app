@@ -242,4 +242,40 @@ test_*.tsx
 # Local scripts
 run_backend_local.py
 deploy_to_aws.py
-test_*.py 
+test_*.py
+
+# Exclude heavy app modules that aren't needed for basic functionality
+app/vercel_optimizations.py
+app/deployment_orchestrator.py
+app/infrastructure_manager.py
+app/credential_manager.py
+app/enhanced_analysis_router.py
+app/production_config.py
+app/simple_vercel_optimization.py
+app/monitoring.py
+app/model_optimization.py
+app/demographic_cache.py
+app/enhanced_service_wrappers.py
+app/error_handlers.py
+app/error_recovery.py
+app/service_manager.py
+app/performance.py
+app/logging_config.py
+
+# Exclude heavy subdirectories
+app/enhanced_skin_analysis/
+app/enhanced_image_analysis/
+app/auth/
+app/simple_skin_analysis/
+app/mcp/
+app/payments/
+app/recommendations/
+app/image_analysis/
+
+# Keep only essential models and services
+app/models/
+app/routes/
+app/services/
+
+# Exclude __pycache__ in all subdirectories
+**/__pycache__/ 

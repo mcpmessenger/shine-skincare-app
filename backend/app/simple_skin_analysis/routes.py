@@ -2,12 +2,13 @@ import os
 import logging
 import uuid
 from flask import request, jsonify, current_app
-from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request_optional
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from werkzeug.utils import secure_filename
 from datetime import datetime
 
 from . import simple_skin_bp
 from app.services.google_vision_service import GoogleVisionService
+from app.utils.file_validation import allowed_file
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +17,13 @@ google_vision_service = GoogleVisionService()
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp'}
 
-def allowed_file(filename):
-    """Check if file extension is allowed"""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+def verify_jwt_in_request_optional():
+    """Optional JWT verification - doesn't raise error if no token"""
+    try:
+        verify_jwt_in_request()
+        return True
+    except:
+        return False
 
 @simple_skin_bp.route('/analyze/skin', methods=['POST'])
 def analyze_skin():

@@ -16,11 +16,11 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Override the backend URL to fix connection issues
+    // Use the correct localhost backend URL for development
     if (typeof window !== 'undefined') {
-      // Force the correct backend URL
-      const correctBackendUrl = 'https://Shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com';
-      console.log('🔧 Overriding backend URL to:', correctBackendUrl);
+      // Force the correct backend URL for local development
+      const correctBackendUrl = 'http://localhost:5000';
+      console.log('🔧 Using localhost backend URL:', correctBackendUrl);
       
       // Update the API client base URL
       (apiClient as any).baseUrl = correctBackendUrl;

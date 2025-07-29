@@ -34,6 +34,17 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
         stopCamera();
       }
 
+      // Check if mediaDevices is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.error('Camera access not available:', {
+          mediaDevices: !!navigator.mediaDevices,
+          getUserMedia: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+        });
+        throw new Error('Camera access not available in this browser/environment. Please use HTTPS or localhost.');
+      }
+
+      console.log('Attempting to access camera...');
+      
       // Get camera stream
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -42,6 +53,8 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
           height: { ideal: 1280 }
         }
       });
+      
+      console.log('Camera stream obtained successfully');
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;

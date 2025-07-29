@@ -341,6 +341,13 @@ aws-infrastructure/parameters-vision.json
 *config*
 *env*
 *.env*
+*.env.local
+*.env.production
+*.env.development
+*.env.test
+*.env.staging
+*.env.aws
+*.env.temp
 *.key
 *.pem
 *.p12
@@ -421,3 +428,15 @@ aws-infrastructure/parameters-vision.json
 *.session_id_token
 *.cookie_token
 *.cookies_token
+
+# Specific sensitive files
+backend/.env
+backend/.env.local
+backend/.env.production
+backend/.env.temp
+aws-infrastructure/.env.aws
+aws-infrastructure/parameters-production.json
+aws-infrastructure/parameters-vision.json
+aws-infrastructure/task-definition.json
+aws-infrastructure/create-task-definition.ps1
+aws-infrastructure/deploy-*.ps1

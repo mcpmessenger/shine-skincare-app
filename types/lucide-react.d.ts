@@ -18,4 +18,5 @@ declare module 'lucide-react' {
   export const Database: LucideIcon;
   export const Brain: LucideIcon;
   export const Zap: LucideIcon;
+  export const Smartphone: LucideIcon;
 } 

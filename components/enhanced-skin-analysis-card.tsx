@@ -116,8 +116,8 @@ export default function EnhancedSkinAnalysisCard() {
       // Start progress simulation
       const progressInterval = simulateProgress();
       
-      // Call the enhanced vector analysis API
-      const analysisResponse = await apiClient.analyzeSkinVector(file, ethnicity, age);
+      // Use enhanced analysis for better results
+      const analysisResponse = await apiClient.analyzeSkinEnhanced(file);
       
       clearInterval(progressInterval);
       
