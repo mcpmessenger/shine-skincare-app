@@ -40,8 +40,8 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // Use environment variable if available, otherwise default to localhost
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    // Use environment variable if available, otherwise default to live AWS backend
+    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com';
     
     // Debug: Log the actual URL being used
     console.log('🔧 API Client initialized with backend URL:', this.baseUrl);
