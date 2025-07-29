@@ -16,6 +16,16 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Override the backend URL to fix connection issues
+    if (typeof window !== 'undefined') {
+      // Force the correct backend URL
+      const correctBackendUrl = 'https://Shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com';
+      console.log('🔧 Overriding backend URL to:', correctBackendUrl);
+      
+      // Update the API client base URL
+      (apiClient as any).baseUrl = correctBackendUrl;
+    }
+    
     loadTrendingProducts();
   }, []);
 

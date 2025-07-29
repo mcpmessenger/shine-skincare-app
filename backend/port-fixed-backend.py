@@ -20,7 +20,12 @@ USE_MOCK_SERVICES = os.environ.get('USE_MOCK_SERVICES', 'true').lower() == 'true
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=[
+    "https://main.d3oid65kfbmqt4.amplifyapp.com",
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "*"  # Allow all origins for now
+], supports_credentials=True)
 
 # Mock data for development
 TRENDING_PRODUCTS = [
@@ -168,31 +173,59 @@ def get_recommendations():
 def analyze_skin_guest():
     """Guest skin analysis endpoint"""
     try:
-        data = request.get_json() or {}
-        image_data = data.get('image', '')
+        # Handle both FormData and JSON requests
+        if request.files:
+            # Handle FormData file upload
+            file = request.files.get('image')
+            if not file:
+                return jsonify({
+                    "success": False,
+                    "message": "No image file provided"
+                }), 400
+            
+            # Read file data
+            image_data = file.read()
+            filename = file.filename
+        else:
+            # Handle JSON request (fallback)
+            data = request.get_json() or {}
+            image_data = data.get('image', '')
+            filename = data.get('filename', 'unknown')
         
-        # Mock analysis
+        # Mock analysis with better simulation
         skin_type = "combination"
+        concerns = ["Test concern"]
+        recommendations = ["Test recommendation"]
+        
         if image_data:
             # Simulate some processing
             import time
-            time.sleep(0.2)
+            time.sleep(0.5)
             
             # Mock analysis based on image data length
-            if len(image_data) > 1000:
+            if len(image_data) > 10000:
                 skin_type = "oily"
-            elif len(image_data) < 500:
+                concerns = ["Excess oil production", "Enlarged pores"]
+                recommendations = ["Use oil-free cleanser", "Try salicylic acid"]
+            elif len(image_data) < 5000:
                 skin_type = "dry"
+                concerns = ["Dehydration", "Flakiness"]
+                recommendations = ["Use hydrating serum", "Apply moisturizer twice daily"]
+            else:
+                skin_type = "combination"
+                concerns = ["Mixed skin concerns", "T-zone oiliness"]
+                recommendations = ["Use gentle cleanser", "Target specific areas"]
         
         analysis_result = {
             "analysis_id": f"analysis_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
             "status": "completed",
             "results": {
                 "skin_type": skin_type,
-                "concerns": ["Test concern"],
-                "recommendations": ["Test recommendation"],
+                "concerns": concerns,
+                "recommendations": recommendations,
                 "confidence": 0.8,
-                "image_quality": "medium"
+                "image_quality": "medium",
+                "filename": filename
             },
             "timestamp": datetime.utcnow().isoformat()
         }
@@ -221,8 +254,77 @@ def analyze_skin():
             "message": "Authentication required"
         }), 401
     
-    # For now, use the same logic as guest endpoint
-    return analyze_skin_guest()
+    try:
+        # Handle both FormData and JSON requests
+        if request.files:
+            # Handle FormData file upload
+            file = request.files.get('image')
+            if not file:
+                return jsonify({
+                    "success": False,
+                    "message": "No image file provided"
+                }), 400
+            
+            # Read file data
+            image_data = file.read()
+            filename = file.filename
+        else:
+            # Handle JSON request (fallback)
+            data = request.get_json() or {}
+            image_data = data.get('image', '')
+            filename = data.get('filename', 'unknown')
+        
+        # Enhanced mock analysis for authenticated users
+        skin_type = "combination"
+        concerns = ["Test concern"]
+        recommendations = ["Test recommendation"]
+        
+        if image_data:
+            # Simulate some processing
+            import time
+            time.sleep(0.8)
+            
+            # Enhanced mock analysis based on image data length
+            if len(image_data) > 15000:
+                skin_type = "oily"
+                concerns = ["Excess oil production", "Enlarged pores", "Acne-prone"]
+                recommendations = ["Use oil-free cleanser", "Try salicylic acid", "Consider retinol"]
+            elif len(image_data) < 8000:
+                skin_type = "dry"
+                concerns = ["Dehydration", "Flakiness", "Sensitivity"]
+                recommendations = ["Use hydrating serum", "Apply moisturizer twice daily", "Avoid harsh ingredients"]
+            else:
+                skin_type = "combination"
+                concerns = ["Mixed skin concerns", "T-zone oiliness", "Dry patches"]
+                recommendations = ["Use gentle cleanser", "Target specific areas", "Multi-zone approach"]
+        
+        analysis_result = {
+            "analysis_id": f"auth_analysis_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+            "status": "completed",
+            "results": {
+                "skin_type": skin_type,
+                "concerns": concerns,
+                "recommendations": recommendations,
+                "confidence": 0.85,
+                "image_quality": "high",
+                "filename": filename,
+                "authenticated": True
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        return jsonify({
+            "data": analysis_result,
+            "success": True,
+            "message": "Enhanced skin analysis completed successfully"
+        })
+        
+    except Exception as e:
+        logger.error(f"Authenticated analysis failed: {e}")
+        return jsonify({
+            "success": False,
+            "message": f"Analysis failed: {str(e)}"
+        }), 500
 
 @app.route('/api/payments/create-intent', methods=['POST'])
 def create_payment_intent():
