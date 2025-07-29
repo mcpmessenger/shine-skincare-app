@@ -1,5 +1,19 @@
 # Shine Skincare App
 
+## 🚀 **LIVE DEPLOYMENT STATUS**
+
+### **Backend**: ✅ **LIVE AND OPERATIONAL**
+- **URL**: `http://shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com`
+- **Health Check**: ✅ Working
+- **API Endpoints**: ✅ All functional
+- **Last Updated**: 2025-07-29
+
+### **Frontend**: ✅ **LIVE AND OPERATIONAL** 
+- **URL**: `https://app.shineskincollective.com`
+- **Status**: Deployed via AWS Amplify
+- **Backend Connection**: ✅ Configured
+- **Last Build**: Triggered by latest push
+
 A comprehensive skincare application with AI-powered skin analysis and product recommendations.
 
 ## 🎉 **DEPLOYMENT SUCCESS: Backend Fully Operational**

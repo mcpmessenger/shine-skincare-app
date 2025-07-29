@@ -21,6 +21,7 @@ CORS(app, origins=[
     'http://localhost:3000', 
     'http://127.0.0.1:3000',
     'https://app.shineskincollective.com',
+    'https://www.shineskincollective.com',
     'https://shineskincollective.com',
     'https://main.d3oid65kfbmqt4.amplifyapp.com'
 ], supports_credentials=True)

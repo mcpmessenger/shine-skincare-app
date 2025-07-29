@@ -1,0 +1,5 @@
+[33mb46100d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m  Deploy: Security cleanup + Backend URL fixes + Production ready
+[33m5432180[m  TEMPORARY: Hardcode backend URL for testing
+[33me456063[m  FORCE REBUILD: Add debug logs and fix manifest icons
+[33m5d9fe82[m  FIX: Add manifest.json and update .gitignore
+[33m529c55c[m  FIX: Update frontend to use live AWS backend URL
