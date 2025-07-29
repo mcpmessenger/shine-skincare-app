@@ -10,17 +10,17 @@ import { useAuth } from "@/hooks/useAuth"
 import { apiClient, Product } from "@/lib/api"
 
 export default function HomePage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Use the correct localhost backend URL for development
-    if (typeof window !== 'undefined') {
-      // Force the correct backend URL for local development
-      const correctBackendUrl = 'http://localhost:5000';
-      console.log('🔧 Using localhost backend URL:', correctBackendUrl);
+    // Use the deployed AWS backend URL with HTTP (HTTPS certificate issue)
+                  if (typeof window !== 'undefined') {
+                // Use the working Elastic Beanstalk backend URL
+                const correctBackendUrl = 'http://shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com';
+                console.log('🔧 Using deployed AWS backend URL:', correctBackendUrl);
       
       // Update the API client base URL
       (apiClient as any).baseUrl = correctBackendUrl;

@@ -40,8 +40,7 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // TEMPORARY: Hardcode the backend URL to test connection
-    // TODO: Revert to environment variable once build is confirmed working
+    // Use the working Elastic Beanstalk backend URL
     this.baseUrl = 'http://shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com';
     
     // Debug: Log the actual URL being used
@@ -58,6 +57,7 @@ class ApiClient {
     // Force rebuild - this should show the correct URL
     console.log('🚀 BUILD TRIGGER - Environment variable should be applied now');
     console.log('🔧 TEMPORARY: Using hardcoded URL for testing');
+    console.log('🔄 CACHE BUSTING: Timestamp:', new Date().toISOString());
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

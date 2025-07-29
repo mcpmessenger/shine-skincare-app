@@ -1,14 +1,7 @@
-# Core Flask dependencies
 flask==3.1.1
 flask-cors==3.0.10
 gunicorn==21.2.0
-
-# Essential ML Dependencies (optimized for EB)
-opencv-python-headless==4.8.0.76
 pillow==10.1.0
 numpy==1.24.3
-
-# Core utilities
-psutil==5.9.6
 python-dotenv==1.0.0
 requests==2.31.0

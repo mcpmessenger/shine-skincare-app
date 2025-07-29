@@ -17,7 +17,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app, origins=['http://localhost:3000', 'http://127.0.0.1:3000'], supports_credentials=True)
+CORS(app, origins=[
+    'http://localhost:3000', 
+    'http://127.0.0.1:3000',
+    'https://app.shineskincollective.com',
+    'https://shineskincollective.com',
+    'https://main.d3oid65kfbmqt4.amplifyapp.com'
+], supports_credentials=True)
 
 # Test basic imports
 try:

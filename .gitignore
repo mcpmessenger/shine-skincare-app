@@ -98,6 +98,31 @@ dist
 .cache/
 # public
 
+# AWS Deployment Files (Sensitive Data)
+BundleLogs-*/
+*.zip
+*.tar.gz
+backend-deployment-*.zip
+backend-deploy-*.zip
+backend-deploy-*.tar.gz
+
+# AWS Credentials and Sensitive Data
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*credentials*
+*secret*
+*token*
+
+# Environment Files
+.env*
+env-*.txt
+local.env
+frontend_env.txt
+env.production
+
 # Vuepress build output
 .vuepress/dist
 
