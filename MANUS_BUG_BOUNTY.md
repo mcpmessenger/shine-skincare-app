@@ -1,130 +1,153 @@
-# 🐛 MANUS Bug Bounty Program
+# 🤝 MANUS Open Call for Help
 
 ## 🎯 **Overview**
 
-**MANUS** is an advanced AI-powered skincare analysis platform that provides personalized recommendations through machine learning and computer vision. We're launching a bug bounty program to ensure the highest security and reliability standards.
+**MANUS** is an advanced AI-powered skincare analysis platform that provides personalized recommendations through machine learning and computer vision. We're reaching out to the security and development community for help in making our platform more secure, reliable, and robust.
 
-## 🏆 **Rewards Structure**
+## 🌟 **Why We Need Your Help**
 
-### **Critical Vulnerabilities** ($500 - $1,000)
-- **Remote Code Execution** (RCE)
-- **SQL Injection** in database operations
-- **Authentication Bypass** in user management
-- **Sensitive Data Exposure** (API keys, credentials)
-- **Cross-Site Scripting** (XSS) with data theft
+### **Our Mission:**
+We're building a platform that helps people understand their skin better through AI analysis. As we scale and add more ML capabilities, we want to ensure the highest standards of security and reliability.
 
-### **High Severity** ($200 - $500)
-- **Privilege Escalation** in user roles
-- **Server-Side Request Forgery** (SSRF)
-- **Insecure Direct Object References** (IDOR)
-- **Cross-Site Request Forgery** (CSRF)
-- **Business Logic Flaws** affecting core functionality
+### **What We're Looking For:**
+- **Security researchers** to help identify vulnerabilities
+- **Developers** to suggest improvements
+- **ML engineers** to review our AI pipeline
+- **DevOps experts** to audit our infrastructure
+- **Anyone passionate** about making technology safer
 
-### **Medium Severity** ($100 - $200)
-- **Information Disclosure** (non-sensitive)
-- **Input Validation** bypasses
-- **Rate Limiting** bypasses
-- **Session Management** issues
-- **API Security** misconfigurations
+## 🔍 **Areas Where We Need Help**
 
-### **Low Severity** ($50 - $100)
-- **UI/UX Security** issues
-- **Error Message** information leakage
-- **Missing Security Headers**
-- **Deprecated Library** usage
-- **Minor Authentication** issues
+### **1. Security Review**
+- **Authentication & Authorization** - User management, JWT handling, session security
+- **API Security** - Rate limiting, input validation, CORS configuration
+- **Image Processing Security** - File upload validation, processing pipeline security
+- **ML Pipeline Security** - Model input validation, prediction endpoint security
+- **Infrastructure Security** - AWS configuration, environment variables, network security
 
-## 🎯 **Scope**
+### **2. Code Quality & Reliability**
+- **Frontend (Next.js)** - React components, state management, error handling
+- **Backend (Flask)** - API endpoints, database operations, ML integration
+- **ML Services** - Google Vision integration, FAISS vector search, recommendation algorithms
+- **Infrastructure** - AWS Elastic Beanstalk, Amplify deployment, monitoring
 
-### **In Scope:**
-- **Frontend Application** (Next.js)
-- **Backend API** (Flask)
-- **AWS Infrastructure** (Elastic Beanstalk, Amplify)
-- **ML Services** (Google Vision, FAISS)
-- **Authentication System**
-- **Image Processing** endpoints
-- **Recommendation Engine**
+### **3. Performance & Scalability**
+- **ML Model Optimization** - Memory usage, response times, model loading
+- **Database Performance** - Query optimization, indexing, connection pooling
+- **API Performance** - Response times, caching, rate limiting
+- **Infrastructure Scaling** - Auto-scaling, load balancing, monitoring
 
-### **Out of Scope:**
-- **Third-party services** (Google Cloud, AWS core services)
-- **Development environments**
-- **Test instances**
-- **Documentation** (unless security-related)
-- **Performance issues** (unless security-related)
+### **4. User Experience**
+- **Frontend UX** - Interface design, accessibility, mobile responsiveness
+- **Error Handling** - User-friendly error messages, graceful degradation
+- **Loading States** - Progress indicators, skeleton screens
+- **Data Visualization** - Analysis results, recommendations display
 
-## 🔍 **Focus Areas**
+## 🎯 **How You Can Help**
 
-### **1. Authentication & Authorization**
-- **User registration/login** flows
-- **JWT token** handling
-- **Session management**
-- **Role-based access** control
-- **API authentication**
+### **Security Researchers:**
+- **Test our endpoints** for common vulnerabilities
+- **Review our authentication** flows
+- **Check for data exposure** in API responses
+- **Audit our ML pipeline** for security issues
+- **Test file upload** security
 
-### **2. Image Processing Security**
-- **File upload** validation
-- **Image processing** endpoints
-- **Storage security** (S3)
-- **Processing pipeline** security
+### **Developers:**
+- **Review our code** for best practices
+- **Suggest improvements** to our architecture
+- **Help optimize** performance bottlenecks
+- **Contribute** bug fixes or feature improvements
+- **Test our APIs** and report issues
 
-### **3. ML Pipeline Security**
-- **Model input** validation
-- **Prediction endpoint** security
-- **Vector database** access
-- **Recommendation** algorithm security
+### **ML Engineers:**
+- **Review our ML pipeline** for accuracy and efficiency
+- **Suggest model improvements** or alternatives
+- **Help optimize** memory usage in ML processing
+- **Audit our recommendation** algorithms
+- **Test edge cases** in image processing
 
-### **4. API Security**
-- **Rate limiting** implementation
-- **Input validation** on all endpoints
-- **Error handling** security
-- **CORS** configuration
+### **DevOps Engineers:**
+- **Review our AWS setup** for best practices
+- **Suggest monitoring** improvements
+- **Help optimize** deployment processes
+- **Audit our security** configurations
+- **Suggest scaling** strategies
 
-### **5. Infrastructure Security**
-- **AWS configuration** security
-- **Environment variables** exposure
-- **Network security** (VPC, security groups)
-- **Logging and monitoring**
+## 📋 **What We're Looking For**
 
-## 🚨 **Common Vulnerabilities to Look For**
+### **Critical Issues:**
+- **Security vulnerabilities** that could compromise user data
+- **Authentication bypasses** or privilege escalation
+- **Data exposure** or information leakage
+- **Remote code execution** possibilities
+- **SQL injection** or similar injection attacks
+
+### **Important Issues:**
+- **Performance bottlenecks** affecting user experience
+- **Reliability issues** causing service disruptions
+- **Scalability problems** as we grow
+- **Code quality** issues affecting maintainability
+- **Documentation** gaps or unclear processes
+
+### **Nice to Have:**
+- **Feature suggestions** for better user experience
+- **UI/UX improvements** or accessibility enhancements
+- **Performance optimizations** for faster response times
+- **Code refactoring** suggestions
+- **Testing improvements** or new test cases
+
+## 🚨 **Common Areas to Check**
 
 ### **Frontend (Next.js):**
-- **XSS** in user input fields
-- **CSRF** in form submissions
-- **Client-side** validation bypass
+- **XSS vulnerabilities** in user input fields
+- **CSRF protection** in form submissions
+- **Client-side validation** bypasses
 - **Local storage** security
-- **API key** exposure in client code
+- **API key exposure** in client code
 
 ### **Backend (Flask):**
+- **Input validation** on all endpoints
 - **SQL injection** in database queries
 - **Path traversal** in file operations
 - **Command injection** in system calls
-- **Deserialization** vulnerabilities
 - **Memory leaks** in ML processing
 
 ### **AWS Infrastructure:**
-- **IAM** misconfigurations
-- **S3 bucket** permissions
-- **Elastic Beanstalk** security
+- **IAM misconfigurations** or overly permissive policies
+- **S3 bucket permissions** and access controls
+- **Elastic Beanstalk** security settings
 - **Environment variable** exposure
-- **Network access** controls
+- **Network security** (VPC, security groups)
 
-## 📋 **Submission Guidelines**
+### **ML Pipeline:**
+- **Model input validation** and sanitization
+- **Prediction endpoint** security
+- **Vector database** access controls
+- **Recommendation algorithm** security
+- **Data privacy** in ML processing
+
+## 📞 **How to Submit Your Findings**
+
+### **Email Submission:**
+- **To**: help@manus-skincare.com
+- **Subject**: [HELP] [Category] [Brief Description]
+- **Format**: Markdown or plain text
+- **Attachments**: Screenshots, logs, code examples (if needed)
 
 ### **Required Information:**
-1. **Clear description** of the vulnerability
-2. **Steps to reproduce** (detailed)
-3. **Proof of concept** (if applicable)
-4. **Impact assessment** (what can be exploited)
-5. **Suggested fix** (if possible)
-6. **Severity classification** (Critical/High/Medium/Low)
+1. **Clear description** of the issue or suggestion
+2. **Steps to reproduce** (if applicable)
+3. **Impact assessment** (what could happen)
+4. **Suggested solution** (if you have ideas)
+5. **Category** (Security/Performance/UX/Infrastructure)
 
 ### **Submission Format:**
 ```markdown
-## Vulnerability Report
+## Issue Report
 
 **Title**: [Brief description]
 
-**Severity**: [Critical/High/Medium/Low]
+**Category**: [Security/Performance/UX/Infrastructure]
 
 **Description**: [Detailed explanation]
 
@@ -133,112 +156,104 @@
 2. [Step 2]
 3. [Step 3]
 
-**Proof of Concept**: [Code/commands if applicable]
+**Impact**: [What could happen or what's affected]
 
-**Impact**: [What can be exploited]
-
-**Suggested Fix**: [How to resolve]
+**Suggested Solution**: [How to fix or improve]
 
 **Additional Notes**: [Any other relevant information]
 ```
 
-## 🏆 **Reward Criteria**
+## 🤝 **Recognition & Community**
 
-### **Bonus Factors:**
-- **Clear reproduction steps** (+10%)
-- **Working proof of concept** (+20%)
-- **Detailed impact analysis** (+15%)
-- **Suggested fix included** (+10%)
-- **First to report** (+5%)
+### **How We'll Acknowledge Your Help:**
+- **Public recognition** in our documentation
+- **Contributor credits** in our repository
+- **Special thanks** in our release notes
+- **Community shoutouts** on our social media
+- **Invitation** to our beta testing program
 
-### **Disqualification:**
-- **Already known** vulnerabilities
-- **Out of scope** issues
-- **Incomplete** submissions
-- **Malicious** testing (DoS, data destruction)
-- **Social engineering** attempts
-
-## 📞 **How to Submit**
-
-### **Email Submission:**
-- **To**: security@manus-skincare.com
-- **Subject**: [BUG BOUNTY] [Severity] [Brief Description]
-- **Format**: Markdown or plain text
-- **Attachments**: Screenshots, logs (if needed)
-
-### **Response Timeline:**
-- **Initial response**: 24-48 hours
-- **Triage**: 3-5 business days
-- **Reward payment**: 7-14 days after validation
+### **Community Benefits:**
+- **Early access** to new features
+- **Direct communication** with our development team
+- **Influence** on product direction
+- **Networking** with other security researchers
+- **Learning opportunities** in AI/ML security
 
 ## 🔒 **Testing Guidelines**
 
 ### **Allowed Testing:**
-- **Automated scanning** (with rate limiting)
-- **Manual testing** of endpoints
-- **Code review** of public repositories
-- **Configuration** analysis
+- **Manual testing** of our endpoints
+- **Code review** of our public repositories
+- **Configuration analysis** of our setup
+- **Performance testing** with reasonable load
+- **Security scanning** with rate limiting
 
-### **Prohibited Testing:**
-- **Denial of Service** (DoS) attacks
-- **Data destruction** or modification
-- **Social engineering** of staff
-- **Physical access** attempts
-- **Excessive** automated scanning
+### **Please Don't:**
+- **Perform DoS attacks** or excessive load testing
+- **Attempt to destroy** or modify data
+- **Use social engineering** against our team
+- **Access systems** you shouldn't have access to
+- **Perform malicious** testing that could harm users
 
-## 📊 **Program Statistics**
+## 📊 **Current Focus Areas**
 
-### **Current Status:**
-- **Total Reports**: 0
-- **Valid Reports**: 0
-- **Total Rewards**: $0
-- **Average Response Time**: N/A
+### **High Priority:**
+- **Authentication security** and session management
+- **API endpoint** security and validation
+- **ML pipeline** security and reliability
+- **Infrastructure** security and configuration
+- **Performance optimization** for ML processing
 
-### **Top Vulnerability Types:**
-- **Authentication**: 0
-- **Input Validation**: 0
-- **Configuration**: 0
-- **Business Logic**: 0
+### **Medium Priority:**
+- **User experience** improvements
+- **Code quality** and maintainability
+- **Documentation** and clarity
+- **Testing coverage** and reliability
+- **Monitoring and logging** improvements
 
-## 🎯 **Special Focus Areas**
+### **Low Priority:**
+- **UI/UX enhancements** and accessibility
+- **Feature suggestions** and improvements
+- **Performance optimizations** for non-critical paths
+- **Code refactoring** and cleanup
+- **Minor bug fixes** and improvements
 
-### **ML Security:**
-- **Model poisoning** attacks
-- **Adversarial examples** in image processing
-- **Data privacy** in ML pipeline
-- **Model extraction** attempts
+## 📝 **Legal & Ethical Guidelines**
 
-### **API Security:**
-- **GraphQL** vulnerabilities (if implemented)
-- **REST API** security
-- **Rate limiting** bypasses
-- **Authentication** bypasses
+### **Our Commitment:**
+- **Good faith testing** is welcome and protected
+- **Responsible disclosure** of any findings
+- **No legal action** for legitimate security research
+- **Confidentiality** of sensitive findings
+- **Collaboration** with the security community
 
-### **Infrastructure:**
-- **AWS misconfigurations**
-- **Container security** (if using Docker)
-- **Network security** (VPC, security groups)
-- **Monitoring and logging** security
+### **Your Commitment:**
+- **Follow responsible** disclosure practices
+- **Respect rate limits** and testing guidelines
+- **Don't cause harm** to our systems or users
+- **Report accidental** data access immediately
+- **Maintain confidentiality** of sensitive findings
 
-## 📝 **Legal Terms**
+## 🌟 **Join Our Community**
 
-### **Program Rules:**
-1. **Comply** with applicable laws
-2. **Respect** rate limits and testing guidelines
-3. **Report** vulnerabilities responsibly
-4. **Maintain** confidentiality of findings
-5. **Cooperate** with security team
+### **Why Help Us:**
+- **Make a difference** in AI-powered healthcare
+- **Learn about** ML security and AI safety
+- **Build your reputation** in the security community
+- **Network with** other researchers and developers
+- **Contribute to** open source and public good
 
-### **Liability:**
-- **Good faith** testing is protected
-- **Accidental** data access must be reported
-- **Malicious** testing is prohibited
-- **Legal action** may be taken for violations
+### **What You'll Get:**
+- **Recognition** for your contributions
+- **Learning opportunities** in AI/ML security
+- **Community connections** and networking
+- **Early access** to new features
+- **Satisfaction** of helping improve technology
 
 ---
 
-**Program Status**: 🟢 **Active**  
+**Status**: 🟢 **Open for Contributions**  
 **Last Updated**: 2025-07-28  
-**Contact**: security@manus-skincare.com
+**Contact**: help@manus-skincare.com
 
-*This bug bounty program is designed to improve the security of MANUS while providing fair compensation for responsible security researchers.* 
+*We believe in the power of community and collaboration. Your help makes our platform better for everyone.* 
