@@ -40,8 +40,9 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // Use environment variable if available, otherwise default to live AWS backend
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com';
+    // TEMPORARY: Hardcode the backend URL to test connection
+    // TODO: Revert to environment variable once build is confirmed working
+    this.baseUrl = 'http://shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com';
     
     // Debug: Log the actual URL being used
     console.log('🔧 API Client initialized with backend URL:', this.baseUrl);
@@ -56,6 +57,7 @@ class ApiClient {
     
     // Force rebuild - this should show the correct URL
     console.log('🚀 BUILD TRIGGER - Environment variable should be applied now');
+    console.log('🔧 TEMPORARY: Using hardcoded URL for testing');
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
