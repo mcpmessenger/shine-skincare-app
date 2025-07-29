@@ -53,6 +53,9 @@ class ApiClient {
     
     // Log a clear message about the URL being used
     console.log('🎯 Using backend URL:', this.baseUrl);
+    
+    // Force rebuild - this should show the correct URL
+    console.log('🚀 BUILD TRIGGER - Environment variable should be applied now');
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
