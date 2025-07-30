@@ -16,11 +16,11 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Use the v2 backend URL
+    // Use the CloudFront HTTPS URL
     if (typeof window !== 'undefined') {
-      // Use the v2 backend with fixed CORS
-      const correctBackendUrl = 'http://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
-      console.log('🔧 Using v2 backend URL:', correctBackendUrl);
+      // Use the CloudFront HTTPS proxy
+      const correctBackendUrl = 'https://d1kmi2r0duzr21.cloudfront.net';
+      console.log('🔧 Using CloudFront HTTPS URL:', correctBackendUrl);
       
       // Update the API client base URL
       (apiClient as any).baseUrl = correctBackendUrl;

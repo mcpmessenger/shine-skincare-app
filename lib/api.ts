@@ -40,8 +40,8 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // Use environment variable or fallback to v2 backend deployment
-    this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
+    // Use environment variable or fallback to CloudFront HTTPS deployment
+    this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://d1kmi2r0duzr21.cloudfront.net';
     
     // Debug: Log the actual URL being used
     console.log('🔧 API Client initialized with backend URL:', this.baseUrl);
@@ -52,11 +52,11 @@ class ApiClient {
     });
     
     // Log a clear message about the URL being used
-    console.log('🎯 Using v2 backend URL:', this.baseUrl);
+    console.log('🎯 Using CloudFront HTTPS URL:', this.baseUrl);
     
     // Force rebuild - this should show the correct URL
     console.log('🚀 BUILD TRIGGER - Environment variable should be applied now');
-    console.log('🔧 V2 BACKEND: Using new deployment with fixed CORS');
+    console.log('🔧 CLOUDFRONT HTTPS: Using secure HTTPS proxy');
     console.log('🔄 CACHE BUSTING: Timestamp:', new Date().toISOString());
   }
 

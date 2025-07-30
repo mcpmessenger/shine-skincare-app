@@ -1,27 +1,50 @@
-option_settings:
+# HTTPS Configuration for Elastic Beanstalk Environment
+# This file configures HTTPS for the shine-env environment
+
+OptionSettings:
+  # Load Balancer Configuration
   aws:elbv2:listener:443:
     ListenerEnabled: true
     Protocol: HTTPS
-    SSLCertificateArns: arn:aws:acm:us-east-1:aws:certificate/cloudfront-default
-    DefaultProcess: default
-    Rules: 
-  aws:elbv2:listener:80:
-    ListenerEnabled: true
-    Protocol: HTTP
-    DefaultProcess: default
-    Rules: 
-  aws:elbv2:listenerrule:redirect-http-to-https:
-    Path: /*
-    Priority: 1
-    Process: default
-    TargetGroupName: awseb-AWSEB-AWSEBAutoScalingGroup-XXXXXXXXX
+    SSLCertificateArns: arn:aws:acm:us-east-1:396608803476:certificate/your-certificate-id
+  
+  # Security Group Configuration
   aws:autoscaling:launchconfiguration:
     SecurityGroups: sg-xxxxxxxxx
-  aws:ec2:instances:
-    InstanceTypes: m5.2xlarge
+  
+  # Environment Configuration
   aws:elasticbeanstalk:environment:
     LoadBalancerType: application
+    ServiceRole: aws-elasticbeanstalk-service-role
+  
+  # Application Load Balancer Configuration
   aws:elasticbeanstalk:environment:process:default:
     HealthCheckPath: /health
-    Port: 5000
-    Protocol: HTTP 
+    Port: 80
+    Protocol: HTTP
+  
+  # HTTPS Redirect Configuration
+  aws:elasticbeanstalk:environment:proxy:
+    ProxyServer: nginx
+  
+  # SSL Configuration
+  aws:elasticbeanstalk:environment:proxy:staticfiles:
+    /static: static/
+    /images: images/
+  
+  # HTTPS Headers
+  aws:elasticbeanstalk:environment:proxy:headers:
+    X-Forwarded-Proto: https
+    X-Forwarded-For: $proxy_add_x_forwarded_for
+    X-Real-IP: $remote_addr
+
+# Alternative: Use AWS Certificate Manager to create a certificate
+# 1. Go to AWS Certificate Manager
+# 2. Request a certificate for: *.eba-azwgu4dc.us-east-1.elasticbeanstalk.com
+# 3. Validate the certificate
+# 4. Update the SSLCertificateArns above with the new certificate ARN
+
+# Quick Setup Instructions:
+# 1. Create certificate in ACM for the domain
+# 2. Update the SSLCertificateArns in this file
+# 3. Apply configuration: aws elasticbeanstalk update-environment --environment-name shine-env --option-settings file://enable-https-config.yml 
