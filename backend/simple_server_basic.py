@@ -17,12 +17,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+# Increase file upload limit to 16MB
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
 CORS(app, origins=[
     'http://localhost:3000', 
     'http://127.0.0.1:3000',
     'https://app.shineskincollective.com',
     'https://www.shineskincollective.com',
     'https://shineskincollective.com',
+    'https://api.shineskincollective.com',
     'https://main.d3oid65kfbmqt4.amplifyapp.com'
 ], supports_credentials=True)
 
