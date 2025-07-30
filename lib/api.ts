@@ -40,8 +40,8 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // Use the working Elastic Beanstalk backend URL with HTTPS
-    this.baseUrl = 'https://shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com';
+    // Use the custom domain for the backend
+    this.baseUrl = 'https://api.shineskincollective.com';
     
     // Debug: Log the actual URL being used
     console.log('🔧 API Client initialized with backend URL:', this.baseUrl);
