@@ -40,7 +40,7 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // Use the working Elastic Beanstalk backend URL
+    // Use the working Elastic Beanstalk backend URL (HTTP for now)
     this.baseUrl = 'http://shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com';
     
     // Debug: Log the actual URL being used

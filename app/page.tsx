@@ -18,7 +18,7 @@ export default function HomePage() {
   useEffect(() => {
     // Use the deployed AWS backend URL with HTTP (HTTPS certificate issue)
                   if (typeof window !== 'undefined') {
-                              // Use the working Elastic Beanstalk backend URL
+                              // Use the working Elastic Beanstalk backend URL (HTTP for now)
               const correctBackendUrl = 'http://shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com';
                 console.log('🔧 Using deployed AWS backend URL:', correctBackendUrl);
       
