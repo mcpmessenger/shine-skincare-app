@@ -18,8 +18,8 @@ export default function HomePage() {
   useEffect(() => {
     // Use the Unicorn Alpha backend URL
     if (typeof window !== 'undefined') {
-      // Use the Unicorn Alpha backend with HTTPS
-      const correctBackendUrl = 'https://api.shineskincollective.com';
+      // Use the Unicorn Alpha backend with HTTP until DNS propagates
+      const correctBackendUrl = 'http://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
       console.log('🔧 Using Unicorn Alpha backend URL:', correctBackendUrl);
       
       // Update the API client base URL
