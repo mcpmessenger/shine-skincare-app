@@ -16,11 +16,11 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Use the deployed AWS backend URL with HTTP (HTTPS certificate issue)
-                  if (typeof window !== 'undefined') {
-                                                          // Use the custom domain for the backend
-                            const correctBackendUrl = 'https://api.shineskincollective.com';
-                console.log('🔧 Using deployed AWS backend URL:', correctBackendUrl);
+    // Use the Unicorn Alpha backend URL
+    if (typeof window !== 'undefined') {
+      // Use the Unicorn Alpha backend
+      const correctBackendUrl = 'http://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
+      console.log('🔧 Using Unicorn Alpha backend URL:', correctBackendUrl);
       
       // Update the API client base URL
       (apiClient as any).baseUrl = correctBackendUrl;
