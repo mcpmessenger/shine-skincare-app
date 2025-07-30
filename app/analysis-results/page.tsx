@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -87,7 +87,7 @@ interface AnalysisResult {
   };
 }
 
-export default function AnalysisResultsPage() {
+function AnalysisResultsContent() {
   const searchParams = useSearchParams();
   const analysisId = searchParams.get('analysisId');
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -101,30 +101,28 @@ export default function AnalysisResultsPage() {
       return;
     }
 
-    // Try to get cached analysis result
-    const cachedResult = localStorage.getItem(`analysis_${analysisId}`);
-    if (cachedResult) {
-      try {
-        const parsed = JSON.parse(cachedResult);
-        setAnalysisResult(parsed);
-        setLoading(false);
-      } catch (e) {
-        console.error('Failed to parse cached analysis:', e);
-        setError('Failed to load analysis results');
-        setLoading(false);
+    // Get analysis result from localStorage
+    try {
+      const storedResult = localStorage.getItem(`analysis_${analysisId}`);
+      if (storedResult) {
+        const result = JSON.parse(storedResult);
+        setAnalysisResult(result);
+      } else {
+        setError('Analysis result not found');
       }
-    } else {
-      setError('Analysis results not found');
+    } catch (err) {
+      setError('Failed to load analysis result');
+    } finally {
       setLoading(false);
     }
   }, [analysisId]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p>Loading analysis results...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading analysis results...</p>
         </div>
       </div>
     );
@@ -132,53 +130,51 @@ export default function AnalysisResultsPage() {
 
   if (error || !analysisResult) {
     return (
-      <div className="min-h-screen bg-background p-4">
-        <div className="max-w-4xl mx-auto">
-          <Link href="/skin-analysis" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Analysis
-          </Link>
-          <Card>
-            <CardContent className="p-8 text-center">
-              <div className="text-red-500 mb-4">
-                <AlertCircle className="h-12 w-12 mx-auto" />
-              </div>
-              <h2 className="text-xl font-semibold mb-2">Analysis Not Found</h2>
-              <p className="text-muted-foreground mb-4">{error}</p>
-              <Button asChild>
-                <Link href="/skin-analysis">Start New Analysis</Link>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              Error
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600 mb-4">{error || 'Analysis result not found'}</p>
+            <Link href="/skin-analysis">
+              <Button className="w-full">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Analysis
               </Button>
-            </CardContent>
-          </Card>
-        </div>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  const { skin_analysis, similar_scin_profiles, confidence_scores, metadata } = analysisResult.data;
+  const { data } = analysisResult;
+  const { skin_analysis, similar_scin_profiles, confidence_scores, metadata } = data;
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+      <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <Link href="/skin-analysis" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Analysis
+          <Link href="/skin-analysis">
+            <Button variant="ghost" className="mb-4">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Analysis
+            </Button>
           </Link>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-primary" />
-              <h1 className="text-3xl font-bold">Analysis Results</h1>
-            </div>
-            <Badge variant="secondary" className="ml-auto">
-              Analysis ID: {analysisId?.slice(-8)}
-            </Badge>
+          <div className="flex items-center gap-3 mb-4">
+            <Sparkles className="h-8 w-8 text-purple-600" />
+            <h1 className="text-3xl font-bold text-gray-900">AI-Powered Skin Analysis Results</h1>
           </div>
+          <p className="text-gray-600">Comprehensive analysis of your skin using advanced AI technology</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Results */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Main Analysis Results */}
           <div className="lg:col-span-2 space-y-6">
             {/* Skin Analysis Summary */}
             <Card>
@@ -191,101 +187,99 @@ export default function AnalysisResultsPage() {
                   AI-powered analysis of your skin characteristics
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Skin Type */}
-                <div className="flex items-center justify-between">
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h3 className="font-semibold">Skin Type</h3>
-                    <p className="text-muted-foreground">{skin_analysis.skinType}</p>
+                    <p className="text-sm font-medium text-gray-600">Skin Type</p>
+                    <p className="text-lg font-semibold">{skin_analysis.skinType}</p>
                   </div>
-                  <Badge variant="outline">
-                    Fitzpatrick Type {skin_analysis.fitzpatrick_type}
-                  </Badge>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Fitzpatrick Type</p>
+                    <p className="text-lg font-semibold">{skin_analysis.fitzpatrick_type}</p>
+                  </div>
                 </div>
 
                 {/* Skin Metrics */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Droplets className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm font-medium">Hydration</span>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Hydration</span>
+                      <span>{skin_analysis.hydration}%</span>
                     </div>
                     <Progress value={skin_analysis.hydration} className="h-2" />
-                    <p className="text-xs text-muted-foreground">{skin_analysis.hydration}%</p>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm font-medium">Oiliness</span>
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Oiliness</span>
+                      <span>{skin_analysis.oiliness}%</span>
                     </div>
                     <Progress value={skin_analysis.oiliness} className="h-2" />
-                    <p className="text-xs text-muted-foreground">{skin_analysis.oiliness}%</p>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-red-500" />
-                      <span className="text-sm font-medium">Sensitivity</span>
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Sensitivity</span>
+                      <span>{skin_analysis.sensitivity}%</span>
                     </div>
                     <Progress value={skin_analysis.sensitivity} className="h-2" />
-                    <p className="text-xs text-muted-foreground">{skin_analysis.sensitivity}%</p>
                   </div>
                 </div>
 
-                {/* Concerns */}
-                {skin_analysis.concerns.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold mb-2">Primary Concerns</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {skin_analysis.concerns.map((concern, index) => (
-                        <Badge key={index} variant="secondary">
-                          {concern}
-                        </Badge>
-                      ))}
-                    </div>
+                {/* Primary Concerns */}
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-2">Primary Concerns</p>
+                  <div className="flex flex-wrap gap-2">
+                    {skin_analysis.concerns.map((concern, index) => (
+                      <Badge key={index} variant="secondary">
+                        {concern}
+                      </Badge>
+                    ))}
                   </div>
-                )}
+                </div>
 
                 {/* Face Detection Info */}
-                {metadata.face_detected && (
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Eye className="h-4 w-4 text-green-600" />
-                      <span className="font-medium text-green-800">Face Detected</span>
-                    </div>
-                    <p className="text-sm text-green-700">
-                      {metadata.faces_found} face(s) detected with {Math.round(skin_analysis.face_detection.confidence * 100)}% confidence
-                    </p>
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Eye className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium text-blue-900">Face Detection</span>
                   </div>
-                )}
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Faces Found:</span>
+                      <span className="ml-2 font-medium">{skin_analysis.face_detection.faces_found}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Confidence:</span>
+                      <span className="ml-2 font-medium">{(skin_analysis.face_detection.confidence * 100).toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Recommendations */}
+            {/* Personalized Recommendations */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
+                  <Sparkles className="h-5 w-5" />
                   Personalized Recommendations
                 </CardTitle>
                 <CardDescription>
-                  Based on your skin analysis and similar profiles
+                  AI-generated recommendations based on your skin analysis
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <ul className="space-y-3">
                   {skin_analysis.recommendations.map((recommendation, index) => (
-                    <div key={index} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
-                      <Heart className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                      <p className="text-sm">{recommendation}</p>
-                    </div>
+                    <li key={index} className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-purple-600 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="text-gray-700">{recommendation}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </CardContent>
             </Card>
 
-            {/* Product Recommendations */}
+            {/* Recommended Products */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -297,30 +291,23 @@ export default function AnalysisResultsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
                   {skin_analysis.products.map((product, index) => (
                     <div key={index} className="border rounded-lg p-4">
                       <div className="flex items-start gap-3">
-                        <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
-                          <span className="text-xs text-muted-foreground">Image</span>
-                        </div>
+                        <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0"></div>
                         <div className="flex-1">
-                          <h4 className="font-medium">{product.name}</h4>
-                          <p className="text-sm text-muted-foreground">{product.category}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <div className="flex items-center gap-1">
-                              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                              <span className="text-xs">{product.rating}</span>
+                          <h4 className="font-semibold">{product.name}</h4>
+                          <p className="text-sm text-gray-600">{product.category}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="flex">
+                              {[...Array(5)].map((_, i) => (
+                                <Star key={i} className={`h-3 w-3 ${i < product.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} />
+                              ))}
                             </div>
-                            <span className="text-sm font-medium">${product.price}</span>
+                            <span className="text-sm text-gray-600">${product.price}</span>
                           </div>
-                          <div className="mt-2">
-                            {product.benefits.slice(0, 2).map((benefit, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs mr-1">
-                                {benefit}
-                              </Badge>
-                            ))}
-                          </div>
+                          <p className="text-xs text-gray-500 mt-1">Suitable for: {product.suitable_for}</p>
                         </div>
                       </div>
                     </div>
@@ -332,84 +319,101 @@ export default function AnalysisResultsPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Confidence Scores */}
+            {/* Analysis Confidence */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Analysis Confidence</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Analysis Confidence
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm">Overall Confidence</span>
-                  <span className="text-sm font-medium">{Math.round(confidence_scores.overall * 100)}%</span>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Overall</span>
+                    <span>{(confidence_scores.overall * 100).toFixed(1)}%</span>
+                  </div>
+                  <Progress value={confidence_scores.overall * 100} className="h-2" />
                 </div>
-                <Progress value={confidence_scores.overall * 100} className="h-2" />
-                
-                <div className="flex justify-between">
-                  <span className="text-sm">Face Detection</span>
-                  <span className="text-sm font-medium">{Math.round(confidence_scores.face_detection * 100)}%</span>
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Face Detection</span>
+                    <span>{(confidence_scores.face_detection * 100).toFixed(1)}%</span>
+                  </div>
+                  <Progress value={confidence_scores.face_detection * 100} className="h-2" />
                 </div>
-                <Progress value={confidence_scores.face_detection * 100} className="h-2" />
-                
-                <div className="flex justify-between">
-                  <span className="text-sm">Skin Classification</span>
-                  <span className="text-sm font-medium">{Math.round(skin_analysis.enhanced_features.confidence_breakdown.skin_type * 100)}%</span>
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Skin Classification</span>
+                    <span>{(confidence_scores.demographic * 100).toFixed(1)}%</span>
+                  </div>
+                  <Progress value={confidence_scores.demographic * 100} className="h-2" />
                 </div>
-                <Progress value={skin_analysis.enhanced_features.confidence_breakdown.skin_type * 100} className="h-2" />
               </CardContent>
             </Card>
 
             {/* Similar SCIN Profiles */}
-            {similar_scin_profiles.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Similar Profiles</CardTitle>
-                  <CardDescription>
-                    Found {similar_scin_profiles.length} similar skin profiles
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {similar_scin_profiles.slice(0, 3).map((profile, index) => (
-                      <div key={index} className="flex items-center gap-3 p-2 bg-muted rounded">
-                        <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
-                          <span className="text-xs font-medium">{index + 1}</span>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{profile.skin_condition}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {Math.round(profile.similarity_score * 100)}% similarity
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Analysis Metadata */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Analysis Details</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Heart className="h-5 w-5" />
+                  Similar Profiles
+                </CardTitle>
+                <CardDescription>
+                  Matching skin profiles from our database
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Analysis Type</span>
-                  <span className="font-medium">{metadata.analysis_type}</span>
+              <CardContent>
+                <div className="space-y-3">
+                  {similar_scin_profiles.map((profile, index) => (
+                    <div key={index} className="border rounded-lg p-3">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-medium text-sm">{profile.skin_condition}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {(profile.similarity_score * 100).toFixed(0)}% match
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-gray-600">
+                        Age: {profile.metadata.age_group} • Type: {profile.metadata.skin_type}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex justify-between">
-                  <span>Ethnicity Considered</span>
-                  <span className="font-medium">{metadata.ethnicity_considered ? 'Yes' : 'No'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Age Considered</span>
-                  <span className="font-medium">{metadata.age_considered ? 'Yes' : 'No'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Timestamp</span>
-                  <span className="font-medium">
-                    {new Date(metadata.timestamp).toLocaleDateString()}
-                  </span>
+              </CardContent>
+            </Card>
+
+            {/* Analysis Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Analysis Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Analysis Type:</span>
+                    <span className="font-medium">{metadata.analysis_type}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Ethnicity Considered:</span>
+                    <span className="font-medium">{metadata.ethnicity_considered ? 'Yes' : 'No'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Age Considered:</span>
+                    <span className="font-medium">{metadata.age_considered ? 'Yes' : 'No'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Face Detected:</span>
+                    <span className="font-medium">{metadata.face_detected ? 'Yes' : 'No'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Timestamp:</span>
+                    <span className="font-medium text-xs">
+                      {new Date(metadata.timestamp).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -417,5 +421,20 @@ export default function AnalysisResultsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AnalysisResultsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading analysis results...</p>
+        </div>
+      </div>
+    }>
+      <AnalysisResultsContent />
+    </Suspense>
   );
 } 
