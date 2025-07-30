@@ -3,17 +3,43 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-# Next.js
+# Production builds
 .next/
 out/
 build/
 dist/
 
-# Production
-/build
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 
 # Runtime data
 pids
@@ -28,32 +54,14 @@ coverage/
 # nyc test coverage
 .nyc_output
 
-# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
-.grunt
-
-# Bower dependency directory (https://bower.io/)
-bower_components
-
-# node-waf configuration
-.lock-wscript
-
-# Compiled binary addons (https://nodejs.org/api/addons.html)
-build/Release
-
 # Dependency directories
 jspm_packages/
-
-# TypeScript cache
-*.tsbuildinfo
 
 # Optional npm cache directory
 .npm
 
 # Optional eslint cache
 .eslintcache
-
-# Optional stylelint cache
-.stylelintcache
 
 # Microbundle cache
 .rpt2_cache/
@@ -70,19 +78,6 @@ jspm_packages/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variable files
-.env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
-.env.vercel
-.env.amplify
-env-eb.txt
-env.production
-local.env
-frontend_env.txt
-
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
@@ -96,38 +91,15 @@ dist
 
 # Gatsby files
 .cache/
-# public
+public
 
-# AWS Deployment Files (Sensitive Data)
-BundleLogs-*/
-*.zip
-*.tar.gz
-backend-deployment-*.zip
-backend-deploy-*.zip
-backend-deploy-*.tar.gz
+# Storybook build outputs
+.out
+.storybook-out
 
-# AWS Credentials and Sensitive Data
-*.pem
-*.key
-*.crt
-*.p12
-*.pfx
-*credentials*
-*secret*
-*token*
-
-# Environment Files
-.env*
-env-*.txt
-local.env
-frontend_env.txt
-env.production
-
-# Vuepress build output
-.vuepress/dist
-
-# Serverless directories
-.serverless/
+# Temporary folders
+tmp/
+temp/
 
 # Python
 __pycache__/
@@ -135,14 +107,52 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-.venv/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Flask
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+
+# Flask stuff:
 instance/
 .webassets-cache
 
@@ -158,22 +168,11 @@ target/
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# IPython
-profile_default/
-ipython_config.py
-
 # pyenv
 .python-version
 
-# pipenv
-Pipfile.lock
-
-# PEP 582
-__pypackages__/
-
-# Celery stuff
+# celery beat schedule file
 celerybeat-schedule
-celerybeat.pid
 
 # SageMath parsed files
 *.sage.py
@@ -202,266 +201,109 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
-# Pyre type checker
-.pyre/
+# AWS DEPLOYMENT FILES (SENSITIVE DATA)
+BundleLogs-*/
+*.zip
+*.tar.gz
+backend-deployment-*.zip
+backend-deploy-*.zip
+backend-deploy-*.tar.gz
+UNICORN_*.zip
+UNICORN_*.tar.gz
 
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-.idea/
-
-# VS Code
-.vscode/
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Windows
-Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-*.tmp
-*.temp
-Desktop.ini
-$RECYCLE.BIN/
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-*.lnk
-
-# Linux
-*~
-.fuse_hidden*
-.directory
-.Trash-*
-.nfs*
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Logs
-logs
-*.log
-
-# Redis
-dump.rdb
-
-# Temporary files
-*.swp
-*.swo
-*~
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Environment files with actual credentials
-env.actual.example
-
-#amplify-do-not-edit-begin
-amplify/\#current-cloud-backend
-amplify/.config/local-*
-amplify/logs
-amplify/mock-data
-amplify/mock-api-resources
-amplify/backend/amplify-meta.json
-amplify/backend/.temp
-build/
-dist/
-node_modules/
-aws-exports.js
-awsconfiguration.json
-amplifyconfiguration.json
-amplifyconfiguration.dart
-amplify-build-config.json
-amplify-gradle-config.json
-amplifytools.xcconfig
-.secret-*
-**.sample
-#amplify-do-not-edit-end
-
-# secrets and sensitive files
-backend/google-vision-key.json
-backend/google-vision-key*.json
-*.json.key
-shine-466907-09b8909d49ec.json
-backend/shine-466907-09b8909d49ec.json
-**/shine-466907-09b8909d49ec.json
-./shine-466907-09b8909d49ec.json
-REAL_OAUTH_DEPLOYMENT_GUIDE.md
-REAL_OAUTH_SETUP_COMPLETE.md
-backend/start_backend.ps1
-start_real_oauth.ps1
-start_backend_with_oauth.ps1
-aws-infrastructure/.env.aws
-
-# backup folders
-backup-*/
-
-# AWS infrastructure files with secrets
-aws-infrastructure/task-definition.json
-aws-infrastructure/deploy-*.ps1
-aws-infrastructure/create-task-definition.ps1
-
-.vercel
-
-# Elastic Beanstalk Files
-.elasticbeanstalk/*
-!.elasticbeanstalk/*.cfg.yml
-!.elasticbeanstalk/*.global.yml
-
-# Additional sensitive files
-*.ps1
-VERCEL_DEPLOYMENT_SUCCESS.md
-VERCEL_DASHBOARD_SETUP.md
-vercel-env-setup.md
-deploy-vercel.md
-GOOGLE_CLOUD_SETUP.md
-BACKEND_DEPLOYMENT_FIX.md
-fix-google-oauth.ps1
-set-correct-google-id.ps1
-setup-vercel-env.ps1
-simple-deploy.ps1
-quick-deploy.ps1
-deploy-simple-backend.ps1
-deploy-production.ps1
-deploy-backend-vercel.ps1
-deploy-backend-railway.ps1
-deploy-backend-only.ps1
-deploy-backend-aws.ps1
-vercel-env-setup.ps1
-aws-infrastructure/parameters-production.json
-aws-infrastructure/parameters-vision.json
-.ebextensions/01_environment.config
-
-# Additional security patterns
-*secret*
-*key*
-*token*
-*password*
-*credential*
-*aws_access*
-*aws_secret*
-*api_key*
-*private*
-*production*
-*deploy*
-*config*
-*env*
-*.env*
-*.env.local
-*.env.production
-*.env.development
-*.env.test
-*.env.staging
-*.env.aws
-*.env.temp
-*.key
+# AWS CREDENTIALS AND SENSITIVE DATA
 *.pem
+*.key
+*.crt
 *.p12
 *.pfx
-*.crt
-*.cert
-*.pwd
-*.pass
-*.auth
-*.cred
-*.secret
-*.token
-*.jwt
-*.bearer
-*.oauth
-*.sso
-*.saml
-*.ldap
-*.kerberos
-*.ntlm
-*.basic
-*.digest
-*.apikey
-*.apisecret
-*.clientid
-*.clientsecret
-*.appid
-*.appsecret
-*.userid
-*.username
-*.user
-*.account
-*.accountid
-*.account_id
-*.user_id
-*.userid
-*.user_id
-*.session
-*.sessionid
-*.session_id
-*.cookie
-*.cookies
-*.auth_token
-*.access_token
-*.refresh_token
-*.id_token
-*.jwt_token
-*.bearer_token
-*.api_token
-*.service_token
-*.app_token
-*.user_token
-*.client_token
-*.oauth_token
-*.saml_token
-*.ldap_token
-*.kerberos_token
-*.ntlm_token
-*.basic_token
-*.digest_token
-*.apikey_token
-*.apisecret_token
-*.clientid_token
-*.clientsecret_token
-*.appid_token
-*.appsecret_token
-*.userid_token
-*.username_token
-*.user_token
-*.account_token
-*.accountid_token
-*.account_id_token
-*.user_id_token
-*.userid_token
-*.user_id_token
-*.session_token
-*.sessionid_token
-*.session_id_token
-*.cookie_token
-*.cookies_token
+*credentials*
+*secret*
+*token*
+*password*
+*access_key*
+*secret_key*
 
-# Specific sensitive files
-backend/.env
-backend/.env.local
-backend/.env.production
-backend/.env.temp
-aws-infrastructure/.env.aws
-aws-infrastructure/parameters-production.json
-aws-infrastructure/parameters-vision.json
-aws-infrastructure/task-definition.json
-aws-infrastructure/create-task-definition.ps1
-aws-infrastructure/deploy-*.ps1
+# Environment Files
+.env*
+env-*.txt
+local.env
+frontend_env.txt
+env.production
+.env.aws
+
+# Temporary and Test Files
+temp-*/
+test-*/
+verify-*/
+diagnose-*/
+create-*-*.ps1
+create-*-*.py
+
+# Sensitive Documents
+SECURITY_*.md
+GITHUB_PUSH_*.md
+BUG_BOUNTY_*.md
+IMMEDIATE_FIXES_*.md
+CLEANUP_*.md
+
+# AWS CLI and Infrastructure
+awscliv2.zip
+aws-utils.sh
+cloudformation-template.yaml
+stack-outputs.json
+
+# Elastic Beanstalk
+.elasticbeanstalk/
+*.ebextensions/
+eb-*.json
+
+# Amplify
+amplify/
+amplify-*.json
+amplify-*.sh
+
+# Deployment Scripts
+deploy-*.ps1
+deploy-*.sh
+create-*-deployment.ps1
+create-*-deployment.sh
+
+# Test Images
+test-image.jpg
+test-image.png
+*.test.jpg
+*.test.png
+
+# Backup Files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Cache Directories
+.cache/
+cache/
+tmp/
+temp/
+
+# IDE Specific
+.vscode/
+.idea/
+*.sublime-*
+.atom/
+
+# OS Specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Security
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*secret*
+*token*
+*password*
