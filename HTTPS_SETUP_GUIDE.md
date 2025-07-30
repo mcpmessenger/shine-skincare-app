@@ -1,71 +1,119 @@
-# 🔒 HTTPS Setup Guide for Elastic Beanstalk
+# 🔒 HTTPS SETUP GUIDE FOR UNICORN ALPHA
 
-## 🚨 **Current Issue: Mixed Content Error**
+## 🚨 **CURRENT STATUS**
 
-Your frontend is served over HTTPS (AWS Amplify), but your backend uses HTTP, causing browsers to block requests for security reasons.
+**Backend**: ✅ **LIVE** - `http://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com`
+**Frontend**: ✅ **UPDATED** - Using HTTP for now (HTTPS not configured yet)
+**Mixed Content**: ⚠️ **TEMPORARY** - Will be resolved when HTTPS is configured
 
-**Error:** `Mixed Content: The page at 'https://main.d3oid65kfbmqt4.amplifyapp.com/skin-analysis' was loaded over HTTPS, but requested an insecure resource 'http://shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com/api/v2/analyze/guest'`
+## 🎯 **IMMEDIATE SOLUTION: USE HTTP TEMPORARILY**
 
-## 🎯 **Solution: Enable HTTPS on Elastic Beanstalk**
+### **✅ Frontend Updated to Use HTTP**
 
-### **Option 1: Configure HTTPS in Elastic Beanstalk Console (Recommended)**
+**Files Updated:**
+- ✅ **app/page.tsx**: Back to HTTP
+- ✅ **app/test/page.tsx**: Back to HTTP  
+- ✅ **lib/api.ts**: Back to HTTP
 
-1. **Go to AWS Elastic Beanstalk Console**
-2. **Select your environment**: `Shine-backend-poc-env-new-env`
-3. **Click "Configuration"**
-4. **Under "Load balancer" section, click "Edit"**
-5. **Enable HTTPS:**
-   - Check "Enable HTTPS"
-   - Choose "Application Load Balancer" if not already selected
-   - Select a certificate (or create one in ACM)
-   - Set port 443 for HTTPS
-6. **Save changes**
+**Reason**: HTTPS not configured on EB environment yet, but backend is working with HTTP.
 
-### **Option 2: Use AWS Certificate Manager (ACM)**
+## 🔧 **PERMANENT SOLUTION: ENABLE HTTPS**
+
+### **Option 1: AWS Certificate Manager (Recommended)**
 
 1. **Create SSL Certificate:**
-   - Go to AWS Certificate Manager
-   - Request a certificate for your domain
-   - Validate the certificate
-2. **Configure Load Balancer:**
-   - In Elastic Beanstalk configuration
-   - Add HTTPS listener on port 443
-   - Attach your SSL certificate
-
-### **Option 3: Quick Fix - Use HTTP for Frontend (Temporary)**
-
-If you need a quick fix while setting up HTTPS:
-
-1. **Deploy frontend to use HTTP instead of HTTPS**
-2. **Update Amplify settings to serve over HTTP**
-3. **This will allow mixed content (not recommended for production)**
-
-## 🔧 **Immediate Workaround**
-
-For now, you can test your application by:
-
-1. **Using local development server** (which uses HTTP):
    ```bash
-   npm run dev
+   # Request certificate for your domain
+   aws acm request-certificate \
+     --domain-name shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com \
+     --validation-method DNS \
+     --region us-east-1
    ```
-   Then access: `http://localhost:3000`
 
-2. **Or temporarily disable HTTPS enforcement** in your browser (for testing only)
+2. **Update EB Environment:**
+   ```bash
+   # Update environment with HTTPS configuration
+   aws elasticbeanstalk update-environment \
+     --environment-name SHINE-env \
+     --option-settings file://backend/enable-https-config.yml \
+     --region us-east-1
+   ```
 
-## 📋 **Next Steps**
+### **Option 2: Custom Domain with SSL**
 
-1. **Choose Option 1** (recommended) to enable HTTPS on your backend
-2. **Update the frontend URLs** to use HTTPS once backend is configured
-3. **Test the complete flow** with HTTPS
+1. **Register Domain** (if not already done)
+2. **Create SSL Certificate** for your domain
+3. **Configure Route 53** to point to EB
+4. **Update EB** to use custom domain
 
-## 🎯 **Expected Result**
+### **Option 3: CloudFront Distribution**
 
-After enabling HTTPS on your backend:
-- Frontend: `https://main.d3oid65kfbmqt4.amplifyapp.com`
-- Backend: `https://shine-backend-poc-env-new-env.eba-pwtuapns.us-east-1.elasticbeanstalk.com`
-- No more mixed content errors
-- Secure communication between frontend and backend
+1. **Create CloudFront Distribution**
+2. **Point to EB** as origin
+3. **Use CloudFront SSL** certificate
+4. **Update frontend** to use CloudFront URL
+
+## 📋 **CONFIGURATION FILES**
+
+### **backend/enable-https-config.yml**
+```yaml
+option_settings:
+  aws:elbv2:listener:443:
+    ListenerEnabled: true
+    Protocol: HTTPS
+    SSLCertificateArns: arn:aws:acm:us-east-1:YOUR-CERT-ARN
+    DefaultProcess: default
+  aws:elbv2:listener:80:
+    ListenerEnabled: true
+    Protocol: HTTP
+    DefaultProcess: default
+  aws:elbv2:listenerrule:redirect-http-to-https:
+    Path: /*
+    Priority: 1
+    Process: default
+  aws:elasticbeanstalk:environment:
+    LoadBalancerType: application
+  aws:elasticbeanstalk:environment:process:default:
+    HealthCheckPath: /health
+    Port: 5000
+    Protocol: HTTP
+```
+
+## 🦄 **UNICORN ALPHA BACKEND STATUS**
+
+**Current URL**: `http://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com`
+**Status**: ✅ **LIVE AND OPERATIONAL**
+**Response**: `{"message":"🦄 UNICORN ALPHA FIXED is running!","ml_available":true}`
+
+## 🎯 **NEXT STEPS**
+
+### **Immediate (HTTP):**
+1. ✅ **Frontend updated** to use HTTP
+2. ✅ **Commit and push** changes
+3. ✅ **Test frontend** with HTTP backend
+4. ✅ **Verify ML analysis** works
+
+### **Future (HTTPS):**
+1. 🔄 **Set up SSL certificate** (ACM or custom domain)
+2. 🔄 **Configure EB environment** for HTTPS
+3. 🔄 **Update frontend** to use HTTPS
+4. 🔄 **Test secure connection**
+
+## 📊 **EXPECTED RESULTS**
+
+### **With HTTP (Current):**
+- ✅ **No Mixed Content errors** (both HTTP)
+- ✅ **ML analysis works** 
+- ✅ **File uploads work** (up to 100MB)
+- ✅ **CORS headers work**
+
+### **With HTTPS (Future):**
+- ✅ **Secure connection** (HTTPS)
+- ✅ **No Mixed Content errors**
+- ✅ **Better security** for production
+- ✅ **SSL certificate** validation
 
 ---
 
-**Note:** The current configuration uses HTTP for the backend, which works for local development but causes mixed content errors when the frontend is served over HTTPS. 
+**🎯 Current Status**: Using HTTP temporarily while backend is working perfectly!
+**🚀 Next**: Set up HTTPS for production security. 

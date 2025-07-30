@@ -174,59 +174,77 @@ class ServiceManager:
                 )
     
     def _initialize_enhanced_services(self, config: Dict[str, Any]) -> None:
-        """Initialize enhanced services with proper dependencies"""
-        # Check if we should use mock services
-        use_mock_services = os.environ.get('USE_MOCK_SERVICES', 'false').lower() == 'true'
+        """Initialize enhanced services with dependencies"""
+        # Enhanced Image Vectorization Service
+        try:
+            from app.services.enhanced_image_vectorization_service import EnhancedImageVectorizationService
+            self._services['enhanced_vectorization'] = EnhancedImageVectorizationService()
+            logger.info("Enhanced Image Vectorization service initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Enhanced Vectorization service: {e}")
+            # Fallback to regular vectorization service
+            self._services['enhanced_vectorization'] = self._services.get('vectorization')
         
-        # Enhanced Skin Type Classifier with Google Vision integration
+        # FAISS Service with production fallback
         if use_mock_services:
-            logger.info("Using Mock Skin Classifier service (USE_MOCK_SERVICES=true)")
-            from app.services.mock_skin_classifier_service import MockSkinClassifierService
-            self._services['skin_classifier'] = MockSkinClassifierService()
+            logger.info("Using Mock FAISS service (USE_MOCK_SERVICES=true)")
+            from app.services.mock_faiss_service import MockFAISSService
+            self._services['faiss'] = MockFAISSService()
         else:
             try:
-                # Get Google Vision service for integration
-                google_vision_service = self._services.get('google_vision')
-                
-                # Initialize enhanced skin classifier with Google Vision integration
-                self._services['skin_classifier'] = EnhancedSkinTypeClassifier(
-                    google_vision_service=google_vision_service
-                )
-                logger.info("Enhanced skin type classifier initialized with Google Vision integration")
+                # Try production FAISS first
+                if PRODUCTION_FAISS_AVAILABLE:
+                    self._services['faiss'] = ProductionFAISSService()
+                    logger.info("Production FAISS service initialized")
+                else:
+                    self._services['faiss'] = FAISSService()
+                    logger.info("Standard FAISS service initialized")
             except Exception as e:
-                logger.warning(f"Failed to initialize Enhanced Skin Type Classifier: {e}")
-                # Create a simple mock classifier
-                from app.services.mock_skin_classifier_service import MockSkinClassifierService
-                self._services['skin_classifier'] = MockSkinClassifierService()
-                logger.info("Mock skin classifier initialized")
+                logger.warning(f"Failed to initialize FAISS service: {e}")
+                logger.info("Falling back to Mock FAISS service")
+                from app.services.mock_faiss_service import MockFAISSService
+                self._services['faiss'] = MockFAISSService()
         
-        # Demographic Weighted Search (depends on FAISS and Supabase)
+        # Supabase Service with fallback to mock
+        if use_mock_services:
+            logger.info("Using Mock Supabase service (USE_MOCK_SERVICES=true)")
+            from app.services.mock_supabase_service import MockSupabaseService
+            self._services['supabase'] = MockSupabaseService()
+        else:
+            try:
+                self._services['supabase'] = SupabaseService()
+                logger.info("Supabase service initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Supabase service: {e}")
+                logger.info("Falling back to Mock Supabase service")
+                from app.services.mock_supabase_service import MockSupabaseService
+                self._services['supabase'] = MockSupabaseService()
+        
+        # Enhanced Skin Type Classifier
         try:
-            faiss_service = self._services['faiss']
-            supabase_service = self._services['supabase']
-            
-            demographic_search = DemographicWeightedSearch(faiss_service, supabase_service)
-            
-            # Configure demographic search weights if provided
-            demographic_weight = config.get('demographic_weight', 0.3)
-            demographic_search.set_demographic_weight(demographic_weight)
-            
-            # Configure component weights if provided
-            ethnicity_weight = config.get('ethnicity_weight', 0.6)
-            skin_type_weight = config.get('skin_type_weight', 0.3)
-            age_group_weight = config.get('age_group_weight', 0.1)
-            demographic_search.set_demographic_component_weights(
-                ethnicity_weight, skin_type_weight, age_group_weight
-            )
-            
-            self._services['demographic_search'] = demographic_search
-            logger.info(f"Demographic weighted search initialized (weight: {demographic_weight})")
+            google_vision_service = self._services.get('google_vision')
+            self._services['skin_classifier'] = EnhancedSkinTypeClassifier(google_vision_service)
+            logger.info("Enhanced Skin Type Classifier initialized")
         except Exception as e:
-            logger.warning(f"Failed to initialize Demographic Weighted Search: {e}")
-            # Create a simple mock demographic search
+            logger.warning(f"Failed to initialize Enhanced Skin Type Classifier: {e}")
+            # Create a basic classifier without Google Vision
+            self._services['skin_classifier'] = EnhancedSkinTypeClassifier()
+        
+        # Demographic Search Service with fallback to mock
+        if use_mock_services:
+            logger.info("Using Mock Demographic Search service (USE_MOCK_SERVICES=true)")
             from app.services.mock_demographic_search_service import MockDemographicSearchService
             self._services['demographic_search'] = MockDemographicSearchService()
-            logger.info("Mock demographic search initialized")
+        else:
+            try:
+                faiss_service = self._services.get('faiss')
+                self._services['demographic_search'] = DemographicWeightedSearch(faiss_service)
+                logger.info("Demographic Search service initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Demographic Search service: {e}")
+                logger.info("Falling back to Mock Demographic Search service")
+                from app.services.mock_demographic_search_service import MockDemographicSearchService
+                self._services['demographic_search'] = MockDemographicSearchService()
     
     def _validate_services(self) -> None:
         """Validate that all services are available"""

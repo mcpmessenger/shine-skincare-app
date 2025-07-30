@@ -224,6 +224,112 @@ class GoogleVisionService:
             logger.error(f"Error in detect_labels: {e}")
             return []
     
+    def detect_and_crop_face(self, image_data: bytes) -> Dict[str, Any]:
+        """
+        Detect faces and crop the largest face from the image
+        
+        Args:
+            image_data: Image data as bytes
+            
+        Returns:
+            Dictionary containing cropped image data and metadata
+        """
+        if not self.client:
+            return {
+                'error': 'Google Vision service not available',
+                'status': 'disabled'
+            }
+        
+        try:
+            # Create image object
+            image = vision.Image(content=image_data)
+            
+            # Detect faces
+            response = self.client.face_detection(image=image)
+            faces = response.face_annotations
+            
+            if not faces:
+                return {
+                    'status': 'no_face_detected',
+                    'error': 'No face detected in the image',
+                    'faces_found': 0
+                }
+            
+            if len(faces) > 1:
+                # Select the largest face (highest confidence)
+                largest_face = max(faces, key=lambda f: f.detection_confidence)
+                logger.info(f"Multiple faces detected ({len(faces)}), selecting largest face")
+            else:
+                largest_face = faces[0]
+            
+            # Get face bounding box
+            vertices = largest_face.bounding_poly.vertices
+            
+            # Convert to PIL Image for cropping
+            from PIL import Image
+            import io
+            
+            pil_image = Image.open(io.BytesIO(image_data))
+            img_width, img_height = pil_image.size
+            
+            # Extract bounding box coordinates
+            x_coords = [vertex.x for vertex in vertices]
+            y_coords = [vertex.y for vertex in vertices]
+            
+            x_min = max(0, min(x_coords))
+            y_min = max(0, min(y_coords))
+            x_max = min(img_width, max(x_coords))
+            y_max = min(img_height, max(y_coords))
+            
+            # Add padding around the face (20% on each side)
+            face_width = x_max - x_min
+            face_height = y_max - y_min
+            padding_x = int(face_width * 0.2)
+            padding_y = int(face_height * 0.2)
+            
+            # Apply padding with bounds checking
+            x_min = max(0, x_min - padding_x)
+            y_min = max(0, y_min - padding_y)
+            x_max = min(img_width, x_max + padding_x)
+            y_max = min(img_height, y_max + padding_y)
+            
+            # Crop the face region
+            cropped_image = pil_image.crop((x_min, y_min, x_max, y_max))
+            
+            # Convert back to bytes
+            cropped_buffer = io.BytesIO()
+            cropped_image.save(cropped_buffer, format='PNG')
+            cropped_data = cropped_buffer.getvalue()
+            
+            return {
+                'status': 'success',
+                'faces_found': len(faces),
+                'selected_face_confidence': largest_face.detection_confidence,
+                'cropped_image_data': cropped_data,
+                'original_size': (img_width, img_height),
+                'cropped_size': (x_max - x_min, y_max - y_min),
+                'bounding_box': {
+                    'x_min': x_min,
+                    'y_min': y_min,
+                    'x_max': x_max,
+                    'y_max': y_max
+                },
+                'face_landmarks': {
+                    'joy_likelihood': largest_face.joy_likelihood,
+                    'sorrow_likelihood': largest_face.sorrow_likelihood,
+                    'anger_likelihood': largest_face.anger_likelihood,
+                    'surprise_likelihood': largest_face.surprise_likelihood
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in face detection and cropping: {e}")
+            return {
+                'status': 'error',
+                'error': str(e),
+                'faces_found': 0
+            }
+    
     def _detect_faces(self, image) -> Dict[str, Any]:
         """Detect faces in the image"""
         if types is None:

@@ -37,7 +37,7 @@ def get_demographic_search_service():
 def get_skin_classifier_service():
     return service_manager.get_service('skin_classifier')
 
-@enhanced_image_bp.route('/analyze', methods=['POST'])
+@enhanced_image_bp.route('/analyze', methods=['POST', 'OPTIONS'])
 @jwt_required()
 def analyze_image():
     """
@@ -157,7 +157,7 @@ def analyze_image():
         logger.error(f"Error in image analysis: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@enhanced_image_bp.route('/similar/<image_id>', methods=['GET'])
+@enhanced_image_bp.route('/similar/<image_id>', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def find_similar_images(image_id):
     """
@@ -224,7 +224,7 @@ def find_similar_images(image_id):
         logger.error(f"Error finding similar images: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@enhanced_image_bp.route('/images', methods=['GET'])
+@enhanced_image_bp.route('/images', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def get_user_images():
     """Get all images for the current user"""
@@ -265,7 +265,7 @@ def get_user_images():
         logger.error(f"Error getting user images: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@enhanced_image_bp.route('/analysis/<image_id>', methods=['GET'])
+@enhanced_image_bp.route('/analysis/<image_id>', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def get_image_analysis(image_id):
     """Get detailed analysis for a specific image"""
@@ -303,7 +303,7 @@ def get_image_analysis(image_id):
         logger.error(f"Error getting image analysis: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@enhanced_image_bp.route('/health', methods=['GET'])
+@enhanced_image_bp.route('/health', methods=['GET', 'OPTIONS'])
 def health_check():
     """Health check for enhanced image analysis services"""
     try:
@@ -359,7 +359,7 @@ def _summarize_analysis(analysis_result):
     
     return summary
 
-@enhanced_image_bp.route('/analyze/skin', methods=['POST'])
+@enhanced_image_bp.route('/analyze/skin', methods=['POST', 'OPTIONS'])
 @jwt_required()
 def analyze_skin():
     """
@@ -408,7 +408,7 @@ def analyze_skin():
             'status': 'error'
         }), 500
 
-@enhanced_image_bp.route('/analyze/guest', methods=['POST'])
+@enhanced_image_bp.route('/analyze/guest', methods=['POST', 'OPTIONS'])
 def analyze_image_guest():
     """
     Enhanced guest-friendly image analysis endpoint with improved skin classification
@@ -822,7 +822,7 @@ def _generate_enhanced_recommendations(skin_type, concerns, metrics, skin_classi
     
     return recommendations[:5]  # Allow up to 5 enhanced recommendations 
 
-@enhanced_image_bp.route('/similarity/demographic', methods=['POST'])
+@enhanced_image_bp.route('/similarity/demographic', methods=['POST', 'OPTIONS'])
 @jwt_required()
 def similarity_search_demographic():
     """
@@ -906,7 +906,7 @@ def similarity_search_demographic():
         logger.error(f"Error in demographic similarity search: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@enhanced_image_bp.route('/classify/skin-type', methods=['POST'])
+@enhanced_image_bp.route('/classify/skin-type', methods=['POST', 'OPTIONS'])
 def classify_skin_type_enhanced():
     """
     Enhanced skin type classification endpoint
@@ -963,7 +963,7 @@ def classify_skin_type_enhanced():
             'error': 'Internal server error'
         }), 500
 
-@enhanced_image_bp.route('/health/enhanced', methods=['GET'])
+@enhanced_image_bp.route('/health/enhanced', methods=['GET', 'OPTIONS'])
 def enhanced_health_check():
     """Enhanced health check including new services"""
     try:

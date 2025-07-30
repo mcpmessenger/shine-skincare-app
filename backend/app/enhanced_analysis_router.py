@@ -116,7 +116,7 @@ class EnhancedAnalysisRouter:
             '/api/enhanced-analysis',
             'enhanced_analysis',
             self._wrap_method(self.analyze_image),
-            methods=['POST']
+            methods=['POST', 'OPTIONS']
         )
         
         # Analysis status tracking endpoint
@@ -124,7 +124,7 @@ class EnhancedAnalysisRouter:
             '/api/enhanced-analysis/status/<analysis_id>',
             'analysis_status',
             self._wrap_method(self.get_analysis_status),
-            methods=['GET']
+            methods=['GET', 'OPTIONS']
         )
         
         # Analysis history retrieval endpoint
@@ -132,7 +132,7 @@ class EnhancedAnalysisRouter:
             '/api/enhanced-analysis/history',
             'analysis_history',
             self._wrap_method(self.get_analysis_history),
-            methods=['GET']
+            methods=['GET', 'OPTIONS']
         )
         
         # Backward compatibility endpoint
@@ -140,7 +140,7 @@ class EnhancedAnalysisRouter:
             '/api/skin-analysis',
             'skin_analysis_compat',
             self._wrap_method(self.skin_analysis_compatibility),
-            methods=['POST']
+            methods=['POST', 'OPTIONS']
         )
         
         # Enhanced health check endpoint
@@ -148,7 +148,7 @@ class EnhancedAnalysisRouter:
             '/api/enhanced-analysis/health',
             'enhanced_health',
             self._wrap_method(self.health_check),
-            methods=['GET']
+            methods=['GET', 'OPTIONS']
         )
         
         # Guest analysis endpoint
@@ -156,7 +156,7 @@ class EnhancedAnalysisRouter:
             '/api/enhanced-analysis/guest',
             'guest_analysis',
             self._wrap_method(self.analyze_image_guest),
-            methods=['POST']
+            methods=['POST', 'OPTIONS']
         )
     
     def analyze_image(self):
@@ -164,10 +164,12 @@ class EnhancedAnalysisRouter:
         Enhanced image analysis endpoint with real AI service integration
         
         This endpoint processes images through the complete AI pipeline:
-        1. Google Vision API for initial image processing
-        2. Skin Classifier Service for skin type classification
-        3. Demographic Search Service for similar profile matching
-        4. FAISS Vector Database for similarity search
+        1. Google Vision API for face detection and cropping
+        2. Enhanced Image Vectorization for face embedding
+        3. FAISS similarity search for similar SCIN profiles
+        4. Skin Classifier Service for skin type classification
+        5. Demographic Search Service for similar profile matching
+        6. Recommendation Engine for personalized products
         """
         start_time = time.time()
         analysis_id = str(uuid.uuid4())
@@ -204,6 +206,7 @@ class EnhancedAnalysisRouter:
             
             # Get optional parameters
             ethnicity = request.form.get('ethnicity', '')
+            age = request.form.get('age', '')
             analysis_type = request.form.get('analysis_type', 'comprehensive')
             
             # Create analysis request
@@ -213,6 +216,7 @@ class EnhancedAnalysisRouter:
                 analysis_type=analysis_type,
                 metadata={
                     'ethnicity': ethnicity,
+                    'age': age,
                     'filename': secure_filename(file.filename),
                     'file_size': len(image_data)
                 },
@@ -224,36 +228,65 @@ class EnhancedAnalysisRouter:
             
             logger.info(f"Starting enhanced analysis {analysis_id} for user {current_user_id}")
             
-            # Step 1: Google Vision Analysis
-            logger.info(f"Step 1: Google Vision analysis for {analysis_id}")
+            # Step 1: Google Vision API - Face Detection and Cropping
+            logger.info(f"Step 1: Face detection and cropping for {analysis_id}")
             google_vision_service = service_manager.get_service('google_vision')
-            vision_result = safe_service_call(
-                'google_vision', 'analyze_image_from_bytes',
-                google_vision_service.analyze_image_from_bytes, image_data
+            face_detection_result = safe_service_call(
+                'google_vision', 'detect_and_crop_face',
+                google_vision_service.detect_and_crop_face, image_data
             )
             
-            if vision_result.get('status') != 'success':
-                raise ServiceError(f"Google Vision analysis failed: {vision_result.get('error', 'Unknown error')}")
+            if face_detection_result.get('status') == 'no_face_detected':
+                raise ValidationError('No face detected in the image. Please upload a clear photo of your face.', field='image')
             
-            # Step 2: Skin Classification
-            logger.info(f"Step 2: Skin classification for {analysis_id}")
+            if face_detection_result.get('status') != 'success':
+                raise ServiceError(f"Face detection failed: {face_detection_result.get('error', 'Unknown error')}")
+            
+            # Extract cropped face data
+            cropped_face_data = face_detection_result.get('cropped_image_data')
+            if not cropped_face_data:
+                raise ServiceError("Failed to crop face from image")
+            
+            logger.info(f"Face detected and cropped successfully. Faces found: {face_detection_result.get('faces_found', 0)}")
+            
+            # Step 2: Enhanced Image Vectorization - Convert cropped face to vector
+            logger.info(f"Step 2: Vectorizing cropped face for {analysis_id}")
+            enhanced_vectorization_service = service_manager.get_service('enhanced_vectorization')
+            face_vector = safe_service_call(
+                'enhanced_vectorization', 'vectorize_cropped_face',
+                enhanced_vectorization_service.vectorize_cropped_face, cropped_face_data
+            )
+            
+            if face_vector is None:
+                raise ServiceError("Failed to vectorize face image")
+            
+            # Step 3: FAISS Similarity Search - Find similar SCIN profiles
+            logger.info(f"Step 3: FAISS similarity search for {analysis_id}")
+            faiss_service = service_manager.get_service('faiss')
+            similar_profiles = safe_service_call(
+                'faiss', 'search_similar',
+                faiss_service.search_similar, face_vector, 5  # Get top 5 similar profiles
+            )
+            
+            # Step 4: Skin Classification - Classify skin type and conditions
+            logger.info(f"Step 4: Skin classification for {analysis_id}")
             skin_classifier_service = service_manager.get_service('skin_classifier')
             skin_classification = safe_service_call(
                 'skin_classifier', 'classify_skin_type',
                 skin_classifier_service.classify_skin_type,
-                image_data, ethnicity=ethnicity if ethnicity else None
+                cropped_face_data, ethnicity=ethnicity if ethnicity else None
             )
             
-            # Step 3: Demographic Search
-            logger.info(f"Step 3: Demographic search for {analysis_id}")
+            # Step 5: Demographic Search - Find similar demographic profiles
+            logger.info(f"Step 5: Demographic search for {analysis_id}")
             demographic_search_service = service_manager.get_service('demographic_search')
             
             # Extract features for demographic search
             search_features = {
                 'skin_type': skin_classification.get('fitzpatrick_type', 'III'),
                 'ethnicity': ethnicity,
-                'age_group': 'adult',  # Default for now
-                'vision_features': vision_result.get('results', {})
+                'age_group': self._get_age_group(age) if age else 'adult',
+                'face_landmarks': face_detection_result.get('face_landmarks', {})
             }
             
             demographic_matches = safe_service_call(
@@ -262,10 +295,10 @@ class EnhancedAnalysisRouter:
                 search_features
             )
             
-            # Step 4: Generate comprehensive recommendations
-            logger.info(f"Step 4: Generating recommendations for {analysis_id}")
+            # Step 6: Generate comprehensive recommendations
+            logger.info(f"Step 6: Generating recommendations for {analysis_id}")
             recommendations = self._generate_enhanced_recommendations(
-                vision_result, skin_classification, demographic_matches
+                face_detection_result, skin_classification, demographic_matches, similar_profiles
             )
             
             # Calculate processing time
@@ -280,8 +313,9 @@ class EnhancedAnalysisRouter:
                 recommendations=recommendations,
                 confidence_scores={
                     'overall': skin_classification.get('confidence', 0.8),
-                    'vision': vision_result.get('confidence', 0.8),
-                    'demographic': 0.7  # Default demographic confidence
+                    'face_detection': face_detection_result.get('selected_face_confidence', 0.8),
+                    'demographic': 0.7,  # Default demographic confidence
+                    'similarity_search': len(similar_profiles) > 0
                 },
                 processing_time=processing_time,
                 timestamp=datetime.utcnow()
@@ -295,21 +329,25 @@ class EnhancedAnalysisRouter:
             
             logger.info(f"Enhanced analysis {analysis_id} completed in {processing_time:.2f}s")
             
-            # Return response
+            # Return response in v2 format
             return jsonify({
                 'success': True,
                 'analysis_id': analysis_id,
                 'status': 'completed',
                 'processing_time': processing_time,
                 'data': {
-                    'skin_analysis': self._format_skin_analysis_response(
-                        vision_result, skin_classification, recommendations
+                    'skin_analysis': self._format_skin_analysis_response_v2(
+                        face_detection_result, skin_classification, recommendations
                     ),
+                    'similar_scin_profiles': self._format_similar_profiles(similar_profiles),
                     'demographic_insights': demographic_matches,
                     'confidence_scores': analysis_result.confidence_scores,
                     'metadata': {
                         'analysis_type': analysis_type,
                         'ethnicity_considered': bool(ethnicity),
+                        'age_considered': bool(age),
+                        'face_detected': True,
+                        'faces_found': face_detection_result.get('faces_found', 0),
                         'timestamp': analysis_result.timestamp.isoformat()
                     }
                 }
@@ -342,6 +380,170 @@ class EnhancedAnalysisRouter:
                 'error': 'Internal server error',
                 'error_type': 'internal_error'
             }), 500
+
+    def _get_age_group(self, age: str) -> str:
+        """Convert age to age group for demographic search"""
+        try:
+            age_num = int(age)
+            if age_num < 18:
+                return 'teen'
+            elif age_num < 30:
+                return 'young_adult'
+            elif age_num < 50:
+                return 'adult'
+            else:
+                return 'senior'
+        except (ValueError, TypeError):
+            return 'adult'
+
+    def _format_similar_profiles(self, similar_profiles: list) -> list:
+        """Format similar SCIN profiles for frontend consumption"""
+        formatted_profiles = []
+        
+        for profile_id, similarity_score in similar_profiles:
+            # In a real implementation, you'd fetch profile details from a database
+            formatted_profiles.append({
+                'profile_id': profile_id,
+                'similarity_score': similarity_score,
+                'skin_condition': 'Similar skin profile',  # Placeholder
+                'image_url': f'/api/scin/profile/{profile_id}/image',  # Placeholder
+                'metadata': {
+                    'age_group': 'adult',
+                    'skin_type': 'III',
+                    'ethnicity': 'mixed'
+                }
+            })
+        
+        return formatted_profiles
+
+    def _format_skin_analysis_response_v2(self, face_detection_result: Dict, skin_classification: Dict, recommendations: List[str]) -> Dict[str, Any]:
+        """Format the skin analysis response for v2 frontend consumption"""
+        
+        # Map Fitzpatrick type to user-friendly skin type
+        fitzpatrick_type = skin_classification.get('fitzpatrick_type', 'III')
+        skin_type_mapping = {
+            'I': 'Very Fair',
+            'II': 'Fair',
+            'III': 'Light',
+            'IV': 'Medium',
+            'V': 'Dark',
+            'VI': 'Very Dark'
+        }
+        
+        skin_type = skin_type_mapping.get(fitzpatrick_type, 'Medium')
+        concerns = skin_classification.get('concerns', ['Even Skin Tone', 'Hydration'])
+        
+        # Calculate metrics based on classification
+        confidence = skin_classification.get('confidence', 0.8)
+        
+        # Generate metrics (simplified for now)
+        hydration = max(60, min(90, int(confidence * 100) - 10))
+        oiliness = max(20, min(70, int((1 - confidence) * 80) + 20))
+        sensitivity = max(15, min(60, int((1 - confidence) * 50) + 15))
+        
+        # Enhanced product recommendations based on analysis
+        products = self._generate_enhanced_products(skin_type, concerns, fitzpatrick_type)
+        
+        return {
+            'status': 'success',
+            'skinType': skin_type,
+            'fitzpatrick_type': fitzpatrick_type,
+            'monk_tone': skin_classification.get('monk_tone'),
+            'concerns': concerns[:3],  # Limit to top 3 concerns
+            'hydration': hydration,
+            'oiliness': oiliness,
+            'sensitivity': sensitivity,
+            'recommendations': recommendations,
+            'products': products,
+            'face_detection': {
+                'faces_found': face_detection_result.get('faces_found', 0),
+                'confidence': face_detection_result.get('selected_face_confidence', 0.0),
+                'bounding_box': face_detection_result.get('bounding_box', {}),
+                'landmarks': face_detection_result.get('face_landmarks', {})
+            },
+            'enhanced_features': {
+                'ethnicity_considered': skin_classification.get('ethnicity_considered', False),
+                'confidence_breakdown': {
+                    'skin_type': skin_classification.get('confidence', 0.8),
+                    'face_detection': face_detection_result.get('selected_face_confidence', 0.8)
+                }
+            }
+        }
+
+    def _generate_enhanced_products(self, skin_type: str, concerns: List[str], fitzpatrick_type: str) -> List[Dict]:
+        """Generate enhanced product recommendations based on analysis"""
+        products = []
+        
+        # Base products for all skin types
+        base_products = [
+            {
+                'name': 'Gentle Daily Cleanser',
+                'category': 'Cleanser',
+                'rating': 4.5,
+                'price': 24.99,
+                'image': '/products/cleanser.jpg',
+                'suitable_for': skin_type,
+                'benefits': ['Gentle cleansing', 'Maintains skin barrier']
+            },
+            {
+                'name': 'Hydrating Daily Moisturizer',
+                'category': 'Moisturizer',
+                'rating': 4.3,
+                'price': 32.99,
+                'image': '/products/moisturizer.jpg',
+                'suitable_for': skin_type,
+                'benefits': ['Deep hydration', 'Long-lasting moisture']
+            }
+        ]
+        products.extend(base_products)
+        
+        # Fitzpatrick-specific products
+        if fitzpatrick_type in ['I', 'II']:
+            products.append({
+                'name': 'SPF 50+ Sunscreen',
+                'category': 'Sunscreen',
+                'rating': 4.8,
+                'price': 28.99,
+                'image': '/products/sunscreen.jpg',
+                'suitable_for': skin_type,
+                'benefits': ['High UV protection', 'Gentle formula']
+            })
+        elif fitzpatrick_type in ['V', 'VI']:
+            products.append({
+                'name': 'Brightening Vitamin C Serum',
+                'category': 'Serum',
+                'rating': 4.6,
+                'price': 45.99,
+                'image': '/products/serum.jpg',
+                'suitable_for': skin_type,
+                'benefits': ['Brightening', 'Antioxidant protection']
+            })
+        
+        # Concern-specific products
+        for concern in concerns:
+            concern_lower = concern.lower()
+            if 'acne' in concern_lower:
+                products.append({
+                    'name': 'Salicylic Acid Cleanser',
+                    'category': 'Cleanser',
+                    'rating': 4.4,
+                    'price': 26.99,
+                    'image': '/products/acne-cleanser.jpg',
+                    'suitable_for': skin_type,
+                    'benefits': ['Acne treatment', 'Deep cleansing']
+                })
+            elif 'hyperpigmentation' in concern_lower:
+                products.append({
+                    'name': 'Niacinamide Serum',
+                    'category': 'Serum',
+                    'rating': 4.7,
+                    'price': 38.99,
+                    'image': '/products/niacinamide.jpg',
+                    'suitable_for': skin_type,
+                    'benefits': ['Even skin tone', 'Reduces dark spots']
+                })
+        
+        return products[:5]  # Limit to top 5 products
     
     def get_analysis_status(self, analysis_id: str):
         """Get analysis status by ID"""
@@ -569,7 +771,7 @@ class EnhancedAnalysisRouter:
         if len(self.analysis_history[user_id]) > 100:
             self.analysis_history[user_id] = self.analysis_history[user_id][-100:]
     
-    def _generate_enhanced_recommendations(self, vision_result: Dict, skin_classification: Dict, demographic_matches: List) -> List[str]:
+    def _generate_enhanced_recommendations(self, face_detection_result: Dict, skin_classification: Dict, demographic_matches: List, similar_profiles: List) -> List[str]:
         """Generate enhanced recommendations based on all analysis results"""
         recommendations = []
         
@@ -613,9 +815,13 @@ class EnhancedAnalysisRouter:
             recommendations.append('Based on similar skin profiles, consider a gentle retinol product')
         
         # Vision analysis-based recommendations
-        vision_results = vision_result.get('results', {})
+        vision_results = face_detection_result.get('results', {})
         if vision_results.get('face_detection', {}).get('faces_found', 0) > 0:
             recommendations.append('Focus on targeted treatments for facial skin care')
+        
+        # Similar SCIN profile recommendations
+        if similar_profiles:
+            recommendations.append('Based on similar SCIN profiles, consider a gentle retinol product')
         
         # Remove duplicates and limit to top 6 recommendations
         unique_recommendations = list(dict.fromkeys(recommendations))

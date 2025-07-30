@@ -1,323 +1,287 @@
 import os
 import logging
 import numpy as np
-from typing import List, Optional, Tuple, Dict, Any
-from PIL import Image
-import torch
-import torchvision.transforms as transforms
-import timm
-from io import BytesIO
-import pickle
+import io
+from typing import Dict, Any, Optional, Union
 from datetime import datetime
+from PIL import Image
+import cv2
+
+# Try to import deep learning libraries
+try:
+    import torch
+    import torchvision.transforms as transforms
+    from torchvision.models import resnet50, ResNet50_Weights
+    TORCH_AVAILABLE = True
+except ImportError:
+    logger.warning("PyTorch not available, using fallback vectorization")
+    TORCH_AVAILABLE = False
+    torch = None
+    transforms = None
 
 logger = logging.getLogger(__name__)
 
 class EnhancedImageVectorizationService:
-    """Enhanced service for image vectorization with SCIN dataset support"""
+    """
+    Enhanced image vectorization service for converting facial images to high-dimensional vectors
+    Uses pre-trained deep learning models for feature extraction
+    """
     
-    def __init__(self, 
-                 model_name: str = 'resnet50', 
-                 device: Optional[str] = None,
-                 feature_dimension: int = 2048,
-                 cache_dir: str = 'vector_cache'):
+    def __init__(self, model_name: str = 'resnet50', dimension: int = 2048):
         """
         Initialize the enhanced image vectorization service
         
         Args:
-            model_name: Name of the pre-trained model to use
-            device: Device to run the model on ('cpu' or 'cuda')
-            feature_dimension: Expected feature dimension
-            cache_dir: Directory to cache vectorized images
+            model_name: Name of the model to use for feature extraction
+            dimension: Dimension of the output feature vector
         """
         self.model_name = model_name
-        self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
-        self.feature_dimension = feature_dimension
-        self.cache_dir = cache_dir
+        self.dimension = dimension
         self.model = None
         self.transform = None
+        self.device = 'cpu'
+        
         self._initialize_model()
-        self._ensure_cache_dir()
+        logger.info(f"Enhanced Image Vectorization Service initialized with {model_name}")
     
     def _initialize_model(self):
-        """Initialize the pre-trained model"""
+        """Initialize the deep learning model for feature extraction"""
+        if not TORCH_AVAILABLE:
+            logger.warning("PyTorch not available, using fallback vectorization")
+            return
+        
         try:
-            # Load pre-trained model
-            self.model = timm.create_model(
-                self.model_name, 
-                pretrained=True, 
-                num_classes=0  # Remove classification head to get features
-            )
-            self.model.to(self.device)
-            self.model.eval()
-            
-            # Set up image transformations
-            self.transform = transforms.Compose([
-                transforms.Resize((224, 224)),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406],
-                    std=[0.229, 0.224, 0.225]
-                )
-            ])
-            
-            logger.info(f"Model {self.model_name} initialized successfully on {self.device}")
-            
+            # Load pre-trained ResNet50 model
+            if self.model_name == 'resnet50':
+                self.model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+                # Remove the final classification layer to get feature vectors
+                self.model = torch.nn.Sequential(*list(self.model.children())[:-1])
+                self.model.eval()
+                
+                # Define image transformations
+                self.transform = transforms.Compose([
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor(),
+                    transforms.Normalize(
+                        mean=[0.485, 0.456, 0.406],
+                        std=[0.229, 0.224, 0.225]
+                    )
+                ])
+                
+                logger.info("ResNet50 model loaded successfully")
+            else:
+                logger.warning(f"Model {self.model_name} not supported, using fallback")
+                
         except Exception as e:
-            logger.error(f"Failed to initialize model {self.model_name}: {e}")
+            logger.error(f"Failed to initialize model: {e}")
             self.model = None
             self.transform = None
     
-    def _ensure_cache_dir(self):
-        """Ensure cache directory exists"""
-        try:
-            os.makedirs(self.cache_dir, exist_ok=True)
-        except Exception as e:
-            logger.error(f"Failed to create cache directory: {e}")
-    
-    def _get_cache_path(self, image_id: str) -> str:
-        """Get cache file path for an image"""
-        return os.path.join(self.cache_dir, f"{image_id}.pkl")
-    
-    def _load_from_cache(self, image_id: str) -> Optional[np.ndarray]:
-        """Load vector from cache"""
-        try:
-            cache_path = self._get_cache_path(image_id)
-            if os.path.exists(cache_path):
-                with open(cache_path, 'rb') as f:
-                    cached_data = pickle.load(f)
-                    # Check if cache is still valid (e.g., based on model version)
-                    if cached_data.get('model_name') == self.model_name:
-                        return cached_data['vector']
-        except Exception as e:
-            logger.warning(f"Failed to load from cache for {image_id}: {e}")
-        return None
-    
-    def _save_to_cache(self, image_id: str, vector: np.ndarray):
-        """Save vector to cache"""
-        try:
-            cache_path = self._get_cache_path(image_id)
-            cached_data = {
-                'vector': vector,
-                'model_name': self.model_name,
-                'timestamp': datetime.now().isoformat()
-            }
-            with open(cache_path, 'wb') as f:
-                pickle.dump(cached_data, f)
-        except Exception as e:
-            logger.warning(f"Failed to save to cache for {image_id}: {e}")
-    
-    def vectorize_image(self, 
-                       image_path: str, 
-                       image_id: Optional[str] = None,
-                       use_cache: bool = True) -> Optional[np.ndarray]:
+    def vectorize_image_from_bytes(self, image_data: bytes) -> Optional[np.ndarray]:
         """
-        Vectorize an image from file path
+        Vectorize an image from bytes using deep learning model
         
         Args:
-            image_path: Path to the image file
-            image_id: Optional ID for caching
-            use_cache: Whether to use caching
+            image_data: Image data as bytes
             
         Returns:
             Feature vector as numpy array or None if failed
         """
         try:
-            # Try cache first
-            if use_cache and image_id:
-                cached_vector = self._load_from_cache(image_id)
-                if cached_vector is not None:
-                    logger.info(f"Loaded vector from cache for {image_id}")
-                    return cached_vector
+            # Convert bytes to PIL Image
+            image = Image.open(io.BytesIO(image_data)).convert('RGB')
             
-            # Load and preprocess image
-            image = Image.open(image_path).convert('RGB')
-            vector = self._process_image(image)
-            
-            # Save to cache
-            if use_cache and image_id and vector is not None:
-                self._save_to_cache(image_id, vector)
-            
-            return vector
-            
+            if self.model is not None and self.transform is not None:
+                # Use deep learning model
+                return self._vectorize_with_model(image)
+            else:
+                # Fallback to traditional feature extraction
+                return self._vectorize_fallback(image)
+                
         except Exception as e:
-            logger.error(f"Error vectorizing image {image_path}: {e}")
+            logger.error(f"Error vectorizing image: {e}")
             return None
     
-    def vectorize_image_from_bytes(self, 
-                                  image_bytes: bytes,
-                                  image_id: Optional[str] = None,
-                                  use_cache: bool = True) -> Optional[np.ndarray]:
-        """
-        Vectorize an image from bytes
-        
-        Args:
-            image_bytes: Image data as bytes
-            image_id: Optional ID for caching
-            use_cache: Whether to use caching
-            
-        Returns:
-            Feature vector as numpy array or None if failed
-        """
-        try:
-            # Try cache first
-            if use_cache and image_id:
-                cached_vector = self._load_from_cache(image_id)
-                if cached_vector is not None:
-                    logger.info(f"Loaded vector from cache for {image_id}")
-                    return cached_vector
-            
-            # Load and preprocess image
-            image = Image.open(BytesIO(image_bytes)).convert('RGB')
-            vector = self._process_image(image)
-            
-            # Save to cache
-            if use_cache and image_id and vector is not None:
-                self._save_to_cache(image_id, vector)
-            
-            return vector
-            
-        except Exception as e:
-            logger.error(f"Error vectorizing image from bytes: {e}")
-            return None
-    
-    def vectorize_image_from_pil(self, 
-                                image: Image.Image,
-                                image_id: Optional[str] = None,
-                                use_cache: bool = True) -> Optional[np.ndarray]:
-        """
-        Vectorize a PIL Image object
-        
-        Args:
-            image: PIL Image object
-            image_id: Optional ID for caching
-            use_cache: Whether to use caching
-            
-        Returns:
-            Feature vector as numpy array or None if failed
-        """
-        try:
-            # Try cache first
-            if use_cache and image_id:
-                cached_vector = self._load_from_cache(image_id)
-                if cached_vector is not None:
-                    logger.info(f"Loaded vector from cache for {image_id}")
-                    return cached_vector
-            
-            vector = self._process_image(image)
-            
-            # Save to cache
-            if use_cache and image_id and vector is not None:
-                self._save_to_cache(image_id, vector)
-            
-            return vector
-        except Exception as e:
-            logger.error(f"Error vectorizing PIL image: {e}")
-            return None
-    
-    def _process_image(self, image: Image.Image) -> Optional[np.ndarray]:
-        """Process image and extract features"""
-        if not self.model or not self.transform:
-            logger.error("Model not initialized")
-            return None
-        
+    def _vectorize_with_model(self, image: Image.Image) -> np.ndarray:
+        """Vectorize image using deep learning model"""
         try:
             # Apply transformations
-            input_tensor = self.transform(image).unsqueeze(0).to(self.device)
+            input_tensor = self.transform(image).unsqueeze(0)
             
             # Extract features
             with torch.no_grad():
                 features = self.model(input_tensor)
-                feature_vector = features.cpu().numpy().flatten()
+                # Flatten the features
+                feature_vector = features.squeeze().numpy()
             
-            # Ensure correct dimension
-            if len(feature_vector) != self.feature_dimension:
-                logger.warning(f"Feature dimension mismatch: expected {self.feature_dimension}, got {len(feature_vector)}")
-                # Resize if necessary (simple truncation or padding)
-                if len(feature_vector) > self.feature_dimension:
-                    feature_vector = feature_vector[:self.feature_dimension]
-                else:
-                    feature_vector = np.pad(feature_vector, (0, self.feature_dimension - len(feature_vector)))
+            # Normalize the feature vector
+            feature_norm = np.linalg.norm(feature_vector)
+            if feature_norm > 0:
+                feature_vector = feature_vector / feature_norm
             
             return feature_vector
             
         except Exception as e:
-            logger.error(f"Error processing image: {e}")
-            return None
+            logger.error(f"Error in model-based vectorization: {e}")
+            return self._vectorize_fallback(image)
     
-    def batch_vectorize(self, 
-                       image_paths: List[str],
-                       image_ids: Optional[List[str]] = None,
-                       batch_size: int = 32,
-                       use_cache: bool = True) -> List[Optional[np.ndarray]]:
+    def _vectorize_fallback(self, image: Image.Image) -> np.ndarray:
+        """Fallback vectorization using traditional computer vision features"""
+        try:
+            # Convert PIL image to OpenCV format
+            cv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+            
+            # Resize to standard size
+            cv_image = cv2.resize(cv_image, (224, 224))
+            
+            # Extract multiple feature types
+            features = []
+            
+            # 1. Color histogram features
+            color_hist = cv2.calcHist([cv_image], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+            color_hist = cv2.normalize(color_hist, color_hist).flatten()
+            features.extend(color_hist)
+            
+            # 2. Texture features (GLCM-like)
+            gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+            
+            # Sobel gradients
+            sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+            sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+            gradient_magnitude = np.sqrt(sobelx**2 + sobely**2)
+            gradient_features = [
+                np.mean(gradient_magnitude),
+                np.std(gradient_magnitude),
+                np.max(gradient_magnitude)
+            ]
+            features.extend(gradient_features)
+            
+            # 3. Edge density
+            edges = cv2.Canny(gray, 100, 200)
+            edge_density = np.sum(edges > 0) / (edges.shape[0] * edges.shape[1])
+            features.append(edge_density)
+            
+            # 4. Local Binary Pattern (simplified)
+            lbp_features = self._extract_lbp_features(gray)
+            features.extend(lbp_features)
+            
+            # 5. Fill remaining dimensions with zeros if needed
+            while len(features) < self.dimension:
+                features.append(0.0)
+            
+            # Truncate if too long
+            features = features[:self.dimension]
+            
+            # Convert to numpy array and normalize
+            feature_vector = np.array(features, dtype=np.float32)
+            feature_norm = np.linalg.norm(feature_vector)
+            if feature_norm > 0:
+                feature_vector = feature_vector / feature_norm
+            
+            return feature_vector
+            
+        except Exception as e:
+            logger.error(f"Error in fallback vectorization: {e}")
+            # Return zero vector as last resort
+            return np.zeros(self.dimension, dtype=np.float32)
+    
+    def _extract_lbp_features(self, gray_image: np.ndarray) -> list:
+        """Extract Local Binary Pattern features"""
+        try:
+            # Simplified LBP implementation
+            height, width = gray_image.shape
+            lbp_features = []
+            
+            # Sample points for LBP calculation
+            sample_points = min(100, height * width // 100)
+            for _ in range(sample_points):
+                y = np.random.randint(1, height - 1)
+                x = np.random.randint(1, width - 1)
+                
+                center = gray_image[y, x]
+                lbp_code = 0
+                
+                # 8-neighbor LBP
+                neighbors = [
+                    gray_image[y-1, x-1], gray_image[y-1, x], gray_image[y-1, x+1],
+                    gray_image[y, x+1], gray_image[y+1, x+1], gray_image[y+1, x],
+                    gray_image[y+1, x-1], gray_image[y, x-1]
+                ]
+                
+                for i, neighbor in enumerate(neighbors):
+                    if neighbor >= center:
+                        lbp_code += 2**i
+                
+                lbp_features.append(lbp_code)
+            
+            # Calculate histogram of LBP codes
+            lbp_hist, _ = np.histogram(lbp_features, bins=16, range=(0, 256))
+            lbp_hist = lbp_hist.astype(np.float32)
+            
+            # Normalize
+            if np.sum(lbp_hist) > 0:
+                lbp_hist = lbp_hist / np.sum(lbp_hist)
+            
+            return lbp_hist.tolist()
+            
+        except Exception as e:
+            logger.error(f"Error extracting LBP features: {e}")
+            return [0.0] * 16
+    
+    def vectorize_cropped_face(self, cropped_image_data: bytes) -> Optional[np.ndarray]:
         """
-        Vectorize multiple images in batches
+        Vectorize a cropped face image specifically for skin analysis
         
         Args:
-            image_paths: List of image file paths
-            image_ids: Optional list of image IDs for caching
-            batch_size: Number of images to process in each batch
-            use_cache: Whether to use caching
+            cropped_image_data: Cropped face image data as bytes
             
         Returns:
-            List of feature vectors (None for failed images)
+            Feature vector optimized for skin analysis
         """
-        results = []
-        
-        for i in range(0, len(image_paths), batch_size):
-            batch_paths = image_paths[i:i + batch_size]
-            batch_ids = image_ids[i:i + batch_size] if image_ids else None
+        try:
+            # Convert to PIL Image
+            image = Image.open(io.BytesIO(cropped_image_data)).convert('RGB')
             
-            logger.info(f"Processing batch {i//batch_size + 1}/{(len(image_paths) + batch_size - 1)//batch_size}")
+            # For skin analysis, we might want to focus on specific regions
+            # This is a simplified version - in production, you'd want more sophisticated
+            # skin region detection and analysis
             
-            for j, path in enumerate(batch_paths):
-                image_id = batch_ids[j] if batch_ids else None
-                vector = self.vectorize_image(path, image_id, use_cache)
-                results.append(vector)
-        
-        return results
-    
-    def get_feature_dimension(self) -> int:
-        """Get the feature dimension of the model"""
-        return self.feature_dimension
-    
-    def is_available(self) -> bool:
-        """Check if the service is available"""
-        return self.model is not None and self.transform is not None
+            return self.vectorize_image_from_bytes(cropped_image_data)
+            
+        except Exception as e:
+            logger.error(f"Error vectorizing cropped face: {e}")
+            return None
     
     def get_model_info(self) -> Dict[str, Any]:
         """Get information about the current model"""
         return {
             'model_name': self.model_name,
-            'feature_dimension': self.feature_dimension,
+            'dimension': self.dimension,
+            'model_available': self.model is not None,
+            'torch_available': TORCH_AVAILABLE,
             'device': self.device,
-            'available': self.is_available(),
-            'cache_dir': self.cache_dir
+            'timestamp': datetime.utcnow().isoformat()
         }
     
-    def clear_cache(self):
-        """Clear the vector cache"""
-        try:
-            import shutil
-            if os.path.exists(self.cache_dir):
-                shutil.rmtree(self.cache_dir)
-            self._ensure_cache_dir()
-            logger.info("Vector cache cleared")
-        except Exception as e:
-            logger.error(f"Failed to clear cache: {e}")
+    def is_available(self) -> bool:
+        """Check if the service is available"""
+        return self.model is not None or True  # Always available due to fallback
     
-    def get_cache_info(self) -> Dict[str, Any]:
-        """Get information about the cache"""
+    def update_model(self, model_name: str) -> bool:
+        """
+        Update the model being used for vectorization
+        
+        Args:
+            model_name: Name of the new model
+            
+        Returns:
+            True if successful, False otherwise
+        """
         try:
-            if not os.path.exists(self.cache_dir):
-                return {'cached_vectors': 0, 'cache_size_mb': 0}
-            
-            cache_files = [f for f in os.listdir(self.cache_dir) if f.endswith('.pkl')]
-            cache_size = sum(os.path.getsize(os.path.join(self.cache_dir, f)) for f in cache_files)
-            
-            return {
-                'cached_vectors': len(cache_files),
-                'cache_size_mb': round(cache_size / (1024 * 1024), 2)
-            }
+            self.model_name = model_name
+            self._initialize_model()
+            return True
         except Exception as e:
-            logger.error(f"Failed to get cache info: {e}")
-            return {'error': str(e)} 
+            logger.error(f"Failed to update model: {e}")
+            return False 

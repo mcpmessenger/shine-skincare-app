@@ -114,9 +114,25 @@ def create_app(config_name='development'):
         logger.error(f"Failed to initialize services: {e}")
         # Continue with app creation but services may not be available
     
-    # Enable CORS - Simplified for debugging
-    CORS(app, origins="*", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], 
-         allow_headers=["Content-Type", "Authorization", "X-Requested-With"])
+    # Enable CORS - Fixed configuration based on working deployment
+    CORS(app, resources={
+        r"/*": {
+            "origins": ["https://www.shineskincollective.com"],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+            "supports_credentials": True
+        }
+    })
+    
+    # ENHANCED: Add CORS headers to ALL responses - GUARANTEED
+    @app.after_request
+    def after_request(response):
+        """Add CORS headers to all responses - GUARANTEED"""
+        response.headers.add('Access-Control-Allow-Origin', 'https://www.shineskincollective.com')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
     
     # Register blueprints
     _register_blueprints(app)

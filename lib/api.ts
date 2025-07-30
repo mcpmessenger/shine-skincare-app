@@ -97,9 +97,17 @@ class ApiClient {
   }
 
   // Enhanced Image Analysis API - Uses real backend endpoint
-  async analyzeSkinEnhanced(imageFile: File): Promise<ApiResponse<any>> {
+  async analyzeSkinEnhanced(imageFile: File, ethnicity?: string, age?: string): Promise<ApiResponse<any>> {
     const formData = new FormData();
     formData.append('image', imageFile);
+    
+    // Add optional demographics if provided
+    if (ethnicity) {
+      formData.append('ethnicity', ethnicity);
+    }
+    if (age) {
+      formData.append('age', age);
+    }
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const headers: Record<string, string> = {};
@@ -115,7 +123,8 @@ class ApiClient {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
 
-      console.log('🔍 Starting ML analysis with 5-minute timeout...');
+      console.log('🔍 Starting enhanced ML analysis with 5-minute timeout...');
+      console.log('📊 Demographics:', { ethnicity, age });
       const startTime = Date.now();
 
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -127,7 +136,7 @@ class ApiClient {
 
       clearTimeout(timeoutId);
       const elapsedTime = Date.now() - startTime;
-      console.log(`✅ ML analysis completed in ${elapsedTime}ms`);
+      console.log(`✅ Enhanced ML analysis completed in ${elapsedTime}ms`);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -139,7 +148,7 @@ class ApiClient {
       
       // Check if it was a timeout error
       if (error instanceof Error && error.name === 'AbortError') {
-        console.error('⏰ ML analysis timed out after 5 minutes');
+        console.error('⏰ Enhanced ML analysis timed out after 5 minutes');
         return {
           data: {
             analysis_id: `timeout_analysis_${Date.now()}`,
@@ -154,7 +163,7 @@ class ApiClient {
             timestamp: new Date().toISOString()
           },
           success: false,
-          message: "ML analysis timed out after 5 minutes - please try again"
+          message: "Enhanced ML analysis timed out after 5 minutes - please try again"
         };
       }
       
@@ -173,7 +182,7 @@ class ApiClient {
           timestamp: new Date().toISOString()
         },
         success: false,
-        message: "Analysis failed - please try again"
+        message: "Enhanced analysis failed - please try again"
       };
     }
   }

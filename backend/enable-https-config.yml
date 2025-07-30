@@ -1,0 +1,27 @@
+option_settings:
+  aws:elbv2:listener:443:
+    ListenerEnabled: true
+    Protocol: HTTPS
+    SSLCertificateArns: arn:aws:acm:us-east-1:aws:certificate/cloudfront-default
+    DefaultProcess: default
+    Rules: 
+  aws:elbv2:listener:80:
+    ListenerEnabled: true
+    Protocol: HTTP
+    DefaultProcess: default
+    Rules: 
+  aws:elbv2:listenerrule:redirect-http-to-https:
+    Path: /*
+    Priority: 1
+    Process: default
+    TargetGroupName: awseb-AWSEB-AWSEBAutoScalingGroup-XXXXXXXXX
+  aws:autoscaling:launchconfiguration:
+    SecurityGroups: sg-xxxxxxxxx
+  aws:ec2:instances:
+    InstanceTypes: m5.2xlarge
+  aws:elasticbeanstalk:environment:
+    LoadBalancerType: application
+  aws:elasticbeanstalk:environment:process:default:
+    HealthCheckPath: /health
+    Port: 5000
+    Protocol: HTTP 
