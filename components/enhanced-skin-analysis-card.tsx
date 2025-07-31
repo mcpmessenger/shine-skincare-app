@@ -132,6 +132,12 @@ export default function EnhancedSkinAnalysisCard() {
         
         // Store analysis ID and results in localStorage for the results page
         if (analysisResponse.analysis_id) {
+          console.log('🔍 Storing analysis result:', {
+            analysis_id: analysisResponse.analysis_id,
+            storage_key: `analysis_${analysisResponse.analysis_id}`,
+            full_response: analysisResponse
+          });
+          
           localStorage.setItem('lastAnalysisId', analysisResponse.analysis_id);
           // Cache the full analysis results
           localStorage.setItem(`analysis_${analysisResponse.analysis_id}`, JSON.stringify(analysisResponse));

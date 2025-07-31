@@ -103,14 +103,23 @@ function AnalysisResultsContent() {
 
     // Get analysis result from localStorage
     try {
+      console.log('🔍 Looking for analysis result:', {
+        analysisId,
+        storage_key: `analysis_${analysisId}`,
+        available_keys: Object.keys(localStorage).filter(key => key.startsWith('analysis_'))
+      });
+      
       const storedResult = localStorage.getItem(`analysis_${analysisId}`);
       if (storedResult) {
         const result = JSON.parse(storedResult);
+        console.log('🔍 Found analysis result:', result);
         setAnalysisResult(result);
       } else {
+        console.log('🔍 Analysis result not found in localStorage');
         setError('Analysis result not found');
       }
     } catch (err) {
+      console.error('🔍 Error loading analysis result:', err);
       setError('Failed to load analysis result');
     } finally {
       setLoading(false);
