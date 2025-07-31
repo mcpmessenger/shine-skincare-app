@@ -8,6 +8,7 @@ interface ApiResponse<T> {
   message?: string;
   version?: string;
   timestamp?: string;
+  analysis_id?: string; // Add analysis_id at top level for backward compatibility
 }
 
 interface ApiError {
@@ -366,3 +367,68 @@ class ApiClient {
 
 // Create and export a single instance
 export const apiClient = new ApiClient();
+
+// Dual Skin Analysis API functions
+export const analyzeSelfie = async (file: File): Promise<ApiResponse<{
+  selfie_analysis: any;
+  message: string;
+  dual_skin_analysis: boolean;
+  google_vision_api: boolean;
+  scin_dataset: boolean;
+  proven_stable: boolean;
+}>> => {
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await fetch(`${this.baseUrl}/api/v2/selfie/analyze`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json();
+    return { 
+      success: response.ok, 
+      data: response.ok ? data : null, 
+      error: response.ok ? null : data.error || 'Request failed' 
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      data: null, 
+      error: 'Network error' 
+    };
+  }
+};
+
+export const analyzeSkin = async (file: File): Promise<ApiResponse<{
+  skin_analysis: any;
+  message: string;
+  dual_skin_analysis: boolean;
+  google_vision_api: boolean;
+  scin_dataset: boolean;
+  proven_stable: boolean;
+}>> => {
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await fetch(`${this.baseUrl}/api/v2/skin/analyze`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json();
+    return { 
+      success: response.ok, 
+      data: response.ok ? data : null, 
+      error: response.ok ? null : data.error || 'Request failed' 
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      data: null, 
+      error: 'Network error' 
+    };
+  }
+};

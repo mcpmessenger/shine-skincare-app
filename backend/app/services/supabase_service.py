@@ -316,6 +316,95 @@ class SupabaseService:
             logger.error(f"Error getting vector by image ID: {e}")
             return None
     
+    def create_medical_analysis_record(self, medical_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Create a medical analysis record in the database
+        
+        Args:
+            medical_data: Medical analysis data
+            
+        Returns:
+            Medical analysis record data or None if failed
+        """
+        if not self.client:
+            logger.error("Supabase client not available")
+            return None
+        
+        try:
+            medical_record = {
+                'id': str(uuid.uuid4()),
+                'user_id': medical_data['user_id'],
+                'image_id': medical_data['image_id'],
+                'condition_identified': medical_data['condition_identified'],
+                'confidence_score': medical_data['confidence_score'],
+                'detailed_description': medical_data['detailed_description'],
+                'recommended_treatments': medical_data['recommended_treatments'],
+                'similar_conditions': medical_data['similar_conditions'],
+                'created_at': medical_data['created_at']
+            }
+            
+            response = self.client.table('medical_analyses').insert(medical_record).execute()
+            
+            if response.data:
+                logger.info(f"Medical analysis record created: {medical_record['id']}")
+                return response.data[0]
+            else:
+                logger.error("Failed to create medical analysis record")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error creating medical analysis record: {e}")
+            return None
+    
+    def get_medical_analysis_history(self, user_id: str) -> List[Dict[str, Any]]:
+        """
+        Get medical analysis history for a user
+        
+        Args:
+            user_id: ID of the user
+            
+        Returns:
+            List of medical analysis records
+        """
+        if not self.client:
+            logger.error("Supabase client not available")
+            return []
+        
+        try:
+            response = self.client.table('medical_analyses').select('*').eq('user_id', user_id).order('created_at', desc=True).execute()
+            return response.data or []
+                
+        except Exception as e:
+            logger.error(f"Error getting medical analysis history: {e}")
+            return []
+    
+    def get_medical_analysis_by_id(self, analysis_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get medical analysis by ID for a specific user
+        
+        Args:
+            analysis_id: ID of the analysis
+            user_id: ID of the user
+            
+        Returns:
+            Medical analysis record data or None if not found
+        """
+        if not self.client:
+            logger.error("Supabase client not available")
+            return None
+        
+        try:
+            response = self.client.table('medical_analyses').select('*').eq('id', analysis_id).eq('user_id', user_id).execute()
+            
+            if response.data:
+                return response.data[0]
+            else:
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error getting medical analysis by ID: {e}")
+            return None
+    
     def is_available(self) -> bool:
         """Check if the service is available"""
         return self.client is not None 

@@ -1,77 +1,98 @@
 'use client';
 
 import { useState, useEffect, createContext, useContext } from 'react';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  profile_picture_url?: string;
-  created_at: string;
-  updated_at: string;
-}
+import { supabase } from '@/lib/supabase';
+import { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: () => Promise<void>;
+  login: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
   loginAsGuest: () => Promise<void>;
   logout: () => Promise<void>;
-  updateProfile: (data: Partial<User>) => Promise<void>;
+  updateProfile: (data: any) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing user session
-    const token = localStorage.getItem('token');
-    if (token && token !== 'guest') {
-      // For now, we'll use a mock user since auth endpoints don't exist
-      setUser({
-        id: 'mock_user',
-        email: 'user@example.com',
-        name: 'Demo User',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-    }
-    setLoading(false);
+    // Get initial session
+    const getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    };
+
+    getInitialSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async () => {
+  const login = async (email: string, password: string) => {
     try {
-      // Mock login - in a real app, this would redirect to OAuth
-      const mockUser = {
-        id: 'mock_user',
-        email: 'user@example.com',
-        name: 'Demo User',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      setUser(mockUser);
-      localStorage.setItem('token', 'mock_token');
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return { error };
     } catch (error) {
-      console.error('Login failed:', error);
+      return { error };
+    }
+  };
+
+  const signUp = async (email: string, password: string, name: string) => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
+      });
+      return { error };
+    } catch (error) {
+      return { error };
     }
   };
 
   const loginAsGuest = async () => {
     try {
-      // Mock guest login
-      const guestUser = {
-        id: 'guest_user',
-        email: 'guest@example.com',
-        name: 'Guest User',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      setUser(guestUser);
-      localStorage.setItem('token', 'guest');
+      // Create a guest user in Supabase
+      const guestEmail = `guest_${Date.now()}@shine.app`;
+      const { error } = await supabase.auth.signUp({
+        email: guestEmail,
+        password: `guest_${Date.now()}`,
+        options: {
+          data: {
+            name: 'Guest User',
+            is_guest: true,
+          },
+        },
+      });
+      
+      if (error) {
+        console.error('Guest login failed:', error);
+      }
     } catch (error) {
       console.error('Guest login failed:', error);
     }
@@ -79,30 +100,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      setUser(null);
-      localStorage.removeItem('token');
+      await supabase.auth.signOut();
     } catch (error) {
       console.error('Logout failed:', error);
     }
   };
 
-  const updateProfile = async (data: Partial<User>) => {
+  const updateProfile = async (data: any) => {
     try {
-      if (user) {
-        const updatedUser = { ...user, ...data };
-        setUser(updatedUser);
-      }
+      const { error } = await supabase.auth.updateUser({
+        data,
+      });
+      return { error };
     } catch (error) {
-      console.error('Profile update failed:', error);
+      return { error };
     }
   };
 
   return (
     <AuthContext.Provider value={{ 
       user, 
+      session,
       loading, 
       isAuthenticated: !!user,
       login, 
+      signUp,
       loginAsGuest,
       logout, 
       updateProfile 

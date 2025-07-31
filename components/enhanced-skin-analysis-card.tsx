@@ -43,6 +43,8 @@ export default function EnhancedSkinAnalysisCard() {
   // Image compression
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [compressedFile, setCompressedFile] = useState<File | null>(null);
+  
+
 
   // Monitor service status
   useEffect(() => {
@@ -135,10 +137,10 @@ export default function EnhancedSkinAnalysisCard() {
         console.log('☠️ Operation Skully: Full API Response Structure:', analysisResponse);
         console.log('☠️ Operation Skully: Response keys:', Object.keys(analysisResponse));
         console.log('☠️ Operation Skully: Analysis ID at top level:', analysisResponse.analysis_id);
-        console.log('☠️ Operation Skully: Analysis ID in data.analysis:', analysisResponse.data?.analysis?.analysis_id);
+        console.log('☠️ Operation Skully: Analysis ID in data:', analysisResponse.data?.analysis_id);
         
-        // ☠️ Operation Skully Fix: Extract analysis_id from TOP LEVEL (not nested)
-        const analysisId = analysisResponse.analysis_id || analysisResponse.data?.analysis?.analysis_id;
+        // ☠️ Operation Skully Fix: Extract analysis_id from data object (correct structure)
+        const analysisId = analysisResponse.data?.analysis_id || analysisResponse.analysis_id;
         
         if (analysisId) {
           console.log('🔍 Storing analysis result:', {
@@ -163,8 +165,8 @@ export default function EnhancedSkinAnalysisCard() {
         // Redirect to results page
         setTimeout(() => {
           // ☠️ Operation Skully Fix: Ensure analysisId is properly captured and passed
-          // ☠️ Operation Skully Fix: Extract analysis_id from TOP LEVEL (not nested)
-          const analysisId = analysisResponse.analysis_id || analysisResponse.data?.analysis?.analysis_id;
+          // ☠️ Operation Skully Fix: Extract analysis_id from data object (correct structure)
+          const analysisId = analysisResponse.data?.analysis_id || analysisResponse.analysis_id;
           
           if (!analysisId) {
             console.error('☠️ Operation Skully Error: No analysis ID received from backend');
@@ -221,8 +223,8 @@ export default function EnhancedSkinAnalysisCard() {
       
       if (analysisResponse.success) {
         // Store analysis ID and results in localStorage for the results page
-        // ☠️ Operation Skully Fix: Extract analysis_id from TOP LEVEL (not nested)
-        const analysisId = analysisResponse.analysis_id || analysisResponse.data?.image_id;
+        // ☠️ Operation Skully Fix: Extract analysis_id from data object (correct structure)
+        const analysisId = analysisResponse.data?.analysis_id || analysisResponse.analysis_id;
         if (analysisId) {
           localStorage.setItem('lastAnalysisId', analysisId);
           // Cache the full analysis results
@@ -240,8 +242,8 @@ export default function EnhancedSkinAnalysisCard() {
         
                  // Redirect to results page
          setTimeout(() => {
-           // ☠️ Operation Skully Fix: Capture the analysis ID from TOP LEVEL
-           const analysisId = analysisResponse.analysis_id || analysisResponse.data?.image_id;
+           // ☠️ Operation Skully Fix: Capture the analysis ID from data object
+           const analysisId = analysisResponse.data?.analysis_id || analysisResponse.analysis_id;
           console.log('🔍 Legacy redirecting with analysis ID:', analysisId);
           console.log('🔍 Legacy full URL will be:', `/analysis-results?analysisId=${analysisId}`);
           router.replace(`/analysis-results?analysisId=${encodeURIComponent(analysisId)}`);

@@ -383,6 +383,11 @@ def _register_blueprints(app):
         app.register_blueprint(scin_analysis_bp)
         logger.info("SCIN analysis blueprint registered")
         
+        # Register medical analysis blueprint
+        from .medical_analysis.routes import medical_bp
+        app.register_blueprint(medical_bp)
+        logger.info("Medical analysis blueprint registered")
+        
         # Register other blueprints as needed
         # from .other_module import other_bp
         # app.register_blueprint(other_bp, url_prefix='/api/other')

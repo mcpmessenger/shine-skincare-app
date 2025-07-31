@@ -7,6 +7,7 @@ import { CartProvider } from '@/hooks/useCart'
 import { ThemeProvider } from '@/components/theme-provider'
 import Header from '@/components/header'
 import ServiceDegradationBanner from '@/components/service-degradation-banner'
+import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Shine - AI-Powered Skincare',
@@ -82,6 +83,23 @@ html {
           <AuthProvider>
             <CartProvider>
               <Header />
+              <nav className="hidden md:flex space-x-6">
+                <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">
+                  Home
+                </Link>
+                <Link href="/skin-analysis" className="text-sm font-medium transition-colors hover:text-primary">
+                  Skin Analysis
+                </Link>
+                <Link href="/selfie-analysis" className="text-sm font-medium transition-colors hover:text-primary">
+                  Selfie Analysis
+                </Link>
+                <Link href="/recommendations" className="text-sm font-medium transition-colors hover:text-primary">
+                  Recommendations
+                </Link>
+                <Link href="/profile" className="text-sm font-medium transition-colors hover:text-primary">
+                  Profile
+                </Link>
+              </nav>
               <ServiceDegradationBanner />
               {children}
             </CartProvider>

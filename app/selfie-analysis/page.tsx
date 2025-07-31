@@ -3,11 +3,17 @@
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, Sparkles, AlertCircle, CheckCircle, Loader2, Microscope } from 'lucide-react';
+import { Camera, Upload, Sparkles, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { analyzeSkin } from '@/lib/api';
+import { analyzeSelfie } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
+
+interface FacialFeature {
+  type: string;
+  x: number;
+  y: number;
+}
 
 interface SkinCondition {
   id: string;
@@ -19,7 +25,6 @@ interface SkinCondition {
     type?: string;
     color?: string;
     size?: string;
-    texture?: string;
   };
   scin_match_score: number;
   recommendation: string;
@@ -35,30 +40,41 @@ interface ScinCase {
   outcome: string;
 }
 
-interface SkinAnalysisResult {
+interface SelfieAnalysisResult {
+  facial_features: {
+    face_detected: boolean;
+    face_isolated: boolean;
+    landmarks: FacialFeature[];
+    face_bounds: { x: number; y: number; width: number; height: number };
+    isolation_complete: boolean;
+  };
   skin_conditions: SkinCondition[];
   scin_similar_cases: ScinCase[];
   total_conditions: number;
   ai_processed: boolean;
   image_size: number[];
   ai_level: string;
+  google_vision_api: boolean;
   scin_dataset: boolean;
   enhanced_features: {
+    face_isolation: boolean;
     skin_condition_detection: boolean;
     scin_dataset_query: boolean;
+    facial_landmarks: boolean;
     treatment_recommendations: boolean;
-    similar_case_analysis: boolean;
   };
 }
 
-export default function SkinAnalysisPage() {
+export default function SelfieAnalysisPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<SkinAnalysisResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<SelfieAnalysisResult | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -71,11 +87,45 @@ export default function SkinAnalysisPage() {
     }
   };
 
-  const analyzeSkinImage = async () => {
+  const handleCameraCapture = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (error) {
+      toast({
+        title: "Camera Error",
+        description: "Unable to access camera. Please upload an image instead.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext('2d');
+      if (context) {
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
+        context.drawImage(videoRef.current, 0, 0);
+        
+        const imageData = canvasRef.current.toDataURL('image/jpeg');
+        setSelectedImage(imageData);
+        
+        // Stop camera stream
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream?.getTracks().forEach(track => track.stop());
+      }
+    }
+  };
+
+  const analyzeSelfieImage = async () => {
     if (!selectedImage) {
       toast({
         title: "No Image Selected",
-        description: "Please upload an image first.",
+        description: "Please upload or capture an image first.",
         variant: "destructive",
       });
       return;
@@ -88,7 +138,7 @@ export default function SkinAnalysisPage() {
       // Convert base64 to file
       const response = await fetch(selectedImage);
       const blob = await response.blob();
-      const file = new File([blob], 'skin.jpg', { type: 'image/jpeg' });
+      const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
 
       // Simulate progress
       const progressInterval = setInterval(() => {
@@ -101,16 +151,16 @@ export default function SkinAnalysisPage() {
         });
       }, 200);
 
-      const result = await analyzeSkin(file);
+      const result = await analyzeSelfie(file);
       
       clearInterval(progressInterval);
       setProgress(100);
       
-      setAnalysisResult(result.skin_analysis);
+      setAnalysisResult(result.selfie_analysis);
       
       toast({
         title: "Analysis Complete",
-        description: `Found ${result.skin_analysis.total_conditions} skin conditions with ${result.skin_analysis.ai_level} AI processing.`,
+        description: `Found ${result.selfie_analysis.total_conditions} skin conditions with ${result.selfie_analysis.ai_level} AI processing.`,
         variant: "default",
       });
 
@@ -130,24 +180,47 @@ export default function SkinAnalysisPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold mb-2">General Skin Analysis</h1>
+        <h1 className="text-3xl font-bold mb-2">Selfie Skin Analysis</h1>
         <p className="text-muted-foreground">
-          Upload any skin photo for comprehensive condition analysis using SCIN dataset
+          Upload a selfie for advanced skin condition analysis with Google Vision API face isolation
         </p>
       </div>
 
-      {/* Image Upload Section */}
+      {/* Image Upload/Capture Section */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Microscope className="h-5 w-5" />
-            Upload Skin Photo
+            <Camera className="h-5 w-5" />
+            Capture or Upload Selfie
           </CardTitle>
           <CardDescription>
-            Upload a clear photo of any skin area for detailed analysis
+            Take a photo or upload an image for skin condition analysis
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Camera Capture */}
+          <div className="space-y-2">
+            <Button onClick={handleCameraCapture} variant="outline" className="w-full">
+              <Camera className="h-4 w-4 mr-2" />
+              Open Camera
+            </Button>
+            
+            {videoRef.current?.srcObject && (
+              <div className="relative">
+                <video
+                  ref={videoRef}
+                  className="w-full max-w-md mx-auto border rounded-lg"
+                  autoPlay
+                  playsInline
+                />
+                <Button onClick={capturePhoto} className="mt-2">
+                  Capture Photo
+                </Button>
+                <canvas ref={canvasRef} className="hidden" />
+              </div>
+            )}
+          </div>
+
           {/* File Upload */}
           <div className="space-y-2">
             <Button 
@@ -156,7 +229,7 @@ export default function SkinAnalysisPage() {
               className="w-full"
             >
               <Upload className="h-4 w-4 mr-2" />
-              Upload Skin Photo
+              Upload Image
             </Button>
             <input
               ref={fileInputRef}
@@ -174,13 +247,13 @@ export default function SkinAnalysisPage() {
               <div className="relative w-full max-w-md mx-auto">
                 <Image
                   src={selectedImage}
-                  alt="Selected skin photo"
+                  alt="Selected selfie"
                   width={400}
                   height={300}
                   className="rounded-lg border"
                 />
                 <Button 
-                  onClick={analyzeSkinImage}
+                  onClick={analyzeSelfieImage}
                   disabled={isAnalyzing}
                   className="mt-2 w-full"
                 >
@@ -192,7 +265,7 @@ export default function SkinAnalysisPage() {
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4 mr-2" />
-                      Analyze Skin
+                      Analyze Selfie
                     </>
                   )}
                 </Button>
@@ -204,12 +277,12 @@ export default function SkinAnalysisPage() {
           {isAnalyzing && (
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Processing with SCIN dataset...</span>
+                <span>Processing with Google Vision API...</span>
                 <span>{progress}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
-                  className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -221,6 +294,40 @@ export default function SkinAnalysisPage() {
       {/* Analysis Results */}
       {analysisResult && (
         <div className="space-y-6">
+          {/* Facial Features */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                Face Detection Results
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Face Detected:</span>
+                  <span className={`ml-2 ${analysisResult.facial_features.face_detected ? 'text-green-600' : 'text-red-600'}`}>
+                    {analysisResult.facial_features.face_detected ? 'Yes' : 'No'}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-medium">Face Isolated:</span>
+                  <span className={`ml-2 ${analysisResult.facial_features.face_isolated ? 'text-green-600' : 'text-red-600'}`}>
+                    {analysisResult.facial_features.face_isolated ? 'Yes' : 'No'}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-medium">Landmarks Found:</span>
+                  <span className="ml-2">{analysisResult.facial_features.landmarks.length}</span>
+                </div>
+                <div>
+                  <span className="font-medium">AI Level:</span>
+                  <span className="ml-2 capitalize">{analysisResult.ai_level}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Skin Conditions */}
           <Card>
             <CardHeader>
@@ -247,12 +354,6 @@ export default function SkinAnalysisPage() {
                       )}
                       {condition.characteristics.color && (
                         <div>Color: <span className="capitalize">{condition.characteristics.color}</span></div>
-                      )}
-                      {condition.characteristics.size && (
-                        <div>Size: <span className="capitalize">{condition.characteristics.size}</span></div>
-                      )}
-                      {condition.characteristics.texture && (
-                        <div>Texture: <span className="capitalize">{condition.characteristics.texture}</span></div>
                       )}
                     </div>
                     <div className="mt-3 p-3 bg-blue-50 rounded">
@@ -303,6 +404,12 @@ export default function SkinAnalysisPage() {
             <CardContent>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
+                  <span className="font-medium">Google Vision API:</span>
+                  <span className={`ml-2 ${analysisResult.google_vision_api ? 'text-green-600' : 'text-red-600'}`}>
+                    {analysisResult.google_vision_api ? 'Available' : 'Not Available'}
+                  </span>
+                </div>
+                <div>
                   <span className="font-medium">SCIN Dataset:</span>
                   <span className={`ml-2 ${analysisResult.scin_dataset ? 'text-green-600' : 'text-red-600'}`}>
                     {analysisResult.scin_dataset ? 'Available' : 'Not Available'}
@@ -311,10 +418,6 @@ export default function SkinAnalysisPage() {
                 <div>
                   <span className="font-medium">Image Size:</span>
                   <span className="ml-2">{analysisResult.image_size[0]}x{analysisResult.image_size[1]}</span>
-                </div>
-                <div>
-                  <span className="font-medium">AI Level:</span>
-                  <span className="ml-2 capitalize">{analysisResult.ai_level}</span>
                 </div>
                 <div>
                   <span className="font-medium">AI Processed:</span>
