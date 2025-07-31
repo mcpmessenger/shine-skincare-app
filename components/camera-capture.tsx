@@ -138,11 +138,11 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="pb-4">
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-2 md:p-4">
+      <Card className="w-full max-w-sm md:max-w-md">
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Take a Selfie</CardTitle>
+            <CardTitle className="text-base md:text-lg">Take a Selfie</CardTitle>
             <Button
               variant="ghost"
               size="icon"
@@ -152,22 +152,22 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
               <X className="h-4 w-4" />
             </Button>
           </div>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Position your face in the center for best results
           </CardDescription>
         </CardHeader>
         
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           {error ? (
-            <div className="text-center py-8">
-              <p className="text-red-500 mb-4">{error}</p>
+            <div className="text-center py-6">
+              <p className="text-red-500 mb-4 text-sm">{error}</p>
               <div className="space-y-2">
-                <Button onClick={startCamera} variant="outline" className="w-full">
+                <Button onClick={startCamera} variant="outline" className="w-full h-12 text-base">
                   <Camera className="mr-2 h-4 w-4" />
                   Try Again
                 </Button>
                 {isMobile && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground px-4">
                     Make sure camera permissions are enabled in your browser settings
                   </p>
                 )}
@@ -182,7 +182,7 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
                   autoPlay
                   playsInline
                   muted
-                  className="w-full h-64 object-cover"
+                  className="w-full h-48 md:h-64 object-cover"
                 />
                 {!isStreaming && (
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -192,49 +192,43 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
               </div>
 
               {/* Camera Controls */}
-              <div className="flex justify-center gap-4">
+              <div className="flex justify-center gap-3">
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={switchCamera}
-                  disabled={!isStreaming}
-                  className="h-12 w-12"
+                  className="h-10 w-10"
                 >
                   <RotateCcw className="h-4 w-4" />
                 </Button>
-                
                 <Button
                   onClick={captureImage}
                   disabled={!isStreaming}
-                  className="h-16 w-16 rounded-full"
+                  className="h-12 w-12 rounded-full bg-blue-600 hover:bg-blue-700"
                 >
-                  <Camera className="h-8 w-8" />
+                  <Camera className="h-6 w-6" />
                 </Button>
-                
-                <label htmlFor="file-upload">
-                  <Button variant="outline" size="icon" asChild className="h-12 w-12">
-                    <div>
-                      <Upload className="h-4 w-4" />
-                    </div>
-                  </Button>
-                </label>
+                <Button
+                  variant="outline"
+                  onClick={handleFileUpload}
+                  className="h-10 px-3 text-sm"
+                >
+                  <Upload className="h-4 w-4 mr-1" />
+                  Upload
+                </Button>
                 <input
-                  id="file-upload"
                   type="file"
                   accept="image/*"
-                  capture={isMobile ? "user" : undefined}
                   onChange={handleFileUpload}
                   className="hidden"
                 />
               </div>
 
               {/* Instructions */}
-              <div className="text-center text-sm text-muted-foreground">
-                <p>• Ensure good lighting</p>
-                <p>• Keep your face centered</p>
-                <p>• Remove glasses if possible</p>
+              <div className="text-center text-xs text-muted-foreground px-4">
+                <p>Tap the camera button to capture your photo</p>
                 {isMobile && (
-                  <p>• Tap the camera button to capture</p>
+                  <p className="mt-1">Hold your phone steady for best results</p>
                 )}
               </div>
             </>
