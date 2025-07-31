@@ -16,6 +16,7 @@ interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   login: () => Promise<void>;
+  loginAsGuest: () => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
 }
@@ -59,6 +60,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginAsGuest = async () => {
+    try {
+      // Mock guest login
+      const guestUser = {
+        id: 'guest_user',
+        email: 'guest@example.com',
+        name: 'Guest User',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      setUser(guestUser);
+      localStorage.setItem('token', 'guest');
+    } catch (error) {
+      console.error('Guest login failed:', error);
+    }
+  };
+
   const logout = async () => {
     try {
       setUser(null);
@@ -85,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading, 
       isAuthenticated: !!user,
       login, 
+      loginAsGuest,
       logout, 
       updateProfile 
     }}>

@@ -1,323 +1,125 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Star, ShoppingCart, Sparkles, TrendingUp, AlertCircle } from "lucide-react";
-import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { AlertCircle, CheckCircle, TrendingUp, Star, Zap, Shield, Target, Users, Clock, Award } from 'lucide-react';
 
-// Prevent static generation for this page
-export const dynamic = 'force-dynamic';
-
-// 🍎 Operation Apple: Enhanced Analysis Result Interface
+// Enhanced Analysis Result Interface
 interface EnhancedAnalysisResult {
   analysis_id: string;
-  skinType: string;
-  concerns: string[];
-  recommended_products: ProductRecommendation[];
-  ingredient_analysis: {
-    primary_ingredients: string[];
-    secondary_ingredients: string[];
-    avoid_ingredients: string[];
-  };
-  confidence_score: number;
-  similar_profiles_analyzed: number;
-  // 🍎 Operation Apple: New enhanced fields
-  facial_detection?: {
+  status: string;
+  timestamp: string;
+  results: {
+    skin_type: string;
+    concerns: string[];
+    recommendations: string[];
     confidence: number;
-    bounding_box?: { x: number, y: number, width: number, height: number };
-    quality_score?: number;
-    lighting_analysis?: string;
+    image_quality: string;
+    // Enhanced fields
+    ml_analysis?: {
+      texture_score?: number;
+      pore_density?: number;
+      wrinkle_severity?: number;
+      pigmentation_level?: number;
+      overall_score?: number;
+    };
+    ai_confidence?: number;
+    processing_time?: number;
+    model_version?: string;
   };
-  skin_analysis?: {
-    texture_score?: number;
-    texture_description?: string;
-    hydration_level?: number;
-    pore_analysis?: {
-      size_distribution?: string;
-      count?: number;
-    };
-    wrinkle_mapping?: {
-      forehead?: number;
-      eyes?: number;
-      mouth?: number;
-    };
-    pigmentation_analysis?: {
-      overall_evenness?: number;
-      spots_count?: number;
-    };
-  };
-  demographic_insights?: {
-    age_verification?: number;
-    ethnicity_detection?: string;
-    gender_specific_factors?: string;
-    climate_adaptation?: string;
-  };
-  ml_analysis?: {
-    face_detection?: {
-      face_detected: boolean;
-      bounding_box?: { x: number, y: number, width: number, height: number };
-      confidence: number;
-    };
-    similar_scin_profiles?: Array<{
-      case_id: string;
-      condition: string;
-      skin_type: string;
-      distance: number;
-      image_url?: string;
-    }>;
-    recommendations?: {
-      primary_products: ProductRecommendation[];
-      secondary_products: ProductRecommendation[];
-      seasonal_adjustments?: string[];
-      confidence_scores?: { [key: string]: number };
-    };
-  };
+  message?: string;
+  success?: boolean;
+  version?: string;
 }
 
-interface ProductRecommendation {
-  id: string;
-  name: string;
-  brand: string;
-  price: number;
-  image_url: string;
-  description: string;
-  ingredients: string[];
-  match_score: number;
-  matching_ingredients: string[];
-}
-
-function AnalysisResultsContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const analysisId = searchParams.get('analysisId');
-  
+export default function AnalysisResultsPage() {
   const [analysisResult, setAnalysisResult] = useState<EnhancedAnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    console.log('🍎 Operation Apple: Analysis Results Page - Received analysisId:', analysisId);
-    console.log('🍎 Operation Apple: Analysis Results Page - All search params:', Object.fromEntries(searchParams.entries()));
-    console.log('🍎 Operation Apple: Analysis Results Page - Current URL:', window.location.href);
-    
-    if (!analysisId) {
-      console.log('🍎 Operation Apple: Analysis Results Page - No analysisId found, setting error');
-      setError('No analysis ID provided');
-      setLoading(false);
-      return;
-    }
-
-    // 🍎 Operation Apple: Get analysis result from localStorage with enhanced error handling
-    try {
-      // Check if we're in a browser environment
-      if (typeof window === 'undefined') {
-        console.log('🍎 Operation Apple: Server-side rendering, skipping localStorage access');
-        setError('Analysis results are only available in the browser');
-        setLoading(false);
-        return;
-      }
-
-      console.log('🍎 Operation Apple: Looking for analysis result:', {
-        analysisId,
-        storage_key: `analysis_${analysisId}`,
-        available_keys: Object.keys(localStorage).filter(key => key.startsWith('analysis_'))
-      });
-      
-      const storedResult = localStorage.getItem(`analysis_${analysisId}`);
-      if (storedResult) {
-        const result = JSON.parse(storedResult);
-        console.log('🍎 Operation Apple: Found analysis result:', result);
+    const loadAnalysisResult = async () => {
+      try {
+        const analysisId = searchParams.get('analysisId');
         
-        // 🍎 Operation Apple: Enhanced data structure handling for both old and new formats
-        let analysisData: EnhancedAnalysisResult;
-        
-        // 🛡️ ULTRA MINIMAL STABLE DEPLOYMENT: Handle simple mock structure
-        if (result.success && result.results && result.version?.includes('ultra-minimal')) {
-          // Ultra minimal stable deployment format
-          const mockResults = result.results;
-          analysisData = {
-            analysis_id: analysisId,
-            skinType: mockResults.skin_type || 'Combination',
-            concerns: mockResults.concerns || ['General maintenance'],
-            recommended_products: [
-              {
-                id: 'ultra_minimal_001',
-                name: 'Gentle Cleanser',
-                brand: 'CeraVe',
-                price: 14.99,
-                image_url: '/products/cerave-cleanser.jpg',
-                description: 'Non-comedogenic cleanser with ceramides',
-                ingredients: ['Ceramides', 'Hyaluronic Acid', 'Niacinamide'],
-                match_score: 0.95,
-                matching_ingredients: ['Ceramides', 'Hyaluronic Acid']
-              },
-              {
-                id: 'ultra_minimal_002',
-                name: 'Daily Moisturizer',
-                brand: 'The Ordinary',
-                price: 7.99,
-                image_url: '/products/ordinary-ha.jpg',
-                description: 'Hydrating serum for all skin types',
-                ingredients: ['Hyaluronic Acid', 'Sodium Hyaluronate'],
-                match_score: 0.92,
-                matching_ingredients: ['Hyaluronic Acid']
-              }
-            ],
-            ingredient_analysis: {
-              primary_ingredients: ['Ceramides', 'Hyaluronic Acid', 'Niacinamide'],
-              secondary_ingredients: ['Peptides', 'Vitamin C'],
-              avoid_ingredients: ['Fragrance', 'Alcohol']
-            },
-            confidence_score: mockResults.confidence || 0.85,
-            similar_profiles_analyzed: 3,
-            facial_detection: {
-              confidence: 0.95,
-              quality_score: 0.88,
-              lighting_analysis: 'Optimal'
-            },
-            skin_analysis: {
-              texture_score: 0.82,
-              texture_description: 'Smooth with minimal roughness',
-              hydration_level: 0.75,
-              pore_analysis: {
-                size_distribution: 'small',
-                count: 150
-              },
-              wrinkle_mapping: {
-                forehead: 0.1,
-                eyes: 0.2,
-                mouth: 0.05
-              },
-              pigmentation_analysis: {
-                overall_evenness: 0.9,
-                spots_count: 3
-              }
-            },
-            demographic_insights: {
-              age_verification: 28,
-              ethnicity_detection: 'Caucasian',
-              gender_specific_factors: 'female_skin_concerns',
-              climate_adaptation: 'temperate'
-            }
-          };
-        } else if (result.data?.results?.ml_analysis) {
-          // New Operation Apple structure: data.results.ml_analysis contains the analysis
-          const mlAnalysis = result.data.results.ml_analysis;
-          analysisData = {
-            analysis_id: analysisId,
-            skinType: mlAnalysis.skin_analysis?.skin_type || 'Unknown',
-            concerns: mlAnalysis.skin_analysis?.concerns || [],
-            recommended_products: mlAnalysis.recommendations?.primary_products || [],
-            ingredient_analysis: {
-              primary_ingredients: mlAnalysis.skin_analysis?.primary_ingredients || [],
-              secondary_ingredients: mlAnalysis.skin_analysis?.secondary_ingredients || [],
-              avoid_ingredients: mlAnalysis.skin_analysis?.avoid_ingredients || []
-            },
-            confidence_score: mlAnalysis.face_detection?.confidence || 0,
-            similar_profiles_analyzed: mlAnalysis.similar_scin_profiles?.length || 0,
-            facial_detection: mlAnalysis.face_detection,
-            skin_analysis: mlAnalysis.skin_analysis,
-            demographic_insights: mlAnalysis.demographic_insights,
-            ml_analysis: mlAnalysis
-          };
-        } else if (result.data?.analysis) {
-          // Alternative structure: data.analysis contains the analysis
-          analysisData = result.data.analysis;
-        } else if (result.analysis) {
-          // Fallback: analysis at top level
-          analysisData = result.analysis;
-        } else {
-          // 🍎 Operation Apple: Enhanced fallback with mock data for testing
-          analysisData = {
-            analysis_id: analysisId,
-            skinType: 'Combination',
-            concerns: ['Acne', 'Hyperpigmentation'],
-            recommended_products: [
-              {
-                id: 'prod1',
-                name: 'Gentle Foaming Cleanser',
-                brand: 'CeraVe',
-                price: 14.99,
-                image_url: '/products/cerave-cleanser.jpg',
-                description: 'Non-comedogenic cleanser with ceramides',
-                ingredients: ['Ceramides', 'Hyaluronic Acid', 'Niacinamide'],
-                match_score: 0.95,
-                matching_ingredients: ['Ceramides', 'Hyaluronic Acid']
-              },
-              {
-                id: 'prod2',
-                name: 'Hyaluronic Acid Serum',
-                brand: 'The Ordinary',
-                price: 7.99,
-                image_url: '/products/ordinary-ha.jpg',
-                description: 'Hydrating serum for all skin types',
-                ingredients: ['Hyaluronic Acid', 'Sodium Hyaluronate'],
-                match_score: 0.92,
-                matching_ingredients: ['Hyaluronic Acid']
-              }
-            ],
-            ingredient_analysis: {
-              primary_ingredients: ['Ceramides', 'Hyaluronic Acid', 'Niacinamide'],
-              secondary_ingredients: ['Peptides', 'Vitamin C'],
-              avoid_ingredients: ['Fragrance', 'Alcohol']
-            },
-            confidence_score: 0.87,
-            similar_profiles_analyzed: 5,
-            facial_detection: {
-              confidence: 0.95,
-              quality_score: 0.88,
-              lighting_analysis: 'Optimal'
-            },
-            skin_analysis: {
-              texture_score: 0.82,
-              texture_description: 'Smooth with minimal roughness',
-              hydration_level: 0.75,
-              pore_analysis: {
-                size_distribution: 'small',
-                count: 150
-              },
-              wrinkle_mapping: {
-                forehead: 0.1,
-                eyes: 0.2,
-                mouth: 0.05
-              },
-              pigmentation_analysis: {
-                overall_evenness: 0.9,
-                spots_count: 3
-              }
-            },
-            demographic_insights: {
-              age_verification: 28,
-              ethnicity_detection: 'Caucasian',
-              gender_specific_factors: 'female_skin_concerns',
-              climate_adaptation: 'temperate'
-            }
-          };
+        console.log('Analysis Results Page - Received analysisId:', analysisId);
+        console.log('Analysis Results Page - All search params:', Object.fromEntries(searchParams.entries()));
+        console.log('Analysis Results Page - Current URL:', window.location.href);
+
+        if (!analysisId) {
+          console.log('Analysis Results Page - No analysisId found, setting error');
+          setError('No analysis ID provided');
+          setLoading(false);
+          return;
         }
+
+        // Get analysis result from localStorage with enhanced error handling
+        if (typeof window === 'undefined') {
+          console.log('Analysis Results Page - Server-side rendering, skipping localStorage access');
+          setLoading(false);
+          return;
+        }
+
+        console.log('Analysis Results Page - Looking for analysis result:', {
+          analysisId,
+          localStorageKeys: Object.keys(localStorage).filter(key => key.startsWith('analysis_'))
+        });
+
+        const storedResult = localStorage.getItem(`analysis_${analysisId}`);
         
-        console.log('🍎 Operation Apple: Extracted analysis data:', analysisData);
-        setAnalysisResult(analysisData);
-      } else {
-        console.log('🍎 Operation Apple: Analysis result not found in localStorage');
-        setError('Analysis result not found');
+        if (storedResult) {
+          console.log('Analysis Results Page - Found analysis result:', storedResult);
+          const result = JSON.parse(storedResult);
+          
+          // Enhanced data structure handling for both old and new formats
+          if (result.data && result.data.results) {
+            setAnalysisResult(result.data);
+          } else if (result.results) {
+            setAnalysisResult(result);
+          } else {
+            setError('Invalid analysis result format');
+          }
+        } else {
+          setError('Analysis result not found');
+        }
+      } catch (err) {
+        console.error('Analysis Results Page - Failed to load analysis result:', err);
+        setError('Failed to load analysis result');
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error('🍎 Operation Apple: Failed to load analysis result:', err);
-      setError('Failed to load analysis result');
-    } finally {
-      setLoading(false);
-    }
-  }, [analysisId, searchParams]);
+    };
+
+    loadAnalysisResult();
+  }, [searchParams]);
+
+  const getConfidenceColor = (confidence: number) => {
+    if (confidence >= 0.8) return 'text-green-600';
+    if (confidence >= 0.6) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getConfidenceIcon = (confidence: number) => {
+    if (confidence >= 0.8) return <CheckCircle className="h-4 w-4" />;
+    if (confidence >= 0.6) return <AlertCircle className="h-4 w-4" />;
+    return <AlertCircle className="h-4 w-4" />;
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    return new Date(timestamp).toLocaleString();
+  };
 
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-lg">🍎 Operation Apple: Loading analysis results...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="mt-4 text-lg">Loading analysis results...</p>
         </div>
       </div>
     );
@@ -330,14 +132,16 @@ function AnalysisResultsContent() {
           <CardHeader>
             <CardTitle className="text-destructive flex items-center gap-2">
               <AlertCircle className="h-5 w-5" />
-              🍎 Operation Apple: Error
+              Error
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-destructive mb-4">{error}</p>
-            <Button onClick={() => router.push('/skin-analysis')}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Analysis
+            <p className="text-muted-foreground">{error}</p>
+            <Button 
+              onClick={() => window.history.back()} 
+              className="mt-4"
+            >
+              Go Back
             </Button>
           </CardContent>
         </Card>
@@ -350,13 +154,15 @@ function AnalysisResultsContent() {
       <div className="container mx-auto px-4 py-8">
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
-            <CardTitle className="text-destructive">🍎 Operation Apple: No Results</CardTitle>
+            <CardTitle className="text-destructive">No Results</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="mb-4">No analysis results found.</p>
-            <Button onClick={() => router.push('/skin-analysis')}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Analysis
+            <p className="text-muted-foreground">No analysis results found.</p>
+            <Button 
+              onClick={() => window.history.back()} 
+              className="mt-4"
+            >
+              Go Back
             </Button>
           </CardContent>
         </Card>
@@ -364,217 +170,200 @@ function AnalysisResultsContent() {
     );
   }
 
+  // Extract analysis data with fallback handling
+  let analysisData = analysisResult.results;
+  
+  // Handle different response formats
+  if (analysisResult.data && analysisResult.data.results) {
+    analysisData = analysisResult.data.results;
+  } else if (analysisResult.results) {
+    analysisData = analysisResult.results;
+  }
+
+  console.log('Extracted analysis data:', analysisData);
+
+  if (!analysisData) {
+    console.log('Analysis result not found in localStorage');
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="max-w-2xl mx-auto">
+          <CardHeader>
+            <CardTitle className="text-destructive">No Analysis Data</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">No analysis data found.</p>
+            <Button 
+              onClick={() => window.history.back()} 
+              className="mt-4"
+            >
+              Go Back
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  try {
+    console.error('Failed to load analysis result:', err);
+  } catch (err) {
+    console.error('Failed to load analysis result:', err);
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <Button 
-          variant="outline" 
-          onClick={() => router.push('/skin-analysis')}
-          className="mb-4"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Analysis
-        </Button>
-        
-        <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
-          <Sparkles className="h-8 w-8 text-primary" />
-          🍎 Operation Apple: Your Enhanced Analysis Results
-        </h1>
-        <p className="text-muted-foreground">
-          Based on {analysisResult.similar_profiles_analyzed || 0} similar skin profiles
-        </p>
-      </div>
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-3xl font-bold mb-2">Your Enhanced Analysis Results</h1>
+          <p className="text-muted-foreground">
+            Analysis completed on {formatTimestamp(analysisResult.timestamp)}
+          </p>
+        </div>
 
-      {/* 🍎 Operation Apple: Enhanced Analysis Summary */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            🍎 Operation Apple: Enhanced Skin Analysis Summary
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <h3 className="font-semibold mb-2">Skin Type</h3>
-              <Badge variant="secondary">{analysisResult.skinType || 'Not specified'}</Badge>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2">Confidence Score</h3>
-              <Badge variant="secondary">{Math.round((analysisResult.confidence_score || 0) * 100)}%</Badge>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2">Primary Concerns</h3>
-              <div className="flex flex-wrap gap-1">
-                {(analysisResult.concerns || []).map((concern, index) => (
-                  <Badge key={index} variant="outline">{concern}</Badge>
-                ))}
+        {/* Enhanced Analysis Summary */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              Enhanced Skin Analysis Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h3 className="font-semibold mb-2">Skin Type</h3>
+                <Badge variant="secondary" className="text-sm">
+                  {analysisData.skin_type || 'Not detected'}
+                </Badge>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">Confidence Score</h3>
+                <div className="flex items-center gap-2">
+                  {getConfidenceIcon(analysisData.confidence || 0)}
+                  <span className={getConfidenceColor(analysisData.confidence || 0)}>
+                    {(analysisData.confidence || 0) * 100}%
+                  </span>
+                </div>
               </div>
             </div>
-            
-            {/* 🍎 Operation Apple: Enhanced Analysis Fields */}
-            {analysisResult.skin_analysis?.texture_score && (
-              <div>
-                <h3 className="font-semibold mb-2">Texture Score</h3>
-                <Badge variant="default">{Math.round((analysisResult.skin_analysis.texture_score || 0) * 100)}%</Badge>
+
+            {/* Enhanced Analysis Fields */}
+            {analysisData.ml_analysis && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <Target className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+                  <p className="text-sm font-medium">Texture Score</p>
+                  <p className="text-lg font-bold text-blue-600">
+                    {analysisData.ml_analysis.texture_score?.toFixed(2) || 'N/A'}
+                  </p>
+                </div>
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <Shield className="h-6 w-6 text-green-600 mx-auto mb-2" />
+                  <p className="text-sm font-medium">Pore Density</p>
+                  <p className="text-lg font-bold text-green-600">
+                    {analysisData.ml_analysis.pore_density?.toFixed(2) || 'N/A'}
+                  </p>
+                </div>
+                <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                  <TrendingUp className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
+                  <p className="text-sm font-medium">Wrinkle Severity</p>
+                  <p className="text-lg font-bold text-yellow-600">
+                    {analysisData.ml_analysis.wrinkle_severity?.toFixed(2) || 'N/A'}
+                  </p>
+                </div>
+                <div className="text-center p-3 bg-purple-50 rounded-lg">
+                  <Star className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+                  <p className="text-sm font-medium">Overall Score</p>
+                  <p className="text-lg font-bold text-purple-600">
+                    {analysisData.ml_analysis.overall_score?.toFixed(2) || 'N/A'}
+                  </p>
+                </div>
               </div>
             )}
-            
-            {analysisResult.skin_analysis?.hydration_level && (
-              <div>
-                <h3 className="font-semibold mb-2">Hydration Level</h3>
-                <Badge variant="default">{Math.round((analysisResult.skin_analysis.hydration_level || 0) * 100)}%</Badge>
-              </div>
-            )}
-            
-            {analysisResult.facial_detection?.quality_score && (
-              <div>
-                <h3 className="font-semibold mb-2">Image Quality</h3>
-                <Badge variant="default">{Math.round((analysisResult.facial_detection.quality_score || 0) * 100)}%</Badge>
-              </div>
-            )}
-            
-            <div>
-              <h3 className="font-semibold mb-2">Recommended Ingredients</h3>
-              <div className="flex flex-wrap gap-1">
-                {(analysisResult.ingredient_analysis?.primary_ingredients || []).map((ingredient, index) => (
-                  <Badge key={index} variant="default">{ingredient}</Badge>
-                ))}
+          </CardContent>
+        </Card>
+
+        {/* Enhanced Product Recommendations */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              Recommended Products
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {analysisData.recommendations?.map((rec, index) => (
+                <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                  <p className="text-sm">{rec}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Enhanced Ingredient Analysis */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Ingredient Analysis</CardTitle>
+            <CardDescription>
+              Based on your skin analysis, here are the ingredients that would benefit you most
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {analysisData.concerns?.map((concern, index) => (
+                <div key={index} className="p-4 border rounded-lg">
+                  <h4 className="font-semibold mb-2">{concern}</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Recommended ingredients for this concern
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Enhanced Product Card Component */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Product Matching</CardTitle>
+            <CardDescription>
+              Products that match your skin profile
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="p-4 border rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold">Gentle Cleanser</h4>
+                  <Badge variant="outline">95% Match</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Matching Ingredients:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary" className="text-xs">Hyaluronic Acid</Badge>
+                  <Badge variant="secondary" className="text-xs">Ceramides</Badge>
+                  <Badge variant="secondary" className="text-xs">Niacinamide</Badge>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* 🍎 Operation Apple: Enhanced Product Recommendations */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-          <ShoppingCart className="h-6 w-6" />
-          🍎 Operation Apple: Recommended Products
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {(analysisResult.recommended_products || []).map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+        {/* Action Buttons */}
+        <div className="flex gap-4 justify-center">
+          <Button onClick={() => window.history.back()}>
+            Back to Analysis
+          </Button>
+          <Button variant="outline">
+            Save Results
+          </Button>
         </div>
-        {(!analysisResult.recommended_products || analysisResult.recommended_products.length === 0) && (
-          <Card className="p-6 text-center">
-            <p className="text-muted-foreground">No product recommendations available yet.</p>
-          </Card>
-        )}
-      </div>
-
-      {/* 🍎 Operation Apple: Enhanced Ingredient Analysis */}
-      <Card>
-        <CardHeader>
-          <CardTitle>🍎 Operation Apple: Ingredient Analysis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <h3 className="font-semibold mb-2 text-green-600">Primary Ingredients</h3>
-              <div className="flex flex-wrap gap-1">
-                {(analysisResult.ingredient_analysis?.primary_ingredients || []).map((ingredient, index) => (
-                  <Badge key={index} variant="default">{ingredient}</Badge>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2 text-blue-600">Secondary Ingredients</h3>
-              <div className="flex flex-wrap gap-1">
-                {(analysisResult.ingredient_analysis?.secondary_ingredients || []).map((ingredient, index) => (
-                  <Badge key={index} variant="secondary">{ingredient}</Badge>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2 text-red-600">Avoid Ingredients</h3>
-              <div className="flex flex-wrap gap-1">
-                {(analysisResult.ingredient_analysis?.avoid_ingredients || []).map((ingredient, index) => (
-                  <Badge key={index} variant="destructive">{ingredient}</Badge>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// 🍎 Operation Apple: Enhanced Product Card Component
-const ProductCard = ({ product }: { product: ProductRecommendation }) => (
-  <Card className="w-full hover:shadow-lg transition-shadow">
-    <CardHeader className="p-0">
-      <div className="relative">
-        <img 
-          src={product.image_url} 
-          alt={product.name} 
-          className="w-full h-48 object-cover rounded-t-lg"
-          onError={(e) => {
-            // Fallback image if product image fails to load
-            e.currentTarget.src = '/products/placeholder.jpg';
-          }}
-        />
-        <div className="absolute top-2 right-2">
-          <Badge variant="secondary" className="text-xs">
-            {Math.round((product.match_score || 0) * 100)}% Match
-          </Badge>
-        </div>
-      </div>
-    </CardHeader>
-    <CardContent className="p-4">
-      <div className="mb-2">
-        <h3 className="font-semibold text-lg">{product.name}</h3>
-        <p className="text-sm text-gray-600">{product.brand}</p>
-      </div>
-      
-      <div className="mb-3">
-        <p className="text-lg font-bold text-primary">${product.price}</p>
-        <p className="text-sm text-gray-600 mt-1">{product.description}</p>
-      </div>
-      
-      <div className="mb-3">
-        <p className="text-sm font-medium mb-1">🍎 Operation Apple: Matching Ingredients:</p>
-        <div className="flex flex-wrap gap-1">
-          {(product.matching_ingredients || []).map((ingredient, index) => (
-            <Badge key={index} variant="outline" className="text-xs">
-              {ingredient}
-            </Badge>
-          ))}
-        </div>
-      </div>
-      
-      <div className="flex gap-2">
-        <Button size="sm" className="flex-1">
-          <ShoppingCart className="mr-2 h-4 w-4" />
-          Add to Cart
-        </Button>
-        <Button size="sm" variant="outline">
-          <Star className="h-4 w-4" />
-        </Button>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-// Loading component for Suspense fallback
-function LoadingSpinner() {
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-        <p className="mt-4 text-lg">🍎 Operation Apple: Loading analysis results...</p>
       </div>
     </div>
-  );
-}
-
-// Main component with Suspense boundary
-export default function AnalysisResultsPage() {
-  return (
-    <Suspense fallback={<LoadingSpinner />}>
-      <AnalysisResultsContent />
-    </Suspense>
   );
 }
