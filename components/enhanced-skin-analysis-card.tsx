@@ -134,10 +134,11 @@ export default function EnhancedSkinAnalysisCard() {
         // ☠️ Operation Skully Fix: Extract analysis_id from the correct location in response
         console.log('☠️ Operation Skully: Full API Response Structure:', analysisResponse);
         console.log('☠️ Operation Skully: Response keys:', Object.keys(analysisResponse));
-        console.log('☠️ Operation Skully: Data object:', analysisResponse.data);
-        console.log('☠️ Operation Skully: Data keys:', analysisResponse.data ? Object.keys(analysisResponse.data) : 'No data object');
+        console.log('☠️ Operation Skully: Analysis ID at top level:', analysisResponse.analysis_id);
+        console.log('☠️ Operation Skully: Analysis ID in data.analysis:', analysisResponse.data?.analysis?.analysis_id);
         
-        const analysisId = analysisResponse.data?.analysis?.analysis_id || analysisResponse.analysis_id;
+        // ☠️ Operation Skully Fix: Extract analysis_id from TOP LEVEL (not nested)
+        const analysisId = analysisResponse.analysis_id || analysisResponse.data?.analysis?.analysis_id;
         
         if (analysisId) {
           console.log('🔍 Storing analysis result:', {
@@ -162,7 +163,8 @@ export default function EnhancedSkinAnalysisCard() {
         // Redirect to results page
         setTimeout(() => {
           // ☠️ Operation Skully Fix: Ensure analysisId is properly captured and passed
-          const analysisId = analysisResponse.data?.analysis?.analysis_id || analysisResponse.analysis_id;
+          // ☠️ Operation Skully Fix: Extract analysis_id from TOP LEVEL (not nested)
+          const analysisId = analysisResponse.analysis_id || analysisResponse.data?.analysis?.analysis_id;
           
           if (!analysisId) {
             console.error('☠️ Operation Skully Error: No analysis ID received from backend');
@@ -219,8 +221,9 @@ export default function EnhancedSkinAnalysisCard() {
       
       if (analysisResponse.success) {
         // Store analysis ID and results in localStorage for the results page
-        if (analysisResponse.analysis_id || analysisResponse.data?.image_id) {
-          const analysisId = analysisResponse.analysis_id || analysisResponse.data.image_id;
+        // ☠️ Operation Skully Fix: Extract analysis_id from TOP LEVEL (not nested)
+        const analysisId = analysisResponse.analysis_id || analysisResponse.data?.image_id;
+        if (analysisId) {
           localStorage.setItem('lastAnalysisId', analysisId);
           // Cache the full analysis results
           localStorage.setItem(`analysis_${analysisId}`, JSON.stringify(analysisResponse));
@@ -235,10 +238,10 @@ export default function EnhancedSkinAnalysisCard() {
         // Show degradation notice
         setAnalysisError('Enhanced features are temporarily unavailable. Standard analysis completed successfully.');
         
-        // Redirect to results page
-        setTimeout(() => {
-          // Capture the analysis ID to ensure it doesn't get lost
-          const analysisId = analysisResponse.analysis_id || analysisResponse.data.image_id;
+                 // Redirect to results page
+         setTimeout(() => {
+           // ☠️ Operation Skully Fix: Capture the analysis ID from TOP LEVEL
+           const analysisId = analysisResponse.analysis_id || analysisResponse.data?.image_id;
           console.log('🔍 Legacy redirecting with analysis ID:', analysisId);
           console.log('🔍 Legacy full URL will be:', `/analysis-results?analysisId=${analysisId}`);
           router.replace(`/analysis-results?analysisId=${encodeURIComponent(analysisId)}`);
