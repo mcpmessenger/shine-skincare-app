@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Star, ShoppingCart } from "lucide-react";
 import { useRouter } from 'next/navigation';
 
+// Prevent static generation for this page
+export const dynamic = 'force-dynamic';
+
 interface ProductRecommendation {
   id: string;
   name: string;
@@ -59,6 +62,14 @@ export default function AnalysisResultsPage() {
 
     // ☠️ Operation Skully: Get analysis result from localStorage
     try {
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined') {
+        console.log('☠️ Operation Skully: Server-side rendering, skipping localStorage access');
+        setError('Analysis results are only available in the browser');
+        setLoading(false);
+        return;
+      }
+
       console.log('☠️ Operation Skully: Looking for analysis result:', {
         analysisId,
         storage_key: `analysis_${analysisId}`,
