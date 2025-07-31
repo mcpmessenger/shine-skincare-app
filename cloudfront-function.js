@@ -7,11 +7,11 @@ function handler(event) {
         request.headers['content-length'] = { value: '104857600' }; // 100MB limit
         request.headers['x-upload-size-limit'] = { value: '104857600' };
         
-        // Ensure CORS headers are set
-        request.headers['access-control-allow-origin'] = { value: 'https://www.shineskincollective.com' };
-        request.headers['access-control-allow-methods'] = { value: 'POST, OPTIONS' };
-        request.headers['access-control-allow-headers'] = { value: 'Content-Type, Authorization, X-Requested-With' };
-        request.headers['access-control-allow-credentials'] = { value: 'true' };
+        // Remove any existing CORS headers from request to prevent duplication
+        delete request.headers['access-control-allow-origin'];
+        delete request.headers['access-control-allow-methods'];
+        delete request.headers['access-control-allow-headers'];
+        delete request.headers['access-control-allow-credentials'];
     }
     
     // Handle OPTIONS preflight requests
@@ -21,9 +21,10 @@ function handler(event) {
             statusDescription: 'OK',
             headers: {
                 'access-control-allow-origin': { value: 'https://www.shineskincollective.com' },
-                'access-control-allow-methods': { value: 'POST, OPTIONS' },
-                'access-control-allow-headers': { value: 'Content-Type, Authorization, X-Requested-With' },
+                'access-control-allow-methods': { value: 'GET, POST, OPTIONS, PUT, DELETE' },
+                'access-control-allow-headers': { value: 'Content-Type, Authorization, X-Requested-With, Origin, Accept' },
                 'access-control-allow-credentials': { value: 'true' },
+                'access-control-max-age': { value: '86400' },
                 'content-type': { value: 'text/plain' }
             }
         };

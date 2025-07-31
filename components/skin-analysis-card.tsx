@@ -51,18 +51,40 @@ export default function SkinAnalysisCard() {
       if (analysisResponse.success) {
         setAnalysisStep('Analysis complete!');
         
-        // Store analysis ID and results in localStorage for the results page
-        if (analysisResponse.data?.image_id) {
+        // Handle simple CORS fix deployment response structure
+        if (analysisResponse.version?.includes('simple-cors-fix-deployment')) {
+          // Simple CORS fix deployment format - no image_id, use timestamp as ID
+          const analysisId = `simple_cors_fix_${Date.now()}`;
+          localStorage.setItem('lastAnalysisId', analysisId);
+          localStorage.setItem(`analysis_${analysisId}`, JSON.stringify(analysisResponse));
+          
+          setIsAnalyzing(false);
+          setAnalysisComplete(true);
+          
+          // Redirect to results page
+          router.push(`/analysis-results?analysisId=${analysisId}`);
+        } else if (analysisResponse.data?.image_id) {
+          // Original format with image_id
           localStorage.setItem('lastAnalysisId', analysisResponse.data.image_id);
-          // Cache the full analysis results (store the entire response)
           localStorage.setItem(`analysis_${analysisResponse.data.image_id}`, JSON.stringify(analysisResponse));
+          
+          setIsAnalyzing(false);
+          setAnalysisComplete(true);
+          
+          // Redirect to results page
+          router.push(`/analysis-results?analysisId=${analysisResponse.data.image_id}`);
+        } else {
+          // Fallback for any other format
+          const analysisId = `fallback_${Date.now()}`;
+          localStorage.setItem('lastAnalysisId', analysisId);
+          localStorage.setItem(`analysis_${analysisId}`, JSON.stringify(analysisResponse));
+          
+          setIsAnalyzing(false);
+          setAnalysisComplete(true);
+          
+          // Redirect to results page
+          router.push(`/analysis-results?analysisId=${analysisId}`);
         }
-        
-        setIsAnalyzing(false);
-        setAnalysisComplete(true);
-        
-        // Redirect to results page
-        router.push(`/analysis-results?analysisId=${analysisResponse.data.image_id}`);
       } else {
         console.error('Analysis failed:', analysisResponse);
         setIsAnalyzing(false);
@@ -96,18 +118,40 @@ export default function SkinAnalysisCard() {
           if (analysisResponse.success) {
             setAnalysisStep('Analysis complete!');
             
-            // Store analysis ID and results in localStorage for the results page
-            if (analysisResponse.data?.image_id) {
+            // Handle simple CORS fix deployment response structure
+            if (analysisResponse.version?.includes('simple-cors-fix-deployment')) {
+              // Simple CORS fix deployment format - no image_id, use timestamp as ID
+              const analysisId = `simple_cors_fix_${Date.now()}`;
+              localStorage.setItem('lastAnalysisId', analysisId);
+              localStorage.setItem(`analysis_${analysisId}`, JSON.stringify(analysisResponse));
+              
+              setIsAnalyzing(false);
+              setAnalysisComplete(true);
+              
+              // Redirect to results page
+              router.push(`/analysis-results?analysisId=${analysisId}`);
+            } else if (analysisResponse.data?.image_id) {
+              // Original format with image_id
               localStorage.setItem('lastAnalysisId', analysisResponse.data.image_id);
-              // Cache the full analysis results (store the entire response)
               localStorage.setItem(`analysis_${analysisResponse.data.image_id}`, JSON.stringify(analysisResponse));
+              
+              setIsAnalyzing(false);
+              setAnalysisComplete(true);
+              
+              // Redirect to results page
+              router.push(`/analysis-results?analysisId=${analysisResponse.data.image_id}`);
+            } else {
+              // Fallback for any other format
+              const analysisId = `fallback_${Date.now()}`;
+              localStorage.setItem('lastAnalysisId', analysisId);
+              localStorage.setItem(`analysis_${analysisId}`, JSON.stringify(analysisResponse));
+              
+              setIsAnalyzing(false);
+              setAnalysisComplete(true);
+              
+              // Redirect to results page
+              router.push(`/analysis-results?analysisId=${analysisId}`);
             }
-            
-            setIsAnalyzing(false);
-            setAnalysisComplete(true);
-            
-            // Redirect to results page
-            router.push(`/analysis-results?analysisId=${analysisResponse.data.image_id}`);
           } else {
             console.error('Analysis failed:', analysisResponse);
             setIsAnalyzing(false);

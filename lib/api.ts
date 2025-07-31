@@ -6,6 +6,8 @@ interface ApiResponse<T> {
   data: T;
   success: boolean;
   message?: string;
+  version?: string;
+  timestamp?: string;
 }
 
 interface ApiError {
