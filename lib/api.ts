@@ -42,8 +42,8 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // ☠️ Operation Skully Fix: Use the working backend URL
-    this.baseUrl = 'http://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
+    // ☠️ Operation Skully Fix: Use the working backend URL with HTTPS
+    this.baseUrl = 'https://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
     
     // Debug: Log the actual URL being used
     console.log('🔧 API Client initialized with backend URL:', this.baseUrl);
