@@ -132,6 +132,11 @@ export default function EnhancedSkinAnalysisCard() {
         
         // Store analysis ID and results in localStorage for the results page
         // ☠️ Operation Skully Fix: Extract analysis_id from the correct location in response
+        console.log('☠️ Operation Skully: Full API Response Structure:', analysisResponse);
+        console.log('☠️ Operation Skully: Response keys:', Object.keys(analysisResponse));
+        console.log('☠️ Operation Skully: Data object:', analysisResponse.data);
+        console.log('☠️ Operation Skully: Data keys:', analysisResponse.data ? Object.keys(analysisResponse.data) : 'No data object');
+        
         const analysisId = analysisResponse.data?.analysis?.analysis_id || analysisResponse.analysis_id;
         
         if (analysisId) {
