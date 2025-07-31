@@ -157,26 +157,19 @@ export default function SelfieAnalysisPage() {
       }, 200);
 
       // Use the selfie analysis API
-      const result = await fetch('/api/v2/selfie/analyze', {
-        method: 'POST',
-        body: (() => {
-          const formData = new FormData();
-          formData.append('image', file);
-          return formData;
-        })(),
-      });
+      const result = await analyzeSelfie(file);
 
       clearInterval(progressInterval);
       setProgress(100);
 
-      if (!result.ok) {
-        throw new Error(`HTTP error! status: ${result.status}`);
+      if (!result.success) {
+        throw new Error(result.message || 'Analysis failed');
       }
 
-      const data = await result.json();
+      const data = result.data;
       console.log('Selfie analysis result:', data);
       
-      if (data.success && data.selfie_analysis) {
+      if (data.selfie_analysis) {
         setAnalysisResult(data.selfie_analysis);
         
         toast({
@@ -185,7 +178,7 @@ export default function SelfieAnalysisPage() {
           variant: "default",
         });
       } else {
-        throw new Error(data.message || 'Analysis failed');
+        throw new Error('Invalid analysis result format');
       }
 
     } catch (error) {

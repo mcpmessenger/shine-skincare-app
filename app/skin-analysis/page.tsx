@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { analyzeSkin } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
+import { apiClient } from '@/lib/api';
 
 interface SkinCondition {
   id: string;
@@ -102,26 +103,19 @@ export default function SkinAnalysisPage() {
       }, 200);
 
       // Use the enhanced skin analysis API
-      const result = await fetch('/api/v2/skin/analyze', {
-        method: 'POST',
-        body: (() => {
-          const formData = new FormData();
-          formData.append('image', file);
-          return formData;
-        })(),
-      });
+      const result = await analyzeSkin(file);
 
       clearInterval(progressInterval);
       setProgress(100);
 
-      if (!result.ok) {
-        throw new Error(`HTTP error! status: ${result.status}`);
+      if (!result.success) {
+        throw new Error(result.message || 'Analysis failed');
       }
 
-      const data = await result.json();
+      const data = result.data;
       console.log('Skin analysis result:', data);
       
-      if (data.success && data.skin_analysis) {
+      if (data.skin_analysis) {
         setAnalysisResult(data.skin_analysis);
         
         toast({
@@ -130,7 +124,7 @@ export default function SkinAnalysisPage() {
           variant: "default",
         });
       } else {
-        throw new Error(data.message || 'Analysis failed');
+        throw new Error('Invalid analysis result format');
       }
 
     } catch (error) {
