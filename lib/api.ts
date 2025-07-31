@@ -143,7 +143,7 @@ class ApiClient {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      // Use the correct endpoint that exists in our backend
+      // Try backend first, fallback to Next.js API route
       const endpoint = '/api/v2/analyze/guest';
 
       // Create AbortController for timeout management
@@ -157,28 +157,53 @@ class ApiClient {
       }
       const startTime = Date.now();
 
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
-        method: 'POST',
-        body: formData,
-        headers: headers,
-        signal: controller.signal,
-      });
+      try {
+        // Try backend first
+        const response = await fetch(`${this.baseUrl}${endpoint}`, {
+          method: 'POST',
+          body: formData,
+          headers: headers,
+          signal: controller.signal,
+        });
 
-      clearTimeout(timeoutId);
-      const elapsedTime = Date.now() - startTime;
-      console.log(`✅ Enhanced ML analysis completed in ${elapsedTime}ms`);
+        clearTimeout(timeoutId);
+        const elapsedTime = Date.now() - startTime;
+        console.log(`✅ Enhanced ML analysis completed in ${elapsedTime}ms`);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        // Log the API response for debugging
+        console.log('API Response:', result);
+        
+        // Return the result as-is since the backend already provides the correct structure
+        return result;
+      } catch (backendError) {
+        console.log('Backend not available, trying Next.js API route...');
+        
+        // Fallback to Next.js API route
+        const nextResponse = await fetch('/api/analyze/guest', {
+          method: 'POST',
+          body: formData,
+          headers: headers,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        const elapsedTime = Date.now() - startTime;
+        console.log(`✅ Next.js API analysis completed in ${elapsedTime}ms`);
+
+        if (!nextResponse.ok) {
+          throw new Error(`HTTP error! status: ${nextResponse.status}`);
+        }
+
+        const result = await nextResponse.json();
+        console.log('Next.js API Response:', result);
+        return result;
       }
-
-      const result = await response.json();
-      
-      // Log the API response for debugging
-      console.log('API Response:', result);
-      
-      // Return the result as-is since the backend already provides the correct structure
-      return result;
     } catch (error: unknown) {
       console.error('Enhanced skin analysis failed:', error);
       
