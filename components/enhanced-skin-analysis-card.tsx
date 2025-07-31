@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { CameraCapture } from "@/components/camera-capture";
 import { apiClient } from "@/lib/api";
 import { serviceDegradationManager } from "@/lib/service-degradation";
+import { ImageCompressionStatus } from "@/components/image-compression-status";
 
 export default function EnhancedSkinAnalysisCard() {
   const { isAuthenticated } = useAuth();
@@ -38,6 +39,10 @@ export default function EnhancedSkinAnalysisCard() {
   const [ethnicity, setEthnicity] = useState('');
   const [age, setAge] = useState('');
   const [showOptionalInputs, setShowOptionalInputs] = useState(false);
+  
+  // Image compression
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [compressedFile, setCompressedFile] = useState<File | null>(null);
 
   // Monitor service status
   useEffect(() => {
@@ -220,9 +225,6 @@ export default function EnhancedSkinAnalysisCard() {
     setAnalysisError(null);
     setFallbackMode(false);
     
-    // Allow both authenticated and guest users to analyze
-    setIsAnalyzing(true);
-    
     try {
       // Convert base64 to blob
       const response = await fetch(imageData);
@@ -231,10 +233,11 @@ export default function EnhancedSkinAnalysisCard() {
       // Create a File object from the blob
       const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
       
-      await performAnalysis(file);
+      // Set the selected file for compression
+      setSelectedFile(file);
+      setCompressedFile(null);
     } catch (error) {
       console.error('Error preparing image for analysis:', error);
-      setIsAnalyzing(false);
       setAnalysisError('Failed to process image. Please try again.');
     }
   };
@@ -242,57 +245,39 @@ export default function EnhancedSkinAnalysisCard() {
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
+      setCompressedFile(null); // Reset compressed file
+      setAnalysisError(null);
+      setFallbackMode(false);
+      
+      // Show image preview
       const reader = new FileReader();
       reader.onload = async (e) => {
         const result = e.target?.result as string;
         setCapturedImage(result);
-        setAnalysisError(null);
-        setFallbackMode(false);
-        
-        // Allow both authenticated and guest users to analyze
-        setIsAnalyzing(true);
-        
-        try {
-          await performAnalysis(file);
-        } catch (error) {
-          console.error('Error during file upload analysis:', error);
-          setIsAnalyzing(false);
-          setAnalysisError('Failed to process uploaded file. Please try again.');
-        }
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleAnalyze = () => {
-    if (capturedImage) {
-      // Trigger analysis with the captured image
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx?.drawImage(img, 0, 0);
-        
-        canvas.toBlob(async (blob) => {
-          if (blob) {
-            const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
-            setIsAnalyzing(true);
-            setAnalysisError(null);
-            setFallbackMode(false);
-            
-            try {
-              await performAnalysis(file);
-            } catch (error) {
-              console.error('Error during manual analysis:', error);
-              setIsAnalyzing(false);
-              setAnalysisError('Failed to process image. Please try again.');
-            }
-          }
-        }, 'image/jpeg');
-      };
-      img.src = capturedImage;
+    if (compressedFile) {
+      setIsAnalyzing(true);
+      setAnalysisError(null);
+      setFallbackMode(false);
+      
+      try {
+        performAnalysis(compressedFile);
+      } catch (error) {
+        console.error('Error during manual analysis:', error);
+        setIsAnalyzing(false);
+        setAnalysisError('Failed to process image. Please try again.');
+      }
+    } else if (selectedFile) {
+      // If no compressed file yet, wait for compression
+      setAnalysisError('Please wait for image optimization to complete.');
+    } else {
+      setAnalysisError('Please select an image first.');
     }
   };
 
@@ -308,8 +293,18 @@ export default function EnhancedSkinAnalysisCard() {
     handleAnalyze();
   };
 
+  const handleCompressionComplete = (compressedFile: File) => {
+    setCompressedFile(compressedFile);
+  };
+
+  const handleCompressionError = (error: string) => {
+    setAnalysisError(error);
+  };
+
   const resetAnalysis = () => {
     setCapturedImage(null);
+    setSelectedFile(null);
+    setCompressedFile(null);
     setAnalysisComplete(false);
     setAnalysisError(null);
     setEthnicity('');
@@ -407,7 +402,16 @@ export default function EnhancedSkinAnalysisCard() {
               </div>
             </div>
             
-                         {showCamera && (
+            {/* Image Compression Status */}
+            {selectedFile && (
+              <ImageCompressionStatus
+                file={selectedFile}
+                onCompressionComplete={handleCompressionComplete}
+                onError={handleCompressionError}
+              />
+            )}
+            
+            {showCamera && (
                <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center">
                  <div className="bg-background p-4 rounded-lg max-w-md w-full mx-4">
                    <CameraCapture 

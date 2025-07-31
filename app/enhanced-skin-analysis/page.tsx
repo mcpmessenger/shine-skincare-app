@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Sparkles, Database, Brain, Zap } from 'lucide-react';
 import Link from 'next/link';
+import { ImageCompressionStatus } from '@/components/image-compression-status';
 
 export default function EnhancedSkinAnalysisPage() {
   const { isAuthenticated, user, loading } = useAuth();

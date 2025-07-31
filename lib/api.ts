@@ -1,5 +1,7 @@
 'use client';
 
+import { ImageCompressor } from './image-compression';
+
 interface ApiResponse<T> {
   data: T;
   success: boolean;
@@ -96,35 +98,62 @@ class ApiClient {
     }
   }
 
-  // Enhanced Image Analysis API - Uses real backend endpoint
+  // Enhanced Image Analysis API - Uses real backend endpoint with compression
   async analyzeSkinEnhanced(imageFile: File, ethnicity?: string, age?: string): Promise<ApiResponse<any>> {
-    const formData = new FormData();
-    formData.append('image', imageFile);
-    
-    // Add optional demographics if provided
-    if (ethnicity) {
-      formData.append('ethnicity', ethnicity);
-    }
-    if (age) {
-      formData.append('age', age);
-    }
-
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const headers: Record<string, string> = {};
-    if (token && token !== 'guest') {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    // Use the correct endpoint that exists in our backend
-    const endpoint = '/api/v2/analyze/guest';
-
     try {
+      // Compress image if needed (target 1MB for reliable uploads)
+      let fileToUpload = imageFile;
+      let compressionInfo = null;
+      
+      if (ImageCompressor.needsCompression(imageFile, 1.0)) {
+        console.log(`🖼️ Compressing image from ${ImageCompressor.formatFileSize(imageFile.size)} to fit upload limits...`);
+        
+        const compressed = await ImageCompressor.compressImage(imageFile, {
+          maxWidth: 1920,
+          maxHeight: 1920,
+          quality: 0.8,
+          maxSizeMB: 1.0
+        });
+        
+        fileToUpload = compressed.file;
+        compressionInfo = {
+          originalSize: ImageCompressor.formatFileSize(compressed.originalSize),
+          compressedSize: ImageCompressor.formatFileSize(compressed.compressedSize),
+          compressionRatio: Math.round((1 - compressed.compressionRatio) * 100)
+        };
+        
+        console.log(`✅ Image compressed: ${compressionInfo.originalSize} → ${compressionInfo.compressedSize} (${compressionInfo.compressionRatio}% reduction)`);
+      }
+      
+      const formData = new FormData();
+      formData.append('image', fileToUpload);
+      
+      // Add optional demographics if provided
+      if (ethnicity) {
+        formData.append('ethnicity', ethnicity);
+      }
+      if (age) {
+        formData.append('age', age);
+      }
+
+          const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: Record<string, string> = {};
+      if (token && token !== 'guest') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      // Use the correct endpoint that exists in our backend
+      const endpoint = '/api/v2/analyze/guest';
+
       // Create AbortController for timeout management
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
 
       console.log('🔍 Starting enhanced ML analysis with 5-minute timeout...');
       console.log('📊 Demographics:', { ethnicity, age });
+      if (compressionInfo) {
+        console.log('📦 Compression applied:', compressionInfo);
+      }
       const startTime = Date.now();
 
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -187,26 +216,43 @@ class ApiClient {
     }
   }
 
-  // SCIN Search API - Uses real backend endpoint
+  // SCIN Search API - Uses real backend endpoint with compression
   async searchSCINSimilar(queryImageFile: File, k: number = 5, conditions?: string[], skinTypes?: string[]): Promise<ApiResponse<any>> {
-    const formData = new FormData();
-    formData.append('query_image', queryImageFile);
-    formData.append('k', k.toString());
-    
-    if (conditions && conditions.length > 0) {
-      formData.append('conditions', conditions.join(','));
-    }
-    if (skinTypes && skinTypes.length > 0) {
-      formData.append('skin_types', skinTypes.join(','));
-    }
-
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const headers: Record<string, string> = {};
-    if (token && token !== 'guest') {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
     try {
+      // Compress image if needed
+      let fileToUpload = queryImageFile;
+      
+      if (ImageCompressor.needsCompression(queryImageFile, 1.0)) {
+        console.log(`🖼️ Compressing SCIN search image from ${ImageCompressor.formatFileSize(queryImageFile.size)}...`);
+        
+        const compressed = await ImageCompressor.compressImage(queryImageFile, {
+          maxWidth: 1920,
+          maxHeight: 1920,
+          quality: 0.8,
+          maxSizeMB: 1.0
+        });
+        
+        fileToUpload = compressed.file;
+        console.log(`✅ SCIN image compressed: ${ImageCompressor.formatFileSize(compressed.originalSize)} → ${ImageCompressor.formatFileSize(compressed.compressedSize)}`);
+      }
+      
+      const formData = new FormData();
+      formData.append('query_image', fileToUpload);
+      formData.append('k', k.toString());
+      
+      if (conditions && conditions.length > 0) {
+        formData.append('conditions', conditions.join(','));
+      }
+      if (skinTypes && skinTypes.length > 0) {
+        formData.append('skin_types', skinTypes.join(','));
+      }
+
+          const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: Record<string, string> = {};
+      if (token && token !== 'guest') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       // Create AbortController for timeout management
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
