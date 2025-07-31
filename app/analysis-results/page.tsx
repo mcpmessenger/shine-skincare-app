@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +37,7 @@ interface AnalysisResult {
   similar_profiles_analyzed: number;
 }
 
-export default function AnalysisResultsPage() {
+function AnalysisResultsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const analysisId = searchParams.get('analysisId');
@@ -312,4 +312,25 @@ const ProductCard = ({ product }: { product: ProductRecommendation }) => (
       </div>
     </CardContent>
   </Card>
-); 
+);
+
+// Loading component for Suspense fallback
+function LoadingSpinner() {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-4 text-lg">☠️ Operation Skully: Loading analysis results...</p>
+      </div>
+    </div>
+  );
+}
+
+// Main component with Suspense boundary
+export default function AnalysisResultsPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <AnalysisResultsContent />
+    </Suspense>
+  );
+}
