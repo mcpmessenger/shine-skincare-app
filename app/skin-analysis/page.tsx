@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, Sparkles, AlertCircle, CheckCircle, Loader2, Microscope } from 'lucide-react';
+import { Upload, Sparkles, AlertCircle, CheckCircle, Loader2, Search } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { analyzeSkin } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
@@ -106,11 +106,11 @@ export default function SkinAnalysisPage() {
       clearInterval(progressInterval);
       setProgress(100);
       
-      setAnalysisResult(result.skin_analysis);
+      setAnalysisResult(result.data?.skin_analysis);
       
       toast({
         title: "Analysis Complete",
-        description: `Found ${result.skin_analysis.total_conditions} skin conditions with ${result.skin_analysis.ai_level} AI processing.`,
+        description: `Found ${result.data?.skin_analysis?.total_conditions || 0} skin conditions with ${result.data?.skin_analysis?.ai_level || 'unknown'} AI processing.`,
         variant: "default",
       });
 
@@ -140,7 +140,7 @@ export default function SkinAnalysisPage() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Microscope className="h-5 w-5" />
+            <Search className="h-5 w-5" />
             Upload Skin Photo
           </CardTitle>
           <CardDescription>
@@ -226,7 +226,7 @@ export default function SkinAnalysisPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-orange-500" />
-                Detected Skin Conditions ({analysisResult.total_conditions})
+                Detected Skin Conditions ({analysisResult?.total_conditions || 0})
               </CardTitle>
             </CardHeader>
             <CardContent>

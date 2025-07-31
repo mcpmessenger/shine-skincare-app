@@ -472,3 +472,92 @@ export const analyzeSkin = async (file: File): Promise<ApiResponse<{
     };
   }
 };
+
+// Medical Analysis API functions
+export const analyzeMedical = async (file: File, ethnicity?: string, age?: string): Promise<ApiResponse<{
+  medical_analysis: any;
+  message: string;
+  has_medical_analysis: boolean;
+  google_vision_api: boolean;
+  scin_dataset: boolean;
+  cosine_similarity: boolean;
+  proven_stable: boolean;
+}>> => {
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    if (ethnicity) {
+      formData.append('ethnicity', ethnicity);
+    }
+    if (age) {
+      formData.append('age', age);
+    }
+
+    const response = await fetch(`${this.baseUrl}/api/v2/medical/analyze`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json();
+    return { 
+      success: response.ok, 
+      data: response.ok ? data : null, 
+      error: response.ok ? null : data.error || 'Request failed' 
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      data: null, 
+      error: 'Network error' 
+    };
+  }
+};
+
+export const getMedicalHistory = async (user_id?: string, limit?: number): Promise<ApiResponse<{
+  medical_history: any[];
+  total_analyses: number;
+  user_id: string;
+}>> => {
+  try {
+    const params = new URLSearchParams();
+    if (user_id) params.append('user_id', user_id);
+    if (limit) params.append('limit', limit.toString());
+
+    const response = await fetch(`${this.baseUrl}/api/v2/medical/history?${params}`);
+    const data = await response.json();
+    
+    return { 
+      success: response.ok, 
+      data: response.ok ? data : null, 
+      error: response.ok ? null : data.error || 'Request failed' 
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      data: null, 
+      error: 'Network error' 
+    };
+  }
+};
+
+export const getMedicalAnalysisDetails = async (analysis_id: string): Promise<ApiResponse<{
+  analysis_details: any;
+}>> => {
+  try {
+    const response = await fetch(`${this.baseUrl}/api/v2/medical/analysis/${analysis_id}`);
+    const data = await response.json();
+    
+    return { 
+      success: response.ok, 
+      data: response.ok ? data : null, 
+      error: response.ok ? null : data.error || 'Request failed' 
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      data: null, 
+      error: 'Network error' 
+    };
+  }
+};

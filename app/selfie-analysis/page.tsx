@@ -156,11 +156,11 @@ export default function SelfieAnalysisPage() {
       clearInterval(progressInterval);
       setProgress(100);
       
-      setAnalysisResult(result.selfie_analysis);
+      setAnalysisResult(result.data?.selfie_analysis);
       
       toast({
         title: "Analysis Complete",
-        description: `Found ${result.selfie_analysis.total_conditions} skin conditions with ${result.selfie_analysis.ai_level} AI processing.`,
+        description: `Found ${result.data?.selfie_analysis?.total_conditions || 0} skin conditions with ${result.data?.selfie_analysis?.ai_level || 'unknown'} AI processing.`,
         variant: "default",
       });
 
@@ -333,7 +333,7 @@ export default function SelfieAnalysisPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-orange-500" />
-                Detected Skin Conditions ({analysisResult.total_conditions})
+                Detected Skin Conditions ({analysisResult?.total_conditions || 0})
               </CardTitle>
             </CardHeader>
             <CardContent>
