@@ -172,11 +172,18 @@ export default function SelfieAnalysisPage() {
       if (data.selfie_analysis) {
         setAnalysisResult(data.selfie_analysis);
         
+        // Store result in localStorage for analysis results page
+        const analysisId = `fallback_${Date.now()}`;
+        localStorage.setItem(`analysis_${analysisId}`, JSON.stringify(result));
+        
         toast({
           title: "Analysis Complete",
           description: `Found ${data.selfie_analysis.total_conditions || 0} skin conditions with ${data.selfie_analysis.ai_level || 'unknown'} AI processing.`,
           variant: "default",
         });
+        
+        // Navigate to results page
+        window.location.href = `/analysis-results?analysisId=${analysisId}`;
       } else {
         throw new Error('Invalid analysis result format');
       }
