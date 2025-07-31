@@ -335,11 +335,18 @@ class ApiClient {
     }
   }
 
-  // Trending Products API - Uses real backend endpoint
+  // Trending Products API - Uses Next.js API route
   async getTrendingProducts(): Promise<ApiResponse<any[]>> {
     try {
-      const response = await this.request<ApiResponse<any[]>>('/api/recommendations/trending');
-      return response;
+      // Call the Next.js API route instead of backend
+      const response = await fetch('/api/recommendations/trending');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error('Trending products failed:', error);
       return {
