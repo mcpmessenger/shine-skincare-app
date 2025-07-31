@@ -453,22 +453,44 @@ export const analyzeSkin = async (file: File): Promise<ApiResponse<{
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch(`${this.baseUrl}/api/v2/skin/analyze`, {
+    const response = await fetch('http://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/skin/analyze', {
       method: 'POST',
       body: formData,
     });
 
     const data = await response.json();
-    return { 
-      success: response.ok, 
-      data: response.ok ? data : null, 
-      error: response.ok ? null : data.error || 'Request failed' 
-    };
+    if (response.ok) {
+      return { 
+        success: true, 
+        data: data, 
+        message: 'Analysis completed' 
+      };
+    } else {
+      return { 
+        success: false, 
+        data: {
+          skin_analysis: null,
+          message: data.error || 'Request failed',
+          dual_skin_analysis: false,
+          google_vision_api: false,
+          scin_dataset: false,
+          proven_stable: false
+        }, 
+        message: data.error || 'Request failed' 
+      };
+    }
   } catch (error) {
     return { 
       success: false, 
-      data: null, 
-      error: 'Network error' 
+      data: {
+        skin_analysis: null,
+        message: 'Network error',
+        dual_skin_analysis: false,
+        google_vision_api: false,
+        scin_dataset: false,
+        proven_stable: false
+      }, 
+      message: 'Network error' 
     };
   }
 };
