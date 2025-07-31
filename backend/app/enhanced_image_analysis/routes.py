@@ -431,6 +431,18 @@ def analyze_image_guest():
                 file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
             raise ValidationError('Invalid file type. Allowed: png, jpg, jpeg, gif, bmp', field='image')
         
+        # Validate file size (100MB limit for modern phone selfies)
+        max_size = 100 * 1024 * 1024  # 100MB
+        if len(image_data) > max_size:
+            return jsonify({
+                'success': False,
+                'error': 'File too large',
+                'message': 'Please upload an image smaller than 100MB. For best results, use a photo under 10MB.',
+                'max_size_mb': 100,
+                'recommended_size_mb': 10,
+                'file_size_mb': round(len(image_data) / (1024 * 1024), 2)
+            }), 413
+        
         # Read image data
         image_data = file.read()
         

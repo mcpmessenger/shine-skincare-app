@@ -131,16 +131,21 @@ export default function EnhancedSkinAnalysisCard() {
         serviceDegradationManager.recordSuccess('enhanced-analysis');
         
         // Store analysis ID and results in localStorage for the results page
-        if (analysisResponse.analysis_id) {
+        // ☠️ Operation Skully Fix: Extract analysis_id from the correct location in response
+        const analysisId = analysisResponse.data?.analysis?.analysis_id || analysisResponse.analysis_id;
+        
+        if (analysisId) {
           console.log('🔍 Storing analysis result:', {
-            analysis_id: analysisResponse.analysis_id,
-            storage_key: `analysis_${analysisResponse.analysis_id}`,
+            analysis_id: analysisId,
+            storage_key: `analysis_${analysisId}`,
             full_response: analysisResponse
           });
           
-          localStorage.setItem('lastAnalysisId', analysisResponse.analysis_id);
+          localStorage.setItem('lastAnalysisId', analysisId);
           // Cache the full analysis results
-          localStorage.setItem(`analysis_${analysisResponse.analysis_id}`, JSON.stringify(analysisResponse));
+          localStorage.setItem(`analysis_${analysisId}`, JSON.stringify(analysisResponse));
+        } else {
+          console.error('☠️ Operation Skully Error: No analysis_id found in response:', analysisResponse);
         }
         
         setAnalysisProgress(100);
@@ -151,20 +156,27 @@ export default function EnhancedSkinAnalysisCard() {
         
         // Redirect to results page
         setTimeout(() => {
-          // Capture the analysis ID to ensure it doesn't get lost
-          const analysisId = analysisResponse.analysis_id;
+          // ☠️ Operation Skully Fix: Ensure analysisId is properly captured and passed
+          const analysisId = analysisResponse.data?.analysis?.analysis_id || analysisResponse.analysis_id;
           
-          console.log('🔍 Redirecting with analysis ID:', analysisId);
-          console.log('🔍 Full URL will be:', `/analysis-results?analysisId=${analysisId}`);
-          console.log('🔍 Encoded URL will be:', `/analysis-results?analysisId=${encodeURIComponent(analysisId)}`);
-          console.log('🔍 Current window location before redirect:', window.location.href);
+          if (!analysisId) {
+            console.error('☠️ Operation Skully Error: No analysis ID received from backend');
+            console.error('☠️ Operation Skully Error: Full response structure:', analysisResponse);
+            setAnalysisError('Failed to get analysis ID. Please try again.');
+            return;
+          }
           
-          // Use replace to ensure clean navigation
+          console.log('☠️ Operation Skully: Redirecting with analysis ID:', analysisId);
+          console.log('☠️ Operation Skully: Full URL will be:', `/analysis-results?analysisId=${analysisId}`);
+          console.log('☠️ Operation Skully: Encoded URL will be:', `/analysis-results?analysisId=${encodeURIComponent(analysisId)}`);
+          console.log('☠️ Operation Skully: Current window location before redirect:', window.location.href);
+          
+          // Use router.replace with proper encoding and error handling
           router.replace(`/analysis-results?analysisId=${encodeURIComponent(analysisId)}`);
           
           // Log after redirect attempt
           setTimeout(() => {
-            console.log('🔍 Window location after redirect:', window.location.href);
+            console.log('☠️ Operation Skully: Window location after redirect:', window.location.href);
           }, 100);
         }, 1000);
       } else {

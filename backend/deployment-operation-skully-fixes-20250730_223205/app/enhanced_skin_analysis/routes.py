@@ -16,7 +16,7 @@ from app.services.product_matching_service import ProductMatchingService
 
 logger = logging.getLogger(__name__)
 
-# ☠️ Operation Skully: Initialize services
+# 💀☠️ Operation Skully: Initialize services
 enhanced_vectorization_service = EnhancedVectorizationService()
 faiss_service = ProductionFAISSService()
 scin_service = SCINDatasetService()
@@ -160,16 +160,16 @@ def _process_enhanced_analysis(vectorization_result, similar_results, user_id):
         # Calculate enhanced metrics
         metrics = _calculate_enhanced_metrics(vectorization_result)
         
-        # ☠️ Operation Skully: Generate enhanced recommendations using ingredient-based approach
+        # 💀☠️ Operation Skully: Generate enhanced recommendations using ingredient-based approach
         ingredient_recs = ingredient_recommendations.get_recommendations_from_similar_profiles(
             similar_results, conditions_data, skin_type
         )
         
-        # ☠️ Operation Skully: Match ingredients to actual products
+        # 💀☠️ Operation Skully: Match ingredients to actual products
         recommended_ingredients = ingredient_recs.get('recommended_ingredients', {}).get('primary', [])
         matched_products = product_matching_service.match_products_to_ingredients(recommended_ingredients)
         
-        # ☠️ Operation Skully: Convert products to frontend format
+        # 💀☠️ Operation Skully: Convert products to frontend format
         products = []
         for product in matched_products:
             products.append({
