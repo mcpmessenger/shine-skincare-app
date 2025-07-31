@@ -97,8 +97,12 @@ function AnalysisResultsContent() {
   useEffect(() => {
     console.log('🔍 Analysis Results Page - Received analysisId:', analysisId);
     console.log('🔍 Analysis Results Page - All search params:', Object.fromEntries(searchParams.entries()));
+    console.log('🔍 Analysis Results Page - Current URL:', window.location.href);
+    console.log('🔍 Analysis Results Page - Search params type:', typeof searchParams);
+    console.log('🔍 Analysis Results Page - Search params entries:', Array.from(searchParams.entries()));
     
     if (!analysisId) {
+      console.log('🔍 Analysis Results Page - No analysisId found, setting error');
       setError('No analysis ID provided');
       setLoading(false);
       return;

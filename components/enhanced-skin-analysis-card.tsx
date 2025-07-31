@@ -153,9 +153,16 @@ export default function EnhancedSkinAnalysisCard() {
         setTimeout(() => {
           console.log('🔍 Redirecting with analysis ID:', analysisResponse.analysis_id);
           console.log('🔍 Full URL will be:', `/analysis-results?analysisId=${analysisResponse.analysis_id}`);
+          console.log('🔍 Encoded URL will be:', `/analysis-results?analysisId=${encodeURIComponent(analysisResponse.analysis_id)}`);
+          console.log('🔍 Current window location before redirect:', window.location.href);
           
           // Use replace to ensure clean navigation
           router.replace(`/analysis-results?analysisId=${encodeURIComponent(analysisResponse.analysis_id)}`);
+          
+          // Log after redirect attempt
+          setTimeout(() => {
+            console.log('🔍 Window location after redirect:', window.location.href);
+          }, 100);
         }, 1000);
       } else {
         throw new Error(analysisResponse.message || 'Analysis failed');
