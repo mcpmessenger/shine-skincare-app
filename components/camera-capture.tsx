@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Camera, RotateCcw, Upload, X } from 'lucide-react';
+import { FacialMatrixOverlay } from './facial-matrix-overlay';
 
 interface CameraCaptureProps {
   onImageCapture: (imageData: string) => void;
@@ -188,6 +189,19 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
                   </div>
+                )}
+                
+                {/* Facial Matrix Overlay */}
+                {isStreaming && (
+                  <FacialMatrixOverlay 
+                    isActive={isStreaming}
+                    onScanComplete={() => {
+                      // Auto-capture after matrix scan completes
+                      setTimeout(() => {
+                        captureImage();
+                      }, 500);
+                    }}
+                  />
                 )}
               </div>
 

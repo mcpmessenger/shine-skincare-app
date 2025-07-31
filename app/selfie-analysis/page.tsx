@@ -9,6 +9,7 @@ import { analyzeSelfie } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { CameraCapture } from '@/components/camera-capture';
+import { FacialMatrixOverlay } from '@/components/facial-matrix-overlay';
 
 interface FacialFeature {
   type: string;
@@ -78,6 +79,7 @@ export default function SelfieAnalysisPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [showCamera, setShowCamera] = useState(false); // Added state for camera modal
+  const [matrixActive, setMatrixActive] = useState(false); // Added state for matrix overlay
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -154,18 +156,37 @@ export default function SelfieAnalysisPage() {
         });
       }, 200);
 
-      const result = await analyzeSelfie(file);
-      
+      // Use the selfie analysis API
+      const result = await fetch('/api/v2/selfie/analyze', {
+        method: 'POST',
+        body: (() => {
+          const formData = new FormData();
+          formData.append('image', file);
+          return formData;
+        })(),
+      });
+
       clearInterval(progressInterval);
       setProgress(100);
+
+      if (!result.ok) {
+        throw new Error(`HTTP error! status: ${result.status}`);
+      }
+
+      const data = await result.json();
+      console.log('Selfie analysis result:', data);
       
-      setAnalysisResult(result.data?.selfie_analysis);
-      
-      toast({
-        title: "Analysis Complete",
-        description: `Found ${result.data?.selfie_analysis?.total_conditions || 0} skin conditions with ${result.data?.selfie_analysis?.ai_level || 'unknown'} AI processing.`,
-        variant: "default",
-      });
+      if (data.success && data.selfie_analysis) {
+        setAnalysisResult(data.selfie_analysis);
+        
+        toast({
+          title: "Analysis Complete",
+          description: `Found ${data.selfie_analysis.total_conditions || 0} skin conditions with ${data.selfie_analysis.ai_level || 'unknown'} AI processing.`,
+          variant: "default",
+        });
+      } else {
+        throw new Error(data.message || 'Analysis failed');
+      }
 
     } catch (error) {
       console.error('Analysis error:', error);

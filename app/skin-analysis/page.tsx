@@ -101,18 +101,37 @@ export default function SkinAnalysisPage() {
         });
       }, 200);
 
-      const result = await analyzeSkin(file);
-      
+      // Use the enhanced skin analysis API
+      const result = await fetch('/api/v2/skin/analyze', {
+        method: 'POST',
+        body: (() => {
+          const formData = new FormData();
+          formData.append('image', file);
+          return formData;
+        })(),
+      });
+
       clearInterval(progressInterval);
       setProgress(100);
+
+      if (!result.ok) {
+        throw new Error(`HTTP error! status: ${result.status}`);
+      }
+
+      const data = await result.json();
+      console.log('Skin analysis result:', data);
       
-      setAnalysisResult(result.data?.skin_analysis);
-      
-      toast({
-        title: "Analysis Complete",
-        description: `Found ${result.data?.skin_analysis?.total_conditions || 0} skin conditions with ${result.data?.skin_analysis?.ai_level || 'unknown'} AI processing.`,
-        variant: "default",
-      });
+      if (data.success && data.skin_analysis) {
+        setAnalysisResult(data.skin_analysis);
+        
+        toast({
+          title: "Analysis Complete",
+          description: `Found ${data.skin_analysis.total_conditions || 0} skin conditions with ${data.skin_analysis.ai_level || 'unknown'} AI processing.`,
+          variant: "default",
+        });
+      } else {
+        throw new Error(data.message || 'Analysis failed');
+      }
 
     } catch (error) {
       console.error('Analysis error:', error);
