@@ -19,34 +19,44 @@ export async function POST(request: NextRequest) {
     // Simulate processing time
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Mock analysis result
+    // Mock analysis result matching backend structure
     const analysisResult = {
-      analysis_id: `mock_analysis_${Date.now()}`,
-      status: "completed",
-      results: {
-        skin_type: "combination",
-        concerns: [
-          "Minor texture irregularities detected",
-          "Slight uneven skin tone",
-          "Some areas of dryness"
-        ],
-        recommendations: [
-          "Use a gentle cleanser twice daily",
-          "Apply moisturizer with hyaluronic acid",
-          "Consider a vitamin C serum for brightening",
-          "Use SPF 30+ daily"
-        ],
-        confidence: 0.85,
-        image_quality: "good",
-        demographics: {
-          ethnicity: ethnicity || "not_specified",
-          age: age || "not_specified"
+      skin_conditions: [
+        {
+          id: 'condition_001',
+          type: 'acne',
+          confidence: 0.85,
+          location: { x: 150, y: 200, width: 30, height: 25 },
+          characteristics: {
+            severity: 'moderate',
+            type: 'inflammatory'
+          },
+          scin_match_score: 0.80,
+          recommendation: 'Benzoyl peroxide treatment'
         }
-      },
-      timestamp: new Date().toISOString(),
-      processing_time_ms: 2000,
-      ai_level: "mock",
-      backend_available: false
+      ],
+      scin_similar_cases: [
+        {
+          id: 'scin_case_001',
+          similarity_score: 0.80,
+          condition_type: 'acne',
+          age_group: '20-30',
+          ethnicity: ethnicity || 'not_specified',
+          treatment_history: 'Benzoyl peroxide',
+          outcome: 'Improvement'
+        }
+      ],
+      total_conditions: 1,
+      ai_processed: true,
+      image_size: [400, 300, 3],
+      ai_level: 'mock',
+      scin_dataset: false,
+      enhanced_features: {
+        skin_condition_detection: true,
+        scin_dataset_query: false,
+        treatment_recommendations: true,
+        similar_case_analysis: true
+      }
     };
 
     return NextResponse.json({

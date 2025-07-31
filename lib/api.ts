@@ -202,7 +202,15 @@ class ApiClient {
 
         const result = await nextResponse.json();
         console.log('Next.js API Response:', result);
-        return result;
+        
+        // Wrap the result in the expected structure
+        return {
+          data: {
+            skin_analysis: result.data
+          },
+          success: result.success,
+          message: result.message
+        };
       }
     } catch (error: unknown) {
       console.error('Enhanced skin analysis failed:', error);
