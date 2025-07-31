@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle, TrendingUp, Star, Zap, Shield, Target, Users, Clock, Award } from 'lucide-react';
+import { AlertCircle, CheckCircle, TrendingUp, Star, Zap } from 'lucide-react';
 
 // Enhanced Analysis Result Interface
 interface EnhancedAnalysisResult {
@@ -36,7 +36,7 @@ interface EnhancedAnalysisResult {
   version?: string;
 }
 
-export default function AnalysisResultsPage() {
+function AnalysisResultsContent() {
   const [analysisResult, setAnalysisResult] = useState<EnhancedAnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -98,16 +98,10 @@ export default function AnalysisResultsPage() {
     loadAnalysisResult();
   }, [searchParams]);
 
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.8) return 'text-green-600';
-    if (confidence >= 0.6) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
   const getConfidenceIcon = (confidence: number) => {
-    if (confidence >= 0.8) return <CheckCircle className="h-4 w-4" />;
-    if (confidence >= 0.6) return <AlertCircle className="h-4 w-4" />;
-    return <AlertCircle className="h-4 w-4" />;
+    if (confidence >= 0.8) return <CheckCircle className="h-4 w-4 text-green-500" />;
+    if (confidence >= 0.6) return <AlertCircle className="h-4 w-4 text-yellow-500" />;
+    return <AlertCircle className="h-4 w-4 text-red-500" />;
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -117,9 +111,11 @@ export default function AnalysisResultsPage() {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="mt-4 text-lg">Loading analysis results...</p>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading analysis results...</p>
+          </div>
         </div>
       </div>
     );
@@ -128,23 +124,26 @@ export default function AnalysisResultsPage() {
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle className="text-destructive flex items-center gap-2">
-              <AlertCircle className="h-5 w-5" />
-              Error
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">{error}</p>
-            <Button 
-              onClick={() => window.history.back()} 
-              className="mt-4"
-            >
-              Go Back
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-red-200 bg-red-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-800">
+                <AlertCircle className="h-5 w-5" />
+                Error Loading Results
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-red-700 mb-4">{error}</p>
+              <Button 
+                onClick={() => window.history.back()} 
+                variant="outline"
+                className="border-red-300 text-red-700 hover:bg-red-100"
+              >
+                Go Back
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -152,218 +151,198 @@ export default function AnalysisResultsPage() {
   if (!analysisResult) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle className="text-destructive">No Results</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">No analysis results found.</p>
-            <Button 
-              onClick={() => window.history.back()} 
-              className="mt-4"
-            >
-              Go Back
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle>No Analysis Results</CardTitle>
+              <CardDescription>No analysis results were found.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => window.history.back()} variant="outline">
+                Go Back
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
-  // Extract analysis data with fallback handling
-  let analysisData = analysisResult.results;
-  
-  // Handle different response formats
-  if (analysisResult.data && analysisResult.data.results) {
-    analysisData = analysisResult.data.results;
-  } else if (analysisResult.results) {
-    analysisData = analysisResult.results;
-  }
-
-  console.log('Extracted analysis data:', analysisData);
-
-  if (!analysisData) {
-    console.log('Analysis result not found in localStorage');
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle className="text-destructive">No Analysis Data</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">No analysis data found.</p>
-            <Button 
-              onClick={() => window.history.back()} 
-              className="mt-4"
-            >
-              Go Back
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  try {
-    console.error('Failed to load analysis result:', err);
-  } catch (err) {
-    console.error('Failed to load analysis result:', err);
-  }
+  const { results } = analysisResult;
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold mb-2">Your Enhanced Analysis Results</h1>
-          <p className="text-muted-foreground">
-            Analysis completed on {formatTimestamp(analysisResult.timestamp)}
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Skin Analysis Results</h1>
+          <p className="text-gray-600">Analysis completed on {formatTimestamp(analysisResult.timestamp)}</p>
         </div>
 
-        {/* Enhanced Analysis Summary */}
+        {/* Status Card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-primary" />
-              Enhanced Skin Analysis Summary
+              {analysisResult.status === 'completed' ? (
+                <CheckCircle className="h-5 w-5 text-green-500" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-yellow-500" />
+              )}
+              Analysis Status: {analysisResult.status}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h3 className="font-semibold mb-2">Skin Type</h3>
-                <Badge variant="secondary" className="text-sm">
-                  {analysisData.skin_type || 'Not detected'}
-                </Badge>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-2">Confidence Score</h3>
-                <div className="flex items-center gap-2">
-                  {getConfidenceIcon(analysisData.confidence || 0)}
-                  <span className={getConfidenceColor(analysisData.confidence || 0)}>
-                    {(analysisData.confidence || 0) * 100}%
-                  </span>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <p className="text-sm text-gray-500">Confidence</p>
+                <div className="flex items-center justify-center gap-1 mt-1">
+                  {getConfidenceIcon(results.confidence)}
+                  <span className="font-semibold">{(results.confidence * 100).toFixed(1)}%</span>
                 </div>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-gray-500">Image Quality</p>
+                <p className="font-semibold capitalize">{results.image_quality}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-gray-500">Analysis ID</p>
+                <p className="font-mono text-xs">{analysisResult.analysis_id}</p>
               </div>
             </div>
-
-            {/* Enhanced Analysis Fields */}
-            {analysisData.ml_analysis && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="text-center p-3 bg-blue-50 rounded-lg">
-                  <Target className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-                  <p className="text-sm font-medium">Texture Score</p>
-                  <p className="text-lg font-bold text-blue-600">
-                    {analysisData.ml_analysis.texture_score?.toFixed(2) || 'N/A'}
-                  </p>
-                </div>
-                <div className="text-center p-3 bg-green-50 rounded-lg">
-                  <Shield className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                  <p className="text-sm font-medium">Pore Density</p>
-                  <p className="text-lg font-bold text-green-600">
-                    {analysisData.ml_analysis.pore_density?.toFixed(2) || 'N/A'}
-                  </p>
-                </div>
-                <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
-                  <p className="text-sm font-medium">Wrinkle Severity</p>
-                  <p className="text-lg font-bold text-yellow-600">
-                    {analysisData.ml_analysis.wrinkle_severity?.toFixed(2) || 'N/A'}
-                  </p>
-                </div>
-                <div className="text-center p-3 bg-purple-50 rounded-lg">
-                  <Star className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-                  <p className="text-sm font-medium">Overall Score</p>
-                  <p className="text-lg font-bold text-purple-600">
-                    {analysisData.ml_analysis.overall_score?.toFixed(2) || 'N/A'}
-                  </p>
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
 
-        {/* Enhanced Product Recommendations */}
+        {/* Skin Type */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5 text-primary" />
-              Recommended Products
+              <Star className="h-5 w-5 text-yellow-500" />
+              Skin Type Analysis
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {analysisData.recommendations?.map((rec, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                  <p className="text-sm">{rec}</p>
-                </div>
-              ))}
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className="text-lg px-4 py-2">
+                {results.skin_type}
+              </Badge>
+              <span className="text-gray-600">Primary skin type identified</span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Enhanced Ingredient Analysis */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ingredient Analysis</CardTitle>
-            <CardDescription>
-              Based on your skin analysis, here are the ingredients that would benefit you most
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {analysisData.concerns?.map((concern, index) => (
-                <div key={index} className="p-4 border rounded-lg">
-                  <h4 className="font-semibold mb-2">{concern}</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Recommended ingredients for this concern
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Enhanced Product Card Component */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Product Matching</CardTitle>
-            <CardDescription>
-              Products that match your skin profile
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold">Gentle Cleanser</h4>
-                  <Badge variant="outline">95% Match</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Matching Ingredients:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary" className="text-xs">Hyaluronic Acid</Badge>
-                  <Badge variant="secondary" className="text-xs">Ceramides</Badge>
-                  <Badge variant="secondary" className="text-xs">Niacinamide</Badge>
-                </div>
+        {/* Concerns */}
+        {results.concerns && results.concerns.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-orange-500" />
+                Identified Concerns
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {results.concerns.map((concern, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    <span>{concern}</span>
+                  </div>
+                ))}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recommendations */}
+        {results.recommendations && results.recommendations.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-blue-500" />
+                Personalized Recommendations
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {results.recommendations.map((recommendation, index) => (
+                  <div key={index} className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-sm">{recommendation}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Enhanced ML Analysis */}
+        {results.ml_analysis && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-purple-500" />
+                Advanced ML Analysis
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {results.ml_analysis.texture_score !== undefined && (
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Texture Score</p>
+                    <Progress value={results.ml_analysis.texture_score * 100} className="h-2" />
+                    <p className="text-xs text-gray-400 mt-1">{(results.ml_analysis.texture_score * 100).toFixed(1)}%</p>
+                  </div>
+                )}
+                {results.ml_analysis.pore_density !== undefined && (
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Pore Density</p>
+                    <Progress value={results.ml_analysis.pore_density * 100} className="h-2" />
+                    <p className="text-xs text-gray-400 mt-1">{(results.ml_analysis.pore_density * 100).toFixed(1)}%</p>
+                  </div>
+                )}
+                {results.ml_analysis.wrinkle_severity !== undefined && (
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Wrinkle Severity</p>
+                    <Progress value={results.ml_analysis.wrinkle_severity * 100} className="h-2" />
+                    <p className="text-xs text-gray-400 mt-1">{(results.ml_analysis.wrinkle_severity * 100).toFixed(1)}%</p>
+                  </div>
+                )}
+                {results.ml_analysis.pigmentation_level !== undefined && (
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Pigmentation Level</p>
+                    <Progress value={results.ml_analysis.pigmentation_level * 100} className="h-2" />
+                    <p className="text-xs text-gray-400 mt-1">{(results.ml_analysis.pigmentation_level * 100).toFixed(1)}%</p>
+                  </div>
+                )}
+              </div>
+              {results.ml_analysis.overall_score !== undefined && (
+                <div className="mt-4 pt-4 border-t">
+                  <p className="text-sm text-gray-500 mb-1">Overall Skin Health Score</p>
+                  <Progress value={results.ml_analysis.overall_score * 100} className="h-3" />
+                  <p className="text-sm font-semibold mt-1">{(results.ml_analysis.overall_score * 100).toFixed(1)}%</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Action Buttons */}
-        <div className="flex gap-4 justify-center">
-          <Button onClick={() => window.history.back()}>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Button onClick={() => window.history.back()} variant="outline">
             Back to Analysis
           </Button>
-          <Button variant="outline">
-            Save Results
+          <Button onClick={() => window.location.href = '/recommendations'}>
+            View Recommendations
           </Button>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AnalysisResultsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AnalysisResultsContent />
+    </Suspense>
   );
 }

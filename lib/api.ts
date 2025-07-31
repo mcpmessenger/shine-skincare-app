@@ -44,8 +44,8 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // SSL Certificate Fixed: Using correct certificate ARN
-    this.baseUrl = 'https://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
+    // SSL Certificate Issue: Using HTTP until certificate is fixed
+    this.baseUrl = 'http://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
     
     // Debug: Log the actual URL being used
     console.log('🔧 API Client initialized with backend URL:', this.baseUrl);
@@ -56,9 +56,9 @@ class ApiClient {
     });
     
     // Log a clear message about the URL being used
-    console.log('🔒 SSL Certificate Fixed: Using HTTPS with correct certificate');
+    console.log('🔒 SSL Certificate Issue: Using HTTP until certificate is fixed');
     console.log('🚀 BUILD TRIGGER - Backend URL updated for SSL certificate fix');
-    console.log('🔧 BACKEND HTTPS: Using working Elastic Beanstalk backend');
+    console.log('🔧 BACKEND HTTP: Using working Elastic Beanstalk backend');
     console.log('🔄 CACHE BUSTING: Timestamp:', new Date().toISOString());
   }
 
