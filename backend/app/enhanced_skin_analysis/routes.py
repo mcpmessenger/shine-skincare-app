@@ -11,6 +11,7 @@ from . import enhanced_skin_bp
 from app.services.enhanced_vectorization_service import EnhancedVectorizationService
 from app.services.production_faiss_service import ProductionFAISSService
 from app.services.scin_dataset_service import SCINDatasetService
+from app.services.ingredient_based_recommendations import IngredientBasedRecommendations
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 enhanced_vectorization_service = EnhancedVectorizationService()
 faiss_service = ProductionFAISSService()
 scin_service = SCINDatasetService()
+ingredient_recommendations = IngredientBasedRecommendations()
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp'}
 
@@ -156,15 +158,14 @@ def _process_enhanced_analysis(vectorization_result, similar_results, user_id):
         # Calculate enhanced metrics
         metrics = _calculate_enhanced_metrics(vectorization_result)
         
-        # Generate enhanced recommendations
-        recommendations = _generate_enhanced_recommendations(
-            skin_type, concerns, metrics, similar_results
+        # Generate enhanced recommendations using ingredient-based approach
+        ingredient_recs = ingredient_recommendations.get_recommendations_from_similar_profiles(
+            similar_results, conditions_data, skin_type
         )
         
-        # Get product recommendations
-        products = _get_enhanced_product_recommendations(
-            skin_type, concerns, similar_results
-        )
+        # Extract recommendations and products from ingredient analysis
+        recommendations = ingredient_recs.get('personalized_advice', [])
+        products = ingredient_recs.get('recommended_products', [])
         
         return {
             'status': 'success',
@@ -183,6 +184,12 @@ def _process_enhanced_analysis(vectorization_result, similar_results, user_id):
                 'similar_results_count': len(similar_results),
                 'primary_condition': primary_condition,
                 'confidence': skin_conditions.get('confidence', 0.0)
+            },
+            'ingredient_analysis': {
+                'recommended_ingredients': ingredient_recs.get('recommended_ingredients', {}),
+                'primary_concerns': ingredient_recs.get('primary_concerns', []),
+                'confidence_score': ingredient_recs.get('confidence_score', 0.0),
+                'similar_profiles_analyzed': ingredient_recs.get('similar_profiles_analyzed', 0)
             }
         }
         
@@ -251,101 +258,4 @@ def _calculate_enhanced_metrics(vectorization_result):
         'sensitivity': max(0, min(100, sensitivity))
     }
 
-def _generate_enhanced_recommendations(skin_type, concerns, metrics, similar_results):
-    """Generate enhanced recommendations based on vector analysis"""
-    recommendations = []
-    
-    # Base recommendations by skin type
-    type_recommendations = {
-        'Oily': [
-            'Use a gentle cleanser twice daily',
-            'Apply oil-free moisturizer',
-            'Use products with salicylic acid for acne'
-        ],
-        'Dry': [
-            'Use a hydrating cleanser',
-            'Apply rich moisturizer',
-            'Consider hyaluronic acid serums'
-        ],
-        'Sensitive': [
-            'Use fragrance-free products',
-            'Patch test new products',
-            'Avoid harsh exfoliants'
-        ],
-        'Combination': [
-            'Use different products for different areas',
-            'Focus on balancing hydration',
-            'Gentle exfoliation 2-3 times per week'
-        ]
-    }
-    
-    # Add base recommendations
-    recommendations.extend(type_recommendations.get(skin_type, []))
-    
-    # Add concern-specific recommendations
-    concern_recommendations = {
-        'Acne': 'Use non-comedogenic products',
-        'Dryness': 'Increase hydration with humectants',
-        'Redness': 'Use calming ingredients like aloe',
-        'Hyperpigmentation': 'Use products with vitamin C',
-        'Sensitivity': 'Avoid fragrances and harsh chemicals'
-    }
-    
-    for concern in concerns:
-        if concern in concern_recommendations:
-            recommendations.append(concern_recommendations[concern])
-    
-    # Add vector-based insights if available
-    if similar_results:
-        recommendations.append(
-            f'Based on analysis of {len(similar_results)} similar skin profiles'
-        )
-    
-    return recommendations
-
-def _get_enhanced_product_recommendations(skin_type, concerns, similar_results):
-    """Get enhanced product recommendations"""
-    # Mock product recommendations based on skin type and concerns
-    # In production, this would query a product database
-    
-    base_products = [
-        {
-            'id': '1',
-            'name': 'Gentle Cleanser',
-            'brand': 'Shine',
-            'price': 24.99,
-            'image': '/products/cleanser.jpg',
-            'description': 'Suitable for all skin types'
-        },
-        {
-            'id': '2',
-            'name': 'Hydrating Moisturizer',
-            'brand': 'Shine',
-            'price': 29.99,
-            'image': '/products/moisturizer.jpg',
-            'description': 'Deep hydration for dry skin'
-        }
-    ]
-    
-    # Add concern-specific products
-    if 'Acne' in concerns:
-        base_products.append({
-            'id': '3',
-            'name': 'Acne Treatment Serum',
-            'brand': 'Shine',
-            'price': 34.99,
-            'image': '/products/acne-serum.jpg',
-            'description': 'Targeted acne treatment'
-        })
-    
-    if 'Sensitivity' in concerns:
-        base_products.append({
-            'id': '4',
-            'name': 'Calming Cream',
-            'brand': 'Shine',
-            'price': 27.99,
-            'image': '/products/calming-cream.jpg',
-            'description': 'Soothing for sensitive skin'
-        })
-    
-    return base_products 
+# Old hardcoded recommendation functions removed - now using ingredient-based approach 
