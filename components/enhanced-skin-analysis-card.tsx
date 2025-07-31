@@ -151,6 +151,8 @@ export default function EnhancedSkinAnalysisCard() {
         
         // Redirect to results page
         setTimeout(() => {
+          console.log('🔍 Redirecting with analysis ID:', analysisResponse.analysis_id);
+          console.log('🔍 Full URL will be:', `/analysis-results?analysisId=${analysisResponse.analysis_id}`);
           router.push(`/analysis-results?analysisId=${analysisResponse.analysis_id}`);
         }, 1000);
       } else {

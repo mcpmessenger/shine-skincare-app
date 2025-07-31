@@ -95,6 +95,9 @@ function AnalysisResultsContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('🔍 Analysis Results Page - Received analysisId:', analysisId);
+    console.log('🔍 Analysis Results Page - All search params:', Object.fromEntries(searchParams.entries()));
+    
     if (!analysisId) {
       setError('No analysis ID provided');
       setLoading(false);
