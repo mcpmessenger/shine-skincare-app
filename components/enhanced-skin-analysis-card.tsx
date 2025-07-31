@@ -131,10 +131,10 @@ export default function EnhancedSkinAnalysisCard() {
         serviceDegradationManager.recordSuccess('enhanced-analysis');
         
         // Store analysis ID and results in localStorage for the results page
-        if (analysisResponse.data?.analysis_id) {
-          localStorage.setItem('lastAnalysisId', analysisResponse.data.analysis_id);
+        if (analysisResponse.analysis_id) {
+          localStorage.setItem('lastAnalysisId', analysisResponse.analysis_id);
           // Cache the full analysis results
-          localStorage.setItem(`analysis_${analysisResponse.data.analysis_id}`, JSON.stringify(analysisResponse));
+          localStorage.setItem(`analysis_${analysisResponse.analysis_id}`, JSON.stringify(analysisResponse));
         }
         
         setAnalysisProgress(100);
@@ -145,7 +145,7 @@ export default function EnhancedSkinAnalysisCard() {
         
         // Redirect to results page
         setTimeout(() => {
-          router.push(`/analysis-results?analysisId=${analysisResponse.data.analysis_id}`);
+          router.push(`/analysis-results?analysisId=${analysisResponse.analysis_id}`);
         }, 1000);
       } else {
         throw new Error(analysisResponse.message || 'Analysis failed');
@@ -182,10 +182,11 @@ export default function EnhancedSkinAnalysisCard() {
       
       if (analysisResponse.success) {
         // Store analysis ID and results in localStorage for the results page
-        if (analysisResponse.data?.image_id) {
-          localStorage.setItem('lastAnalysisId', analysisResponse.data.image_id);
+        if (analysisResponse.analysis_id || analysisResponse.data?.image_id) {
+          const analysisId = analysisResponse.analysis_id || analysisResponse.data.image_id;
+          localStorage.setItem('lastAnalysisId', analysisId);
           // Cache the full analysis results
-          localStorage.setItem(`analysis_${analysisResponse.data.image_id}`, JSON.stringify(analysisResponse));
+          localStorage.setItem(`analysis_${analysisId}`, JSON.stringify(analysisResponse));
         }
         
         setAnalysisProgress(100);
@@ -199,7 +200,8 @@ export default function EnhancedSkinAnalysisCard() {
         
         // Redirect to results page
         setTimeout(() => {
-          router.push(`/analysis-results?analysisId=${analysisResponse.data.image_id}`);
+          const analysisId = analysisResponse.analysis_id || analysisResponse.data.image_id;
+          router.push(`/analysis-results?analysisId=${analysisId}`);
         }, 2000);
       } else {
         throw new Error(analysisResponse.message || 'Legacy analysis failed');
