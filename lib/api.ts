@@ -171,7 +171,13 @@ class ApiClient {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      const result = await response.json();
+      
+      // Log the API response for debugging
+      console.log('API Response:', result);
+      
+      // Return the result as-is since the backend already provides the correct structure
+      return result;
     } catch (error: unknown) {
       console.error('Enhanced skin analysis failed:', error);
       
