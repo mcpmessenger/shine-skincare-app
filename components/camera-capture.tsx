@@ -14,11 +14,20 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [isMobile, setIsMobile] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
+    // Detect mobile device
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+      const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
+      setIsMobile(isMobileDevice);
+    };
+    
+    checkMobile();
     startCamera();
     return () => {
       stopCamera();
@@ -45,14 +54,24 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
 
       console.log('Attempting to access camera...');
       
-      // Get camera stream
-      const stream = await navigator.mediaDevices.getUserMedia({
+      // Mobile-optimized camera constraints
+      const constraints = {
         video: {
           facingMode: facingMode,
-          width: { ideal: 720 },
-          height: { ideal: 1280 }
+          width: { ideal: isMobile ? 1280 : 720 },
+          height: { ideal: isMobile ? 720 : 1280 },
+          // Mobile-specific optimizations
+          ...(isMobile && {
+            aspectRatio: { ideal: 1 },
+            frameRate: { ideal: 30 }
+          })
         }
-      });
+      };
+      
+      console.log('Camera constraints:', constraints);
+      
+      // Get camera stream
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       
       console.log('Camera stream obtained successfully');
 
@@ -63,7 +82,13 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
       }
     } catch (err) {
       console.error('Camera access error:', err);
-      setError('Unable to access camera. Please check permissions.');
+      
+      // Enhanced error messages for mobile
+      if (isMobile) {
+        setError('Unable to access camera on mobile. Please check camera permissions and try again.');
+      } else {
+        setError('Unable to access camera. Please check permissions.');
+      }
     }
   };
 
@@ -136,10 +161,17 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
           {error ? (
             <div className="text-center py-8">
               <p className="text-red-500 mb-4">{error}</p>
-              <Button onClick={startCamera} variant="outline">
-                <Camera className="mr-2 h-4 w-4" />
-                Try Again
-              </Button>
+              <div className="space-y-2">
+                <Button onClick={startCamera} variant="outline" className="w-full">
+                  <Camera className="mr-2 h-4 w-4" />
+                  Try Again
+                </Button>
+                {isMobile && (
+                  <p className="text-xs text-muted-foreground">
+                    Make sure camera permissions are enabled in your browser settings
+                  </p>
+                )}
+              </div>
             </div>
           ) : (
             <>
@@ -166,6 +198,7 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
                   size="icon"
                   onClick={switchCamera}
                   disabled={!isStreaming}
+                  className="h-12 w-12"
                 >
                   <RotateCcw className="h-4 w-4" />
                 </Button>
@@ -173,13 +206,13 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
                 <Button
                   onClick={captureImage}
                   disabled={!isStreaming}
-                  className="h-12 w-12 rounded-full"
+                  className="h-16 w-16 rounded-full"
                 >
-                  <Camera className="h-6 w-6" />
+                  <Camera className="h-8 w-8" />
                 </Button>
                 
                 <label htmlFor="file-upload">
-                  <Button variant="outline" size="icon" asChild>
+                  <Button variant="outline" size="icon" asChild className="h-12 w-12">
                     <div>
                       <Upload className="h-4 w-4" />
                     </div>
@@ -189,7 +222,7 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
                   id="file-upload"
                   type="file"
                   accept="image/*"
-                  capture="user"
+                  capture={isMobile ? "user" : undefined}
                   onChange={handleFileUpload}
                   className="hidden"
                 />
@@ -200,6 +233,9 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
                 <p>• Ensure good lighting</p>
                 <p>• Keep your face centered</p>
                 <p>• Remove glasses if possible</p>
+                {isMobile && (
+                  <p>• Tap the camera button to capture</p>
+                )}
               </div>
             </>
           )}

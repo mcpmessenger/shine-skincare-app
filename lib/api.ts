@@ -44,7 +44,7 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // ☠️ Operation Skully Fix: Use the working backend URL with HTTPS
+    // SSL Certificate Fixed: Using correct certificate ARN
     this.baseUrl = 'https://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
     
     // Debug: Log the actual URL being used
@@ -56,8 +56,8 @@ class ApiClient {
     });
     
     // Log a clear message about the URL being used
-    console.log('☠️ Operation Skully: Using working backend URL:', this.baseUrl);
-    console.log('🚀 BUILD TRIGGER - Backend URL updated for Operation Skully');
+    console.log('🔒 SSL Certificate Fixed: Using HTTPS with correct certificate');
+    console.log('🚀 BUILD TRIGGER - Backend URL updated for SSL certificate fix');
     console.log('🔧 BACKEND HTTPS: Using working Elastic Beanstalk backend');
     console.log('🔄 CACHE BUSTING: Timestamp:', new Date().toISOString());
   }
@@ -136,7 +136,7 @@ class ApiClient {
         formData.append('age', age);
       }
 
-          const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const headers: Record<string, string> = {};
       if (token && token !== 'guest') {
         headers['Authorization'] = `Bearer ${token}`;
@@ -253,7 +253,7 @@ class ApiClient {
         formData.append('skin_types', skinTypes.join(','));
       }
 
-          const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const headers: Record<string, string> = {};
       if (token && token !== 'guest') {
         headers['Authorization'] = `Bearer ${token}`;

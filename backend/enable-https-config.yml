@@ -6,7 +6,7 @@ OptionSettings:
   aws:elbv2:listener:443:
     ListenerEnabled: true
     Protocol: HTTPS
-    SSLCertificateArns: arn:aws:acm:us-east-1:396608803476:certificate/your-certificate-id
+    SSLCertificateArns: arn:aws:acm:us-east-1:396608803476:certificate/d22adc54-b99d-4be1-95ae-df3ea291da6b
   
   # Security Group Configuration
   aws:autoscaling:launchconfiguration:
@@ -38,13 +38,13 @@ OptionSettings:
     X-Forwarded-For: $proxy_add_x_forwarded_for
     X-Real-IP: $remote_addr
 
-# Alternative: Use AWS Certificate Manager to create a certificate
-# 1. Go to AWS Certificate Manager
-# 2. Request a certificate for: *.eba-azwgu4dc.us-east-1.elasticbeanstalk.com
-# 3. Validate the certificate
-# 4. Update the SSLCertificateArns above with the new certificate ARN
+# Certificate Details:
+# - Certificate ARN: arn:aws:acm:us-east-1:396608803476:certificate/d22adc54-b99d-4be1-95ae-df3ea291da6b
+# - Status: ISSUED
+# - Domain: *.eba-azwgu4dc.us-east-1.elasticbeanstalk.com
+# - Validation: DNS validation completed
 
 # Quick Setup Instructions:
-# 1. Create certificate in ACM for the domain
-# 2. Update the SSLCertificateArns in this file
+# 1. Certificate is already created and validated
+# 2. Update the SSLCertificateArns in this file (DONE)
 # 3. Apply configuration: aws elasticbeanstalk update-environment --environment-name shine-env --option-settings file://enable-https-config.yml 
