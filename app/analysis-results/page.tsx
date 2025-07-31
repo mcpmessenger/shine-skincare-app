@@ -184,16 +184,16 @@ function AnalysisResultsContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <h3 className="font-semibold mb-2">Skin Type</h3>
-              <Badge variant="secondary">{analysisResult.skinType}</Badge>
+              <Badge variant="secondary">{analysisResult.skinType || 'Not specified'}</Badge>
             </div>
             <div>
               <h3 className="font-semibold mb-2">Confidence Score</h3>
-              <Badge variant="secondary">{Math.round(analysisResult.confidence_score * 100)}%</Badge>
+              <Badge variant="secondary">{Math.round((analysisResult.confidence_score || 0) * 100)}%</Badge>
             </div>
             <div>
               <h3 className="font-semibold mb-2">Primary Concerns</h3>
               <div className="flex flex-wrap gap-1">
-                {analysisResult.concerns.map((concern, index) => (
+                {(analysisResult.concerns || []).map((concern, index) => (
                   <Badge key={index} variant="outline">{concern}</Badge>
                 ))}
               </div>
@@ -201,7 +201,7 @@ function AnalysisResultsContent() {
             <div>
               <h3 className="font-semibold mb-2">Recommended Ingredients</h3>
               <div className="flex flex-wrap gap-1">
-                {analysisResult.ingredient_analysis.primary_ingredients.map((ingredient, index) => (
+                {(analysisResult.ingredient_analysis?.primary_ingredients || []).map((ingredient, index) => (
                   <Badge key={index} variant="default">{ingredient}</Badge>
                 ))}
               </div>
@@ -214,7 +214,7 @@ function AnalysisResultsContent() {
       <div className="mb-8">
         <h2 className="text-2xl font-bold mb-4">💀☠️ Operation Skully: Recommended Products</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {analysisResult.recommended_products.map((product) => (
+          {(analysisResult.recommended_products || []).map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
@@ -230,7 +230,7 @@ function AnalysisResultsContent() {
             <div>
               <h3 className="font-semibold mb-2 text-green-600">Primary Ingredients</h3>
               <div className="flex flex-wrap gap-1">
-                {analysisResult.ingredient_analysis.primary_ingredients.map((ingredient, index) => (
+                {(analysisResult.ingredient_analysis?.primary_ingredients || []).map((ingredient, index) => (
                   <Badge key={index} variant="default">{ingredient}</Badge>
                 ))}
               </div>
@@ -238,7 +238,7 @@ function AnalysisResultsContent() {
             <div>
               <h3 className="font-semibold mb-2 text-blue-600">Secondary Ingredients</h3>
               <div className="flex flex-wrap gap-1">
-                {analysisResult.ingredient_analysis.secondary_ingredients.map((ingredient, index) => (
+                {(analysisResult.ingredient_analysis?.secondary_ingredients || []).map((ingredient, index) => (
                   <Badge key={index} variant="secondary">{ingredient}</Badge>
                 ))}
               </div>
@@ -246,7 +246,7 @@ function AnalysisResultsContent() {
             <div>
               <h3 className="font-semibold mb-2 text-red-600">Avoid Ingredients</h3>
               <div className="flex flex-wrap gap-1">
-                {analysisResult.ingredient_analysis.avoid_ingredients.map((ingredient, index) => (
+                {(analysisResult.ingredient_analysis?.avoid_ingredients || []).map((ingredient, index) => (
                   <Badge key={index} variant="destructive">{ingredient}</Badge>
                 ))}
               </div>
@@ -293,7 +293,7 @@ const ProductCard = ({ product }: { product: ProductRecommendation }) => (
       <div className="mb-3">
         <p className="text-sm font-medium mb-1">💀☠️ Operation Skully: Matching Ingredients:</p>
         <div className="flex flex-wrap gap-1">
-          {product.matching_ingredients.map((ingredient, index) => (
+          {(product.matching_ingredients || []).map((ingredient, index) => (
             <Badge key={index} variant="outline" className="text-xs">
               {ingredient}
             </Badge>
