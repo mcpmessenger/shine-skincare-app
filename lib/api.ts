@@ -144,7 +144,7 @@ class ApiClient {
       }
 
       // Try backend first, fallback to Next.js API route
-      const endpoint = '/api/v2/analyze/guest';
+      const endpoint = '/api/v2/skin/analyze';
 
       // Create AbortController for timeout management
       const controller = new AbortController();
