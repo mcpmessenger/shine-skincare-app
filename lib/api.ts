@@ -42,8 +42,8 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // FORCE CLOUDFRONT URL - Environment variable is pointing to old URL
-    this.baseUrl = 'https://d1kmi2r0duzr21.cloudfront.net';
+    // ☠️ Operation Skully Fix: Use the working backend URL
+    this.baseUrl = 'http://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
     
     // Debug: Log the actual URL being used
     console.log('🔧 API Client initialized with backend URL:', this.baseUrl);
@@ -54,11 +54,9 @@ class ApiClient {
     });
     
     // Log a clear message about the URL being used
-    console.log('🎯 FORCED CLOUDFRONT HTTPS URL:', this.baseUrl);
-    
-    // Force rebuild - this should show the correct URL
-    console.log('🚀 BUILD TRIGGER - Environment variable should be applied now');
-    console.log('🔧 CLOUDFRONT HTTPS: Using secure HTTPS proxy');
+    console.log('☠️ Operation Skully: Using working backend URL:', this.baseUrl);
+    console.log('🚀 BUILD TRIGGER - Backend URL updated for Operation Skully');
+    console.log('🔧 BACKEND HTTPS: Using working Elastic Beanstalk backend');
     console.log('🔄 CACHE BUSTING: Timestamp:', new Date().toISOString());
   }
 
