@@ -153,7 +153,9 @@ export default function EnhancedSkinAnalysisCard() {
         setTimeout(() => {
           console.log('🔍 Redirecting with analysis ID:', analysisResponse.analysis_id);
           console.log('🔍 Full URL will be:', `/analysis-results?analysisId=${analysisResponse.analysis_id}`);
-          router.push(`/analysis-results?analysisId=${analysisResponse.analysis_id}`);
+          
+          // Use replace to ensure clean navigation
+          router.replace(`/analysis-results?analysisId=${encodeURIComponent(analysisResponse.analysis_id)}`);
         }, 1000);
       } else {
         throw new Error(analysisResponse.message || 'Analysis failed');
@@ -209,7 +211,8 @@ export default function EnhancedSkinAnalysisCard() {
         // Redirect to results page
         setTimeout(() => {
           const analysisId = analysisResponse.analysis_id || analysisResponse.data.image_id;
-          router.push(`/analysis-results?analysisId=${analysisId}`);
+          console.log('🔍 Legacy redirecting with analysis ID:', analysisId);
+          router.replace(`/analysis-results?analysisId=${encodeURIComponent(analysisId)}`);
         }, 2000);
       } else {
         throw new Error(analysisResponse.message || 'Legacy analysis failed');
