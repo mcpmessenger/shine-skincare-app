@@ -24,6 +24,17 @@ logger = logging.getLogger(__name__)
 # Create blueprint
 operation_left_brain_bp = Blueprint('operation_left_brain', __name__)
 
+# Enable CORS for all routes in this blueprint
+CORS(operation_left_brain_bp, origins=['https://www.shineskincollective.com', 'https://shineskincollective.com', 'http://localhost:3000'], supports_credentials=True)
+
+def add_cors_headers(response):
+    """Add CORS headers to response"""
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Cache-Control')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
+
 def allowed_file(filename: str) -> bool:
     """Check if file type is allowed"""
     allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
@@ -38,6 +49,7 @@ def verify_jwt_in_request_optional():
         return "guest"
 
 @operation_left_brain_bp.route('/api/v2/selfie/analyze', methods=['POST', 'OPTIONS'])
+@cross_origin(origins=['https://www.shineskincollective.com', 'https://shineskincollective.com', 'http://localhost:3000'], supports_credentials=True)
 def analyze_selfie_v2():
     """
     Enhanced selfie analysis endpoint with full AI pipeline
@@ -49,32 +61,53 @@ def analyze_selfie_v2():
     4. SCIN dataset similarity search using FAISS
     5. Treatment recommendations based on AI analysis
     """
+    # Handle CORS preflight
+    if request.method == 'OPTIONS':
+        response = make_response()
+        return add_cors_headers(response)
+    
     try:
-        # Handle CORS preflight
-        if request.method == 'OPTIONS':
-            return jsonify({'status': 'ok'}), 200
-        
         # Get user ID (authenticated or guest)
         current_user_id = verify_jwt_in_request_optional()
         
         # Check if image file is present
         if 'image' not in request.files:
-            raise ValidationError('No image file provided')
+            response = jsonify({
+                'success': False,
+                'error': 'No image file provided',
+                'message': 'Please upload an image file'
+            }), 400
+            return add_cors_headers(response[0]), response[1]
         
         file = request.files['image']
         if file.filename == '':
-            raise ValidationError('No file selected')
+            response = jsonify({
+                'success': False,
+                'error': 'No file selected',
+                'message': 'Please select an image file'
+            }), 400
+            return add_cors_headers(response[0]), response[1]
         
         # Validate file type
         if not allowed_file(file.filename):
-            raise ValidationError('Invalid file type. Please upload a valid image.')
+            response = jsonify({
+                'success': False,
+                'error': 'Invalid file type',
+                'message': 'Please upload a valid image (PNG, JPG, JPEG, GIF, BMP, WEBP)'
+            }), 400
+            return add_cors_headers(response[0]), response[1]
         
         # Read image data
         image_data = file.read()
         
-        # Check file size (100MB limit)
-        if len(image_data) > 100 * 1024 * 1024:
-            raise ValidationError('File too large. Please upload an image smaller than 100MB.')
+        # Check file size (10MB limit to prevent 413 errors)
+        if len(image_data) > 10 * 1024 * 1024:
+            response = jsonify({
+                'success': False,
+                'error': 'File too large',
+                'message': 'Please upload an image smaller than 10MB'
+            }), 413
+            return add_cors_headers(response[0]), response[1]
         
         logger.info(f"Starting Operation Left Brain selfie analysis for user {current_user_id}")
         
@@ -95,35 +128,36 @@ def analyze_selfie_v2():
         })
         
         logger.info(f"✅ Operation Left Brain selfie analysis completed for user {current_user_id}")
-        return jsonify(result_dict), 200
+        response = jsonify(result_dict)
+        return add_cors_headers(response), 200
         
     except ValidationError as e:
         logger.warning(f"Validation error in selfie analysis: {e}")
-        return jsonify({
+        response = jsonify({
             'success': False,
             'error': str(e),
             'status': 'validation_error'
         }), 400
+        return add_cors_headers(response[0]), response[1]
         
     except Exception as e:
-        logger.error(f"Error in Operation Left Brain selfie analysis: {e}")
-        return jsonify({
+        logger.error(f"Selfie analysis error: {e}")
+        response = jsonify({
             'success': False,
-            'error': 'Internal server error during AI analysis',
-            'status': 'error',
-            'operation': 'left_brain'
+            'error': 'Analysis failed',
+            'message': 'Failed to analyze image. Please try again.',
+            'details': str(e)
         }), 500
+        return add_cors_headers(response[0]), response[1]
 
 @operation_left_brain_bp.route('/api/v2/skin/analyze', methods=['POST', 'OPTIONS'])
-@cross_origin(origins=['https://www.shineskincollective.com', 'https://shineskincollective.com', 'http://localhost:3000'])
+@cross_origin(origins=['https://www.shineskincollective.com', 'https://shineskincollective.com', 'http://localhost:3000'], supports_credentials=True)
 def analyze_skin_v2():
-    """Enhanced skin analysis endpoint with CORS support"""
+    """Enhanced skin analysis endpoint with comprehensive CORS support"""
+    # Handle CORS preflight
     if request.method == 'OPTIONS':
         response = make_response()
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        return response
+        return add_cors_headers(response)
     
     try:
         # Get user ID (authenticated or guest)
@@ -131,34 +165,42 @@ def analyze_skin_v2():
         
         # Check if image file is present
         if 'image' not in request.files:
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'No image provided',
                 'message': 'Please upload an image file'
             }), 400
+            return add_cors_headers(response[0]), response[1]
         
         image_file = request.files['image']
         if image_file.filename == '':
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'No file selected',
                 'message': 'Please select an image file'
             }), 400
+            return add_cors_headers(response[0]), response[1]
         
         # Validate file type
         if not allowed_file(image_file.filename):
-            raise ValidationError('Invalid file type. Please upload a valid image.')
+            response = jsonify({
+                'success': False,
+                'error': 'Invalid file type',
+                'message': 'Please upload a valid image (PNG, JPG, JPEG, GIF, BMP, WEBP)'
+            }), 400
+            return add_cors_headers(response[0]), response[1]
         
         # Read image data
         image_bytes = image_file.read()
         
         # Check file size (limit to 10MB to prevent 413 errors)
         if len(image_bytes) > 10 * 1024 * 1024:  # 10MB limit
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'File too large',
                 'message': 'Please upload an image smaller than 10MB'
             }), 413
+            return add_cors_headers(response[0]), response[1]
         
         # Use lightweight analysis for stability
         analysis_result = perform_lightweight_analysis(image_bytes)
@@ -171,12 +213,7 @@ def analyze_skin_v2():
             'analysis_type': 'lightweight_stable'
         })
         
-        # Add CORS headers
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        
-        return response
+        return add_cors_headers(response), 200
         
     except ValidationError as e:
         logger.warning(f"Validation error in skin analysis: {e}")
@@ -185,14 +222,7 @@ def analyze_skin_v2():
             'error': str(e),
             'status': 'validation_error'
         }), 400
-        
-        # Add CORS headers even for errors
-        if isinstance(response, tuple):
-            response[0].headers.add('Access-Control-Allow-Origin', '*')
-            response[0].headers.add('Access-Control-Allow-Headers', 'Content-Type')
-            response[0].headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        
-        return response
+        return add_cors_headers(response[0]), response[1]
         
     except Exception as e:
         logger.error(f"Skin analysis error: {e}")
@@ -202,14 +232,7 @@ def analyze_skin_v2():
             'message': 'Failed to analyze image. Please try again.',
             'details': str(e)
         }), 500
-        
-        # Add CORS headers even for errors
-        if isinstance(response, tuple):
-            response[0].headers.add('Access-Control-Allow-Origin', '*')
-            response[0].headers.add('Access-Control-Allow-Headers', 'Content-Type')
-            response[0].headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        
-        return response
+        return add_cors_headers(response[0]), response[1]
 
 @operation_left_brain_bp.route('/api/v2/ai/status', methods=['GET'])
 def get_ai_status():
@@ -444,43 +467,44 @@ def get_analysis_history():
         }), 500 
 
 @operation_left_brain_bp.route('/api/v2/image/process-lightweight', methods=['POST', 'OPTIONS'])
-@cross_origin(origins=['https://www.shineskincollective.com', 'https://shineskincollective.com', 'http://localhost:3000'])
+@cross_origin(origins=['https://www.shineskincollective.com', 'https://shineskincollective.com', 'http://localhost:3000'], supports_credentials=True)
 def process_image_lightweight():
     """Lightweight image processing endpoint for stable, fast image analysis with CORS support"""
+    # Handle CORS preflight
     if request.method == 'OPTIONS':
         response = make_response()
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        return response
+        return add_cors_headers(response)
     
     try:
         # Get image from request
         if 'image' not in request.files:
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'No image provided',
                 'message': 'Please upload an image file'
             }), 400
+            return add_cors_headers(response[0]), response[1]
         
         image_file = request.files['image']
         if image_file.filename == '':
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'No file selected',
                 'message': 'Please select an image file'
             }), 400
+            return add_cors_headers(response[0]), response[1]
         
         # Read image data
         image_bytes = image_file.read()
         
         # Check file size (limit to 10MB to prevent 413 errors)
         if len(image_bytes) > 10 * 1024 * 1024:  # 10MB limit
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'File too large',
                 'message': 'Please upload an image smaller than 10MB'
             }), 413
+            return add_cors_headers(response[0]), response[1]
         
         # Lightweight image analysis (no heavy ML)
         analysis_result = perform_lightweight_analysis(image_bytes)
@@ -493,12 +517,7 @@ def process_image_lightweight():
             'analysis_type': 'lightweight_stable'
         })
         
-        # Add CORS headers
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        
-        return response
+        return add_cors_headers(response), 200
         
     except Exception as e:
         logger.error(f"Lightweight image processing error: {e}")
@@ -508,53 +527,47 @@ def process_image_lightweight():
             'message': 'Failed to process image. Please try again.',
             'details': str(e)
         }), 500
-        
-        # Add CORS headers even for errors
-        if isinstance(response, tuple):
-            response[0].headers.add('Access-Control-Allow-Origin', '*')
-            response[0].headers.add('Access-Control-Allow-Headers', 'Content-Type')
-            response[0].headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        
-        return response
+        return add_cors_headers(response[0]), response[1]
 
 @operation_left_brain_bp.route('/api/scin/search', methods=['POST', 'OPTIONS'])
-@cross_origin(origins=['https://www.shineskincollective.com', 'https://shineskincollective.com', 'http://localhost:3000'])
+@cross_origin(origins=['https://www.shineskincollective.com', 'https://shineskincollective.com', 'http://localhost:3000'], supports_credentials=True)
 def scin_search_fallback():
     """Fallback SCIN search endpoint for compatibility with CORS support"""
+    # Handle CORS preflight
     if request.method == 'OPTIONS':
         response = make_response()
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        return response
+        return add_cors_headers(response)
     
     try:
         # Get image from request
         if 'image' not in request.files:
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'No image provided',
                 'message': 'Please upload an image file'
             }), 400
+            return add_cors_headers(response[0]), response[1]
         
         image_file = request.files['image']
         if image_file.filename == '':
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'No file selected',
                 'message': 'Please select an image file'
             }), 400
+            return add_cors_headers(response[0]), response[1]
         
         # Read image data
         image_bytes = image_file.read()
         
         # Check file size (limit to 10MB to prevent 413 errors)
         if len(image_bytes) > 10 * 1024 * 1024:  # 10MB limit
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'File too large',
                 'message': 'Please upload an image smaller than 10MB'
             }), 413
+            return add_cors_headers(response[0]), response[1]
         
         # Mock SCIN search results (fallback)
         mock_results = {
@@ -593,12 +606,7 @@ def scin_search_fallback():
         
         response = jsonify(mock_results)
         
-        # Add CORS headers
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        
-        return response
+        return add_cors_headers(response), 200
         
     except Exception as e:
         logger.error(f"SCIN search fallback error: {e}")
@@ -608,53 +616,47 @@ def scin_search_fallback():
             'message': 'Failed to process search request. Please try again.',
             'details': str(e)
         }), 500
-        
-        # Add CORS headers even for errors
-        if isinstance(response, tuple):
-            response[0].headers.add('Access-Control-Allow-Origin', '*')
-            response[0].headers.add('Access-Control-Allow-Headers', 'Content-Type')
-            response[0].headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        
-        return response
+        return add_cors_headers(response[0]), response[1]
 
 @operation_left_brain_bp.route('/api/v2/embedding/search-fast', methods=['POST', 'OPTIONS'])
-@cross_origin(origins=['https://www.shineskincollective.com', 'https://shineskincollective.com', 'http://localhost:3000'])
+@cross_origin(origins=['https://www.shineskincollective.com', 'https://shineskincollective.com', 'http://localhost:3000'], supports_credentials=True)
 def fast_embedding_search():
     """Fast embedding search endpoint (<5 minutes) with CORS support"""
+    # Handle CORS preflight
     if request.method == 'OPTIONS':
         response = make_response()
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        return response
+        return add_cors_headers(response)
     
     try:
         # Get image from request
         if 'image' not in request.files:
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'No image provided',
                 'message': 'Please upload an image file'
             }), 400
+            return add_cors_headers(response[0]), response[1]
         
         image_file = request.files['image']
         if image_file.filename == '':
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'No file selected',
                 'message': 'Please select an image file'
             }), 400
+            return add_cors_headers(response[0]), response[1]
         
         # Read image data
         image_bytes = image_file.read()
         
         # Check file size (limit to 10MB to prevent 413 errors)
         if len(image_bytes) > 10 * 1024 * 1024:  # 10MB limit
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'File too large',
                 'message': 'Please upload an image smaller than 10MB'
             }), 413
+            return add_cors_headers(response[0]), response[1]
         
         # Get search parameters
         top_k = request.form.get('top_k', 5, type=int)
@@ -695,12 +697,7 @@ def fast_embedding_search():
             'search_type': 'fast_embedding'
         })
         
-        # Add CORS headers
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        
-        return response
+        return add_cors_headers(response), 200
         
     except Exception as e:
         logger.error(f"Fast embedding search error: {e}")
@@ -710,14 +707,7 @@ def fast_embedding_search():
             'message': 'Failed to perform embedding search. Please try again.',
             'details': str(e)
         }), 500
-        
-        # Add CORS headers even for errors
-        if isinstance(response, tuple):
-            response[0].headers.add('Access-Control-Allow-Origin', '*')
-            response[0].headers.add('Access-Control-Allow-Headers', 'Content-Type')
-            response[0].headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        
-        return response
+        return add_cors_headers(response[0]), response[1]
 
 def perform_lightweight_analysis(image_bytes):
     """Perform lightweight image analysis without heavy ML libraries"""
