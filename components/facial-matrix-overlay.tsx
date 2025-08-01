@@ -105,26 +105,27 @@ export function FacialMatrixOverlay({ isActive, onScanComplete }: FacialMatrixOv
     };
 
     const animate = () => {
-      drawGrid();
+      if (currentCell >= totalCells) {
+        setScanProgress(100);
+        if (onScanComplete) {
+          onScanComplete();
+        }
+        return;
+      }
 
-      // Simulate scanning progress
-      if (currentCell < totalCells) {
+      // Faster scanning - complete in 2.5 seconds
+      const scanSpeed = 50; // milliseconds per cell (was much slower)
+      
+      setTimeout(() => {
         const row = Math.floor(currentCell / gridSize);
         const col = currentCell % gridSize;
+        
         setScannedAreas(prev => new Set([...prev, `${row},${col}`]));
+        setScanProgress(Math.round((currentCell / totalCells) * 100));
         
         currentCell++;
-        setScanProgress((currentCell / totalCells) * 100);
-        
-        // Slow down scanning for visual effect
-        setTimeout(() => {
-          animationId = requestAnimationFrame(animate);
-        }, 100);
-      } else {
-        // Scanning complete
-        setScanProgress(100);
-        onScanComplete?.();
-      }
+        animationId = requestAnimationFrame(animate);
+      }, scanSpeed);
     };
 
     animate();
