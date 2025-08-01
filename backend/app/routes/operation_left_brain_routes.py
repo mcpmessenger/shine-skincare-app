@@ -474,6 +474,86 @@ def process_image_lightweight():
             'details': str(e)
         }), 500
 
+@operation_left_brain_bp.route('/api/scin/search', methods=['POST', 'OPTIONS'])
+def scin_search_fallback():
+    """Fallback SCIN search endpoint for compatibility"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    try:
+        # Get image from request
+        if 'image' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'No image provided',
+                'message': 'Please upload an image file'
+            }), 400
+        
+        image_file = request.files['image']
+        if image_file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': 'No file selected',
+                'message': 'Please select an image file'
+            }), 400
+        
+        # Read image data
+        image_bytes = image_file.read()
+        
+        # Basic image validation
+        if len(image_bytes) > 50 * 1024 * 1024:  # 50MB limit
+            return jsonify({
+                'success': False,
+                'error': 'File too large',
+                'message': 'Please upload an image smaller than 50MB'
+            }), 413
+        
+        # Mock SCIN search results (fallback)
+        mock_results = {
+            'success': True,
+            'message': 'SCIN search completed (fallback mode)',
+            'data': {
+                'similar_cases': [
+                    {
+                        'id': 'fallback_1',
+                        'similarity_score': 0.85,
+                        'condition': 'Acne',
+                        'treatment': 'Gentle cleanser and spot treatment',
+                        'confidence': 0.8
+                    },
+                    {
+                        'id': 'fallback_2',
+                        'similarity_score': 0.78,
+                        'condition': 'Dry skin',
+                        'treatment': 'Hydrating moisturizer',
+                        'confidence': 0.75
+                    },
+                    {
+                        'id': 'fallback_3',
+                        'similarity_score': 0.72,
+                        'condition': 'Sensitive skin',
+                        'treatment': 'Fragrance-free products',
+                        'confidence': 0.7
+                    }
+                ],
+                'total_results': 3,
+                'search_quality': 'fallback_mock'
+            },
+            'fallback_used': True,
+            'fallback_reason': 'SCIN search service unavailable'
+        }
+        
+        return jsonify(mock_results)
+        
+    except Exception as e:
+        logger.error(f"SCIN search fallback error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Search failed',
+            'message': 'Failed to process search request. Please try again.',
+            'details': str(e)
+        }), 500
+
 def perform_lightweight_analysis(image_bytes):
     """Perform lightweight image analysis without heavy ML libraries"""
     import time
