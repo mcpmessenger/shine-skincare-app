@@ -71,6 +71,73 @@ html {
   --font-sans: ${GeistSans.variable};
   --font-mono: ${GeistMono.variable};
 }
+
+/* Critical CSS for basic styling */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #000;
+  color: #fff;
+  font-family: ${GeistSans.style.fontFamily};
+}
+
+/* Basic button styles */
+button {
+  background-color: #3b82f6;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  margin: 0.25rem;
+}
+
+button:hover {
+  background-color: #2563eb;
+}
+
+/* Basic input styles */
+input, select {
+  background-color: white;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: #111827;
+  margin: 0.25rem;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Basic card styles */
+.card {
+  background-color: white;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  margin: 0.5rem;
+}
+
+/* Basic link styles */
+a {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
         `}</style>
       </head>
       <body>
@@ -101,7 +168,9 @@ html {
                 </Link>
               </nav>
               <ServiceDegradationBanner />
-              {children}
+              <main className="flex-1">
+                {children}
+              </main>
             </CartProvider>
           </AuthProvider>
         </ThemeProvider>
