@@ -75,11 +75,42 @@ function AnalysisResultsContent() {
         if (storedResult) {
           console.log('Analysis Results Page - Found analysis result:', storedResult);
           const result = JSON.parse(storedResult);
+          console.log('Analysis Results Page - Parsed result:', result);
           
           // Enhanced data structure handling for both old and new formats
           if (result.data && result.data.skin_analysis) {
             // New backend format with skin_analysis
             const skinAnalysis = result.data.skin_analysis;
+            console.log('Analysis Results Page - Processing skin_analysis:', skinAnalysis);
+            setAnalysisResult({
+              analysis_id: analysisId,
+              status: 'completed',
+              timestamp: result.timestamp || new Date().toISOString(),
+              results: {
+                skin_type: 'analyzed',
+                concerns: skinAnalysis.skin_conditions?.map((c: any) => c.type) || [],
+                recommendations: skinAnalysis.skin_conditions?.map((c: any) => c.recommendation) || [],
+                confidence: skinAnalysis.skin_conditions?.[0]?.confidence || 0,
+                image_quality: 'good',
+                ml_analysis: {
+                  overall_score: skinAnalysis.skin_conditions?.[0]?.confidence || 0,
+                  texture_score: 0.8,
+                  pore_density: 0.6,
+                  wrinkle_severity: 0.4,
+                  pigmentation_level: 0.7
+                },
+                ai_confidence: skinAnalysis.ai_processed ? 0.9 : 0.7,
+                processing_time: 5000,
+                model_version: skinAnalysis.ai_level || 'unknown'
+              },
+              message: result.message,
+              success: result.success,
+              version: result.version
+            });
+          } else if (result.skin_analysis) {
+            // Direct skin_analysis format (no data wrapper)
+            const skinAnalysis = result.skin_analysis;
+            console.log('Analysis Results Page - Processing direct skin_analysis:', skinAnalysis);
             setAnalysisResult({
               analysis_id: analysisId,
               status: 'completed',
@@ -110,6 +141,7 @@ function AnalysisResultsContent() {
           } else if (result.results) {
             setAnalysisResult(result);
           } else {
+            console.error('Analysis Results Page - Invalid data structure:', result);
             setError('Invalid analysis result format');
           }
         } else {
