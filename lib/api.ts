@@ -930,3 +930,61 @@ export const searchSCINAdvanced = async (
 }>> => {
   return apiClient.searchSCINAdvanced(file, k, conditions, skinTypes);
 };
+
+// Lightweight image processing for stable, fast analysis
+export async function processImageLightweight(imageFile: File): Promise<any> {
+  try {
+    console.log('🚀 Starting lightweight image processing...');
+    
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    
+    const response = await fetch('https://d1kmi2r0duzr21.cloudfront.net/api/v2/image/process-lightweight', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('✅ Lightweight image processing completed:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Lightweight image processing error:', error);
+    throw error;
+  }
+}
+
+// Fallback function for when advanced ML is unavailable
+export async function analyzeImageWithFallback(imageFile: File): Promise<any> {
+  try {
+    console.log('🔄 Attempting advanced analysis with fallback...');
+    
+    // Try advanced analysis first
+    try {
+      const advancedResult = await analyzeSelfieV2(imageFile);
+      console.log('✅ Advanced analysis successful');
+      return {
+        ...advancedResult,
+        analysis_type: 'advanced_ml'
+      };
+    } catch (advancedError) {
+      console.log('⚠️ Advanced analysis failed, using lightweight fallback:', advancedError);
+      
+      // Fallback to lightweight analysis
+      const lightweightResult = await processImageLightweight(imageFile);
+      return {
+        ...lightweightResult,
+        analysis_type: 'lightweight_fallback',
+        fallback_reason: 'Advanced ML services unavailable'
+      };
+    }
+    
+  } catch (error) {
+    console.error('❌ All image analysis methods failed:', error);
+    throw error;
+  }
+}

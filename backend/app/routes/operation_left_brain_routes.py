@@ -419,3 +419,188 @@ def get_analysis_history():
             'error': 'Failed to retrieve analysis history',
             'status': 'error'
         }), 500 
+
+@operation_left_brain_bp.route('/api/v2/image/process-lightweight', methods=['POST', 'OPTIONS'])
+def process_image_lightweight():
+    """Lightweight image processing endpoint for stable, fast image analysis"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    try:
+        # Get image from request
+        if 'image' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'No image provided',
+                'message': 'Please upload an image file'
+            }), 400
+        
+        image_file = request.files['image']
+        if image_file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': 'No file selected',
+                'message': 'Please select an image file'
+            }), 400
+        
+        # Read image data
+        image_bytes = image_file.read()
+        
+        # Basic image validation
+        if len(image_bytes) > 50 * 1024 * 1024:  # 50MB limit
+            return jsonify({
+                'success': False,
+                'error': 'File too large',
+                'message': 'Please upload an image smaller than 50MB'
+            }), 413
+        
+        # Lightweight image analysis (no heavy ML)
+        analysis_result = perform_lightweight_analysis(image_bytes)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Lightweight image analysis completed',
+            'data': analysis_result,
+            'processing_time_ms': analysis_result.get('processing_time_ms', 0),
+            'analysis_type': 'lightweight_stable'
+        })
+        
+    except Exception as e:
+        logger.error(f"Lightweight image processing error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Image processing failed',
+            'message': 'Failed to process image. Please try again.',
+            'details': str(e)
+        }), 500
+
+def perform_lightweight_analysis(image_bytes):
+    """Perform lightweight image analysis without heavy ML libraries"""
+    import time
+    import io
+    from PIL import Image
+    import numpy as np
+    
+    start_time = time.time()
+    
+    try:
+        # Load image with PIL (lightweight)
+        image = Image.open(io.BytesIO(image_bytes))
+        
+        # Basic image characteristics
+        width, height = image.size
+        aspect_ratio = width / height
+        file_size_mb = len(image_bytes) / (1024 * 1024)
+        
+        # Convert to RGB if needed
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Convert to numpy array for analysis
+        img_array = np.array(image)
+        
+        # Basic color analysis
+        mean_color = np.mean(img_array, axis=(0, 1))
+        std_color = np.std(img_array, axis=(0, 1))
+        
+        # Basic brightness analysis
+        brightness = np.mean(img_array)
+        
+        # Basic contrast analysis
+        contrast = np.std(img_array)
+        
+        # Basic texture analysis (simplified)
+        gray_img = np.mean(img_array, axis=2)
+        texture_score = np.std(gray_img)
+        
+        # Generate lightweight recommendations
+        recommendations = generate_lightweight_recommendations(
+            brightness, contrast, texture_score, aspect_ratio
+        )
+        
+        processing_time = (time.time() - start_time) * 1000
+        
+        return {
+            'image_info': {
+                'width': width,
+                'height': height,
+                'aspect_ratio': round(aspect_ratio, 2),
+                'file_size_mb': round(file_size_mb, 2),
+                'format': image.format
+            },
+            'analysis': {
+                'brightness': round(brightness, 2),
+                'contrast': round(contrast, 2),
+                'texture_score': round(texture_score, 2),
+                'mean_color_rgb': [round(c, 2) for c in mean_color],
+                'color_variance': [round(c, 2) for c in std_color]
+            },
+            'recommendations': recommendations,
+            'processing_time_ms': round(processing_time, 2),
+            'analysis_quality': 'lightweight_stable'
+        }
+        
+    except Exception as e:
+        logger.error(f"Lightweight analysis error: {e}")
+        return {
+            'error': 'Analysis failed',
+            'processing_time_ms': round((time.time() - start_time) * 1000, 2)
+        }
+
+def generate_lightweight_recommendations(brightness, contrast, texture_score, aspect_ratio):
+    """Generate basic recommendations based on image characteristics"""
+    recommendations = []
+    
+    # Brightness-based recommendations
+    if brightness < 100:
+        recommendations.append({
+            'type': 'lighting',
+            'priority': 'high',
+            'message': 'Image appears dark. Consider better lighting for clearer analysis.',
+            'suggestion': 'Take photo in well-lit area'
+        })
+    elif brightness > 200:
+        recommendations.append({
+            'type': 'lighting',
+            'priority': 'medium',
+            'message': 'Image appears overexposed. Consider reducing brightness.',
+            'suggestion': 'Avoid direct light sources'
+        })
+    
+    # Contrast-based recommendations
+    if contrast < 30:
+        recommendations.append({
+            'type': 'quality',
+            'priority': 'medium',
+            'message': 'Low contrast detected. Image may be blurry.',
+            'suggestion': 'Hold camera steady and focus clearly'
+        })
+    
+    # Aspect ratio recommendations
+    if aspect_ratio < 0.8 or aspect_ratio > 1.2:
+        recommendations.append({
+            'type': 'composition',
+            'priority': 'low',
+            'message': 'Consider square or portrait orientation for better analysis.',
+            'suggestion': 'Use square crop for consistent results'
+        })
+    
+    # Texture-based recommendations
+    if texture_score > 50:
+        recommendations.append({
+            'type': 'detail',
+            'priority': 'medium',
+            'message': 'High detail detected. Good for analysis.',
+            'suggestion': 'Image quality suitable for detailed analysis'
+        })
+    
+    # Default recommendation if none generated
+    if not recommendations:
+        recommendations.append({
+            'type': 'general',
+            'priority': 'low',
+            'message': 'Image appears suitable for analysis.',
+            'suggestion': 'Proceed with confidence'
+        })
+    
+    return recommendations 
