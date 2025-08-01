@@ -154,7 +154,7 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
             </Button>
           </div>
           <CardDescription className="text-sm">
-            Position your face in the center for best results
+            Position your face in the center circle for best results
           </CardDescription>
         </CardHeader>
         
@@ -240,9 +240,12 @@ export function CameraCapture({ onImageCapture, onClose }: CameraCaptureProps) {
 
               {/* Instructions */}
               <div className="text-center text-xs text-muted-foreground px-4">
-                <p>Tap the camera button to capture your photo</p>
+                <p className="font-medium mb-1">📸 Face Positioning Guide</p>
+                <p>• Center your face within the white circle</p>
+                <p>• Keep your face steady during the scan</p>
+                <p>• Ensure good lighting for clear results</p>
                 {isMobile && (
-                  <p className="mt-1">Hold your phone steady for best results</p>
+                  <p className="mt-1 text-blue-500">📱 Hold your phone steady for best results</p>
                 )}
               </div>
             </>
