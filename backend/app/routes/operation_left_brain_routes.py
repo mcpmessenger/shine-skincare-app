@@ -11,6 +11,7 @@ from typing import Dict, Any, Optional
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from werkzeug.utils import secure_filename
+from datetime import datetime
 
 from ..services.ai_analysis_orchestrator import ai_orchestrator
 from ..error_handlers import APIError, ServiceError, ValidationError
@@ -251,6 +252,112 @@ def ai_health_check():
             'operation': 'left_brain',
             'error': 'AI services health check failed'
         }), 500
+
+@operation_left_brain_bp.route('/api/v2/ai/diagnostic', methods=['GET'])
+def ai_diagnostic():
+    """Diagnostic endpoint to check ML service initialization issues"""
+    diagnostic_info = {
+        'timestamp': datetime.now().isoformat(),
+        'operation': 'left_brain',
+        'diagnostic': 'ml_service_initialization',
+        'checks': {}
+    }
+    
+    # Check if heavy ML libraries are available
+    try:
+        import timm
+        diagnostic_info['checks']['timm'] = {
+            'status': 'available',
+            'version': timm.__version__ if hasattr(timm, '__version__') else 'unknown'
+        }
+    except ImportError as e:
+        diagnostic_info['checks']['timm'] = {
+            'status': 'unavailable',
+            'error': str(e)
+        }
+    
+    try:
+        import faiss
+        diagnostic_info['checks']['faiss'] = {
+            'status': 'available',
+            'version': faiss.__version__ if hasattr(faiss, '__version__') else 'unknown'
+        }
+    except ImportError as e:
+        diagnostic_info['checks']['faiss'] = {
+            'status': 'unavailable',
+            'error': str(e)
+        }
+    
+    try:
+        import torch
+        diagnostic_info['checks']['torch'] = {
+            'status': 'available',
+            'version': torch.__version__ if hasattr(torch, '__version__') else 'unknown',
+            'cuda_available': torch.cuda.is_available() if hasattr(torch, 'cuda') else False
+        }
+    except ImportError as e:
+        diagnostic_info['checks']['torch'] = {
+            'status': 'unavailable',
+            'error': str(e)
+        }
+    
+    try:
+        import transformers
+        diagnostic_info['checks']['transformers'] = {
+            'status': 'available',
+            'version': transformers.__version__ if hasattr(transformers, '__version__') else 'unknown'
+        }
+    except ImportError as e:
+        diagnostic_info['checks']['transformers'] = {
+            'status': 'unavailable',
+            'error': str(e)
+        }
+    
+    # Check system resources
+    try:
+        import psutil
+        diagnostic_info['checks']['system_resources'] = {
+            'memory_total_gb': round(psutil.virtual_memory().total / (1024**3), 2),
+            'memory_available_gb': round(psutil.virtual_memory().available / (1024**3), 2),
+            'memory_percent': psutil.virtual_memory().percent,
+            'cpu_count': psutil.cpu_count()
+        }
+    except ImportError as e:
+        diagnostic_info['checks']['system_resources'] = {
+            'status': 'unavailable',
+            'error': str(e)
+        }
+    
+    # Check if services are trying to initialize
+    try:
+        from ..services.ai_embedding_service import AIEmbeddingService
+        diagnostic_info['checks']['ai_embedding_service'] = {
+            'status': 'importable',
+            'class': 'AIEmbeddingService'
+        }
+    except ImportError as e:
+        diagnostic_info['checks']['ai_embedding_service'] = {
+            'status': 'unavailable',
+            'error': str(e)
+        }
+    
+    try:
+        from ..services.scin_vector_search_service import SCINVectorSearchService
+        diagnostic_info['checks']['scin_vector_search_service'] = {
+            'status': 'importable',
+            'class': 'SCINVectorSearchService'
+        }
+    except ImportError as e:
+        diagnostic_info['checks']['scin_vector_search_service'] = {
+            'status': 'unavailable',
+            'error': str(e)
+        }
+    
+    return jsonify({
+        'success': True,
+        'message': 'AI diagnostic information retrieved',
+        'data': diagnostic_info
+    })
 
 @operation_left_brain_bp.route('/api/v2/ai/analysis/<analysis_id>', methods=['GET'])
 @jwt_required()
