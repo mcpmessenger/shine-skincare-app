@@ -87,8 +87,8 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // SSL Certificate Issue: Using HTTP until certificate is fixed
-    this.baseUrl = 'http://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
+    // Use CloudFront HTTPS URL to avoid mixed content errors
+    this.baseUrl = 'https://d1kmi2r0duzr21.cloudfront.net';
     
     // Debug: Log the actual URL being used
     console.log('🔧 API Client initialized with backend URL:', this.baseUrl);
@@ -99,9 +99,9 @@ class ApiClient {
     });
     
     // Log a clear message about the URL being used
-    console.log('🔒 SSL Certificate Issue: Using HTTP until certificate is fixed');
-    console.log('🚀 BUILD TRIGGER - Backend URL updated for SSL certificate fix');
-    console.log('🔧 BACKEND HTTP: Using working Elastic Beanstalk backend');
+    console.log('🔒 Using CloudFront HTTPS to avoid mixed content errors');
+    console.log('🚀 BUILD TRIGGER - Backend URL updated for HTTPS compatibility');
+    console.log('🔧 BACKEND HTTPS: Using CloudFront distribution');
     console.log('🔄 CACHE BUSTING: Timestamp:', new Date().toISOString());
   }
 
@@ -662,7 +662,7 @@ export const analyzeSelfie = async (file: File): Promise<ApiResponse<{
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch('http://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/selfie/analyze', {
+    const response = await fetch('https://d1kmi2r0duzr21.cloudfront.net/api/v2/selfie/analyze', {
       method: 'POST',
       body: formData,
     });
@@ -716,7 +716,7 @@ export const analyzeSkin = async (file: File): Promise<ApiResponse<{
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch('http://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/skin/analyze', {
+    const response = await fetch('https://d1kmi2r0duzr21.cloudfront.net/api/v2/skin/analyze', {
       method: 'POST',
       body: formData,
     });
