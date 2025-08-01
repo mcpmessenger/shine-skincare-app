@@ -16,6 +16,7 @@ from datetime import datetime
 from ..services.ai_analysis_orchestrator import ai_orchestrator
 from ..error_handlers import APIError, ServiceError, ValidationError
 from ..logging_config import get_service_logger
+from ..services.fast_embedding_service import fast_embedding_service
 
 logger = logging.getLogger(__name__)
 
@@ -551,6 +552,88 @@ def scin_search_fallback():
             'success': False,
             'error': 'Search failed',
             'message': 'Failed to process search request. Please try again.',
+            'details': str(e)
+        }), 500
+
+@operation_left_brain_bp.route('/api/v2/embedding/search-fast', methods=['POST', 'OPTIONS'])
+def fast_embedding_search():
+    """Fast embedding search endpoint (<5 minutes)"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    try:
+        # Get image from request
+        if 'image' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'No image provided',
+                'message': 'Please upload an image file'
+            }), 400
+        
+        image_file = request.files['image']
+        if image_file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': 'No file selected',
+                'message': 'Please select an image file'
+            }), 400
+        
+        # Read image data
+        image_bytes = image_file.read()
+        
+        # Basic image validation
+        if len(image_bytes) > 50 * 1024 * 1024:  # 50MB limit
+            return jsonify({
+                'success': False,
+                'error': 'File too large',
+                'message': 'Please upload an image smaller than 50MB'
+            }), 413
+        
+        # Get search parameters
+        top_k = request.form.get('top_k', 5, type=int)
+        conditions = request.form.getlist('conditions') if request.form.get('conditions') else None
+        skin_types = request.form.getlist('skin_types') if request.form.get('skin_types') else None
+        
+        # Create or load database (for now, use mock database)
+        # In production, this would load from a pre-computed database
+        database = fast_embedding_service.create_mock_database(size=1000)
+        
+        # Perform fast search
+        start_time = time.time()
+        search_results = fast_embedding_service.fast_search(image_bytes, database, top_k)
+        search_time = time.time() - start_time
+        
+        # Format results
+        formatted_results = []
+        for result in search_results:
+            item = result['item']
+            formatted_results.append({
+                'id': item['id'],
+                'similarity_score': round(result['similarity'], 3),
+                'condition': item['condition'],
+                'treatment': item['treatment'],
+                'confidence': round(item['confidence'], 2)
+            })
+        
+        return jsonify({
+            'success': True,
+            'message': 'Fast embedding search completed',
+            'data': {
+                'similar_cases': formatted_results,
+                'total_results': len(formatted_results),
+                'search_time_seconds': round(search_time, 2),
+                'search_quality': 'fast_optimized'
+            },
+            'search_time_ms': round(search_time * 1000, 2),
+            'search_type': 'fast_embedding'
+        })
+        
+    except Exception as e:
+        logger.error(f"Fast embedding search error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Search failed',
+            'message': 'Failed to perform embedding search. Please try again.',
             'details': str(e)
         }), 500
 
