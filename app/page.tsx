@@ -189,6 +189,11 @@ export default function HomePage() {
                   Explore Products
                 </Button>
               </Link>
+              <Link href="/test-v2-api">
+                <Button size="lg" variant="outline">
+                  🧠 Test V2 API
+                </Button>
+              </Link>
             </div>
           </div>
 

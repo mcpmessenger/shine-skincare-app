@@ -1,215 +1,205 @@
 # Shine Skincare App
 
-A comprehensive skincare analysis application with advanced AI capabilities for skin condition detection and personalized recommendations.
+**🧠 Operation Left Brain v2.2 - Advanced AI Integration Complete!**
 
-## 🚀 **Latest Features (v2.1 - Operation Kitty Whiskers)**
+A comprehensive skincare analysis platform powered by advanced AI, featuring real-time skin condition detection, personalized product recommendations, and medical-grade analysis capabilities.
 
-### **Dual Skin Analysis System**
-- **Selfie Analysis**: Google Vision API face isolation with SCIN dataset integration
-- **General Skin Analysis**: Any skin photo analysis with advanced condition detection
-- **Real-time Facial Matrix**: Visual feedback during selfie capture
-- **Medical-grade AI**: Professional skin condition detection and recommendations
+## 🚀 Latest Updates - Operation Left Brain v2.2
 
-### **Enhanced AI Stack**
-- **Level 4 Full AI**: FAISS, TIMM, Transformers, PyTorch integration
-- **SCIN Dataset**: Medical-grade skin condition database
-- **Google Vision API**: Face detection and isolation
-- **Progressive Fallback**: 5-step AI loading protocol
+### ✅ **New Features Added:**
+- **🧠 Advanced ML Pipeline**: Complete AI integration with deep feature extraction
+- **🔍 Enhanced Skin Analysis**: Texture analysis, color analysis, and condition detection
+- **📊 SCIN Dataset Integration**: Medical-grade similarity search using FAISS
+- **💊 Treatment Recommendations**: AI-powered personalized treatment suggestions
+- **🔧 V2 API Endpoints**: New advanced endpoints for enhanced analysis
+- **📈 Real-time Progress**: Live analysis progress indicators
+- **🎨 Enhanced Results Display**: Better visualization of skin conditions
 
-### **Authentication & Data Management**
-- **Supabase Integration**: User authentication and data storage
-- **Medical Analysis Records**: Secure storage of skin condition data
-- **Guest Login**: No registration required for basic analysis
+### 🏗️ **Architecture:**
+- **Frontend**: Next.js 14 with TypeScript and Tailwind CSS
+- **Backend**: Flask with advanced ML services (EfficientNet-B0, FAISS, Google Vision API)
+- **AI Pipeline**: Image preprocessing → Face detection → Feature extraction → Condition detection → SCIN search → Treatment recommendations
+- **Deployment**: AWS Amplify (Frontend) + Elastic Beanstalk (Backend)
 
-## 🏗️ **Architecture**
+## 🎯 **Key Features**
 
-### **Frontend (Next.js 15)**
-```
-/app
-├── /selfie-analysis     # Selfie analysis with face isolation
-├── /skin-analysis       # General skin condition analysis
-├── /medical-analysis    # Medical-grade analysis results
-├── /recommendations     # Personalized product recommendations
-└── /profile            # User profile and history
-```
+### **AI-Powered Analysis**
+- **Selfie Analysis**: Advanced facial feature detection and skin condition analysis
+- **General Skin Analysis**: Comprehensive skin texture and color analysis
+- **Medical Analysis**: Professional-grade analysis with SCIN dataset integration
+- **Treatment Recommendations**: Personalized treatment plans based on AI analysis
 
-### **Backend (Flask + AI Stack)**
-```
-/backend
-├── /app
-│   ├── /medical_analysis    # Medical analysis endpoints
-│   ├── /services            # AI services and integrations
-│   ├── /auth               # Supabase authentication
-│   └── /enhanced_skin_analysis  # Advanced AI processing
-└── /deployment-packages    # EB deployment packages
-```
+### **Advanced ML Capabilities**
+- **Deep Feature Extraction**: Using EfficientNet-B0 for image embedding
+- **FAISS Vector Search**: High-performance similarity search on medical dataset
+- **Google Vision API**: Professional face detection and isolation
+- **Texture Analysis**: Local Binary Patterns (LBP) for skin texture analysis
+- **Color Analysis**: HSV color space analysis for skin condition assessment
+
+### **User Experience**
+- **Real-time Progress**: Live analysis progress indicators
+- **Enhanced Results**: Beautiful visualization of analysis results
+- **Treatment Recommendations**: Personalized product and treatment suggestions
+- **Medical Integration**: Access to medical-grade skin condition database
+
+## 🛠️ **Technology Stack**
+
+### **Frontend**
+- **Framework**: Next.js 14 with App Router
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **State Management**: React hooks and context
+- **API Integration**: Custom API client with advanced ML endpoints
+
+### **Backend**
+- **Framework**: Flask with CORS support
+- **AI Services**: 
+  - `timm` for deep feature extraction (EfficientNet-B0)
+  - `faiss-cpu` for vector similarity search
+  - `google-cloud-vision` for face detection
+  - `opencv-python-headless` for image processing
+  - `scikit-learn` for machine learning utilities
+- **Deployment**: AWS Elastic Beanstalk with environment variables
+
+### **AI Pipeline**
+1. **Image Preprocessing**: Resize, normalize, and prepare images
+2. **Face Detection**: Google Vision API for facial feature extraction
+3. **Feature Extraction**: Deep learning models for image embedding
+4. **Condition Detection**: AI-powered skin condition classification
+5. **SCIN Search**: Medical dataset similarity search
+6. **Treatment Generation**: Personalized recommendations
 
 ## 🚀 **Quick Start**
 
 ### **Prerequisites**
-- Node.js 20+ (required for Supabase)
-- Python 3.9+
-- AWS Account (for deployment)
-- Supabase Project
-- Google Cloud Vision API
+- Node.js 18+ and npm
+- Python 3.9+ and pip
+- AWS account (for deployment)
+- Google Cloud account (for Vision API)
 
 ### **Local Development**
 
-1. **Clone Repository**
+1. **Clone the repository**
 ```bash
 git clone https://github.com/mcpmessenger/shine-skincare-app.git
 cd shine-skincare-app
 ```
 
-2. **Frontend Setup**
+2. **Install frontend dependencies**
 ```bash
 npm install
-cp .env.example .env.local
-# Add your environment variables to .env.local
-npm run dev
 ```
 
-3. **Backend Setup**
+3. **Install backend dependencies**
 ```bash
 cd backend
 pip install -r requirements.txt
-python app/__init__.py
 ```
 
-### **Environment Variables**
-
-**Frontend (.env.local)**
+4. **Set up environment variables**
 ```bash
+# Frontend (.env.local)
+NEXT_PUBLIC_BACKEND_URL=http://localhost:5000
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+
+# Backend (environment variables)
+GOOGLE_CLOUD_PROJECT=your_google_cloud_project
+GOOGLE_VISION_API_KEY=your_google_vision_api_key
 ```
 
-**Backend (.env)**
+5. **Start development servers**
 ```bash
-SUPABASE_URL=your_supabase_url
-SUPABASE_SERVICE_KEY=your_supabase_service_key
-GOOGLE_APPLICATION_CREDENTIALS=path_to_google_credentials.json
+# Frontend (from root)
+npm run dev
+
+# Backend (from backend directory)
+python app.py
 ```
+
+### **Testing the New V2 API**
+Visit `http://localhost:3000/test-v2-api` to test the new Operation Left Brain endpoints:
+- **AI Status Check**: Monitor AI service health
+- **Selfie Analysis V2**: Advanced facial analysis
+- **Skin Analysis V2**: Enhanced skin condition detection
+- **SCIN Search Advanced**: Medical dataset similarity search
+
+## 📊 **API Endpoints**
+
+### **Operation Left Brain v2.2 Endpoints**
+- `POST /api/v2/selfie/analyze` - Advanced selfie analysis
+- `POST /api/v2/skin/analyze` - Enhanced skin analysis
+- `GET /api/v2/ai/status` - AI service status
+- `GET /api/v2/ai/health` - AI service health check
+- `POST /api/scin/search` - Advanced SCIN dataset search
+
+### **Legacy Endpoints**
+- `POST /api/v2/selfie/analyze` - Basic selfie analysis
+- `POST /api/v2/skin/analyze` - Basic skin analysis
+- `GET /api/health` - Health check
+- `GET /api/test` - Test endpoint
 
 ## 🚀 **Deployment**
 
 ### **Frontend (AWS Amplify)**
-- ✅ **Automatically deployed** on push to main branch
-- ✅ **Latest version**: v2.1 with dual skin analysis
-- ✅ **Status**: Live and operational
+- Connected to GitHub repository
+- Automatic deployments on push to main branch
+- Environment variables configured in Amplify console
 
 ### **Backend (AWS Elastic Beanstalk)**
-- 📦 **Latest Package**: `DUAL_SKIN_ANALYSIS_DEPLOYMENT_20250731_142309.zip`
-- 🔧 **Instance Type**: m5.2xlarge (32GB RAM, 8 vCPUs)
-- 🎯 **Features**: Full AI stack with SCIN dataset integration
+- Environment: `shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com`
+- Platform: Python 3.9
+- Environment variables configured for Google Cloud services
 
-### **Deployment Steps**
+## 🔧 **Environment Variables**
 
-1. **Upload Backend Package**
+### **Frontend (.env.local)**
 ```bash
-# Use the latest deployment package
-aws elasticbeanstalk create-application-version \
-  --application-name shine-backend \
-  --version-label v2.1-dual-analysis \
-  --source-bundle S3Bucket="your-bucket",S3Key="DUAL_SKIN_ANALYSIS_DEPLOYMENT_20250731_142309.zip"
+NEXT_PUBLIC_BACKEND_URL=https://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-2. **Configure Environment Variables**
+### **Backend (Elastic Beanstalk)**
 ```bash
-# Set in EB environment
-SUPABASE_URL=your_supabase_url
-SUPABASE_SERVICE_KEY=your_supabase_service_key
-GOOGLE_APPLICATION_CREDENTIALS=your_google_credentials
+GOOGLE_CLOUD_PROJECT=shine-466907
+GOOGLE_VISION_API_KEY=your_complete_service_account_json
 ```
 
-3. **Deploy**
-```bash
-aws elasticbeanstalk update-environment \
-  --environment-name shine-backend-prod \
-  --version-label v2.1-dual-analysis
-```
+## 📈 **Performance & Monitoring**
 
-## 🔧 **API Endpoints**
+### **Health Checks**
+- **Frontend**: Available at `https://www.shineskincollective.com`
+- **Backend**: Available at `http://shine-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/health`
+- **AI Services**: Monitor via `/api/v2/ai/health` endpoint
 
-### **Dual Skin Analysis**
-- `POST /api/v2/selfie/analyze` - Selfie analysis with face isolation
-- `POST /api/v2/skin/analyze` - General skin condition analysis
-- `GET /api/v2/medical/history` - User analysis history
-- `GET /api/v2/medical/analysis/<id>` - Specific analysis details
-
-### **Health & Status**
-- `GET /health` - Service health check
-- `GET /api/health` - Detailed AI capabilities status
-
-## 🎯 **AI Capabilities**
-
-### **5-Step AI Loading Protocol**
-1. **Core AI**: NumPy, Pillow, OpenCV
-2. **Heavy AI**: FAISS, TIMM, Transformers, PyTorch
-3. **Full AI**: Complete AI stack integration
-4. **SCIN Dataset**: Medical database integration
-5. **Google Vision**: Face detection and isolation
-
-### **Fallback Strategy**
-- **Primary**: Full AI with SCIN dataset
-- **Secondary**: Heavy AI with core features
-- **Tertiary**: Core AI with basic analysis
-- **Final**: Mock responses for testing
-
-## 📊 **Current Status**
-
-### **✅ Operational**
-- Frontend deployment (Amplify)
-- Dual skin analysis pages
-- API integration
-- Navigation and routing
-- Supabase authentication setup
-
-### **🔄 In Progress**
-- Backend deployment to Elastic Beanstalk
-- Environment variable configuration
-- End-to-end testing
-
-### **📋 Next Steps**
-1. Deploy backend package to EB
-2. Configure environment variables
-3. Test dual analysis workflows
-4. Monitor performance and stability
-
-## 🛠️ **Troubleshooting**
-
-### **Build Issues**
-- **Supabase URL Error**: Ensure environment variables are set in Amplify
-- **Node.js Version**: Upgrade to Node.js 20+ for Supabase compatibility
-- **Missing Dependencies**: Run `npm install` and check package.json
-
-### **Deployment Issues**
-- **EB Timeout**: Use lighter deployment packages for faster deployment
-- **Memory Issues**: Ensure m5.2xlarge instance type for heavy AI workloads
-- **CORS Errors**: Check CloudFront and backend CORS configuration
-
-## 📚 **Documentation**
-
-- [Operation Kitty Whiskers Guide](./Operation%20Kitty%20Whiskers.md)
-- [Deployment Guide](./OPERATION_KITTY_WHISKERS_DEPLOYMENT_GUIDE.md)
-- [Environment Setup](./ENVIRONMENT_SETUP_GUIDE.md)
-- [Backend Deployment](./BACKEND_DEPLOYMENT_GUIDE.md)
+### **Current Status**
+- ✅ **Frontend**: Deployed and operational
+- ✅ **Backend**: Deployed with Operation Left Brain v2.2
+- ✅ **AI Services**: Advanced ML pipeline operational
+- ✅ **Database**: SCIN dataset integration active
+- ✅ **API Integration**: All v2 endpoints functional
 
 ## 🤝 **Contributing**
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📄 **License**
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 **Support**
+
+For support and questions:
+- **Documentation**: Check the various `.md` files in the repository
+- **Issues**: Open an issue on GitHub
+- **Testing**: Use the test endpoints at `/test-v2-api`
 
 ---
 
-**Last Updated**: July 31, 2025  
-**Version**: v2.1 - Operation Kitty Whiskers  
-**Status**: Frontend Deployed, Backend Ready for Deployment
+**🧠 Operation Left Brain v2.2 - Advanced AI Integration Complete!** 
+
+*Last updated: January 2025*

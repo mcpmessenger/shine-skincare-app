@@ -388,6 +388,11 @@ def _register_blueprints(app):
         app.register_blueprint(medical_bp)
         logger.info("Medical analysis blueprint registered")
         
+        # Register Operation Left Brain blueprint
+        from .routes.operation_left_brain_routes import operation_left_brain_bp
+        app.register_blueprint(operation_left_brain_bp)
+        logger.info("Operation Left Brain blueprint registered")
+        
         # Register other blueprints as needed
         # from .other_module import other_bp
         # app.register_blueprint(other_bp, url_prefix='/api/other')
