@@ -18,6 +18,21 @@ Parameters:
     NoEcho: true
     Description: JWT secret key (will be generated if not provided)
 
+  GoogleClientId:
+    Type: String
+    NoEcho: true
+    Description: Google OAuth Client ID for authentication
+
+  GoogleClientSecret:
+    Type: String
+    NoEcho: true
+    Description: Google OAuth Client Secret for authentication
+
+  StripeSecretKey:
+    Type: String
+    NoEcho: true
+    Description: Stripe secret key for payments
+
 Resources:
   # VPC and Networking
   VPC:
@@ -301,6 +316,12 @@ Resources:
               Value: !Sub 'postgresql://shine_user:${DatabasePassword}@${Database.Endpoint.Address}:5432/shine_${Environment}'
             - Name: JWT_SECRET_KEY
               Value: !Ref JwtSecretKey
+            - Name: GOOGLE_CLIENT_ID
+              Value: !Ref GoogleClientId
+            - Name: GOOGLE_CLIENT_SECRET
+              Value: !Ref GoogleClientSecret
+            - Name: STRIPE_SECRET_KEY
+              Value: !Ref StripeSecretKey
           LogConfiguration:
             LogDriver: awslogs
             Options:

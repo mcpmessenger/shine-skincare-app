@@ -179,6 +179,11 @@ export default function HomePage() {
               <Link href="/skin-analysis">
                 <Button size="lg">Start Skin Analysis</Button>
               </Link>
+              <Link href="/enhanced-skin-analysis">
+                <Button size="lg" variant="outline">
+                  🚀 Enhanced Analysis
+                </Button>
+              </Link>
               <Link href="/similarity-search">
                 <Button size="lg" variant="outline">
                   Find Similar Conditions

@@ -37,6 +37,9 @@ export default function Header() {
         <Link href="/skin-analysis" className="hover:underline underline-offset-4" prefetch={false}>
           Skin Analysis
         </Link>
+        <Link href="/enhanced-skin-analysis" className="hover:underline underline-offset-4" prefetch={false}>
+          Enhanced Analysis
+        </Link>
         <Link href="/recommendations" className="hover:underline underline-offset-4" prefetch={false}>
           Recommendations
         </Link>
@@ -95,6 +98,9 @@ export default function Header() {
               <nav className="grid gap-4 text-lg font-medium">
                 <Link href="/skin-analysis" className="hover:underline underline-offset-4" prefetch={false}>
                   Skin Analysis
+                </Link>
+                <Link href="/enhanced-skin-analysis" className="hover:underline underline-offset-4" prefetch={false}>
+                  Enhanced Analysis
                 </Link>
                 <Link href="/recommendations" className="hover:underline underline-offset-4" prefetch={false}>
                   Recommendations
