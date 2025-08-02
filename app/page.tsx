@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { apiClient, Product } from "@/lib/api"
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,8 +26,11 @@ export default function HomePage() {
       (apiClient as any).baseUrl = correctBackendUrl;
     }
     
-    loadTrendingProducts();
-  }, []);
+    // Only load products after auth is ready
+    if (!authLoading) {
+      loadTrendingProducts();
+    }
+  }, [authLoading]);
 
   const loadTrendingProducts = async () => {
     try {

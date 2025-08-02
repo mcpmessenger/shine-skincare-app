@@ -24,30 +24,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check if Supabase is properly configured
+    if (!supabase) {
+      console.warn('Supabase not configured, using fallback authentication');
+      setLoading(false);
+      return;
+    }
+
     // Get initial session
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to get initial session:', error);
+        setLoading(false);
+      }
     };
 
     getInitialSession();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
+    try {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
+      );
 
-    return () => subscription.unsubscribe();
+      return () => subscription.unsubscribe();
+    } catch (error) {
+      console.error('Failed to set up auth listener:', error);
+      setLoading(false);
+    }
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
+      if (!supabase) {
+        return { error: { message: 'Authentication not configured' } };
+      }
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -60,6 +80,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
+      if (!supabase) {
+        return { error: { message: 'Authentication not configured' } };
+      }
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -77,6 +100,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginAsGuest = async () => {
     try {
+      if (!supabase) {
+        console.warn('Supabase not configured, skipping guest login');
+        return;
+      }
       // Create a guest user in Supabase
       const guestEmail = `guest_${Date.now()}@shine.app`;
       const { error } = await supabase.auth.signUp({
