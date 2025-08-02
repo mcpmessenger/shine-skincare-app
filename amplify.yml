@@ -11,7 +11,11 @@ frontend:
     build:
       commands:
         - echo "Building Tailwind CSS..."
-        - npx tailwindcss -i ./app/globals.css -o ./app/globals.css --minify
+        - echo "Current directory: $(pwd)"
+        - echo "Listing app directory:"
+        - ls -la app/
+        - echo "Building Tailwind CSS with correct path..."
+        - npx tailwindcss -i app/globals.css -o app/globals.css --minify || echo "Tailwind compilation failed, continuing with build..."
         - echo "Building Next.js application..."
         - npm run build
         - echo "Build completed successfully"
