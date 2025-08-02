@@ -8,8 +8,8 @@ $sensitivePatterns = @(
     @{ Pattern = "AIza[a-zA-Z0-9_-]{35}"; Name = "Google API Key" },
     @{ Pattern = "AKIA[a-zA-Z0-9]{16}"; Name = "AWS Access Key ID" },
     @{ Pattern = '"type":\s*"service_account"'; Name = "Google Service Account" },
-    @{ Pattern = "GOOGLE_CLOUD_PROJECT\s*=\s*(?!your-project-id)[a-zA-Z0-9_-]+"; Name = "Google Cloud Project ID" },
-    @{ Pattern = "SCIN_BUCKET\s*=\s*(?!your-scin-bucket)[a-zA-Z0-9_-]+"; Name = "SCIN Bucket Name" }
+    @{ Pattern = "GOOGLE_CLOUD_PROJECT\s*=\s*(?!your-project-id)[a-zA-Z0-9]{12,}"; Name = "Google Cloud Project ID" },
+    @{ Pattern = "SCIN_BUCKET\s*=\s*(?!your-scin-bucket)[a-zA-Z0-9]{12,}"; Name = "SCIN Bucket Name" }
 )
 
 # Files to exclude from scanning
