@@ -87,7 +87,7 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // Use working Elastic Beanstalk backend URL
+    // Use working Elastic Beanstalk backend URL - FORCE REBUILD
     this.baseUrl = 'http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
     
     // Debug: Log the actual URL being used
@@ -99,7 +99,7 @@ class ApiClient {
     });
     
     // Log a clear message about the URL being used
-    console.log('🔒 Using working Elastic Beanstalk backend');
+    console.log('🔒 Using working Elastic Beanstalk backend - FORCE REBUILD');
     console.log('🚀 BUILD TRIGGER - Backend URL updated for working deployment');
     console.log('🔧 BACKEND: Using SHINE-env Elastic Beanstalk');
     console.log('🔄 CACHE BUSTING: Timestamp:', new Date().toISOString());
