@@ -87,8 +87,8 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // Use CloudFront HTTPS URL to avoid mixed content errors
-    this.baseUrl = 'https://d1kmi2r0duzr21.cloudfront.net';
+    // Use working Elastic Beanstalk backend URL
+    this.baseUrl = 'http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
     
     // Debug: Log the actual URL being used
     console.log('🔧 API Client initialized with backend URL:', this.baseUrl);
@@ -99,9 +99,9 @@ class ApiClient {
     });
     
     // Log a clear message about the URL being used
-    console.log('🔒 Using CloudFront HTTPS to avoid mixed content errors');
-    console.log('🚀 BUILD TRIGGER - Backend URL updated for HTTPS compatibility');
-    console.log('🔧 BACKEND HTTPS: Using CloudFront distribution');
+    console.log('🔒 Using working Elastic Beanstalk backend');
+    console.log('🚀 BUILD TRIGGER - Backend URL updated for working deployment');
+    console.log('🔧 BACKEND: Using SHINE-env Elastic Beanstalk');
     console.log('🔄 CACHE BUSTING: Timestamp:', new Date().toISOString());
   }
 
@@ -662,7 +662,7 @@ export const analyzeSelfie = async (file: File): Promise<ApiResponse<{
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch('https://d1kmi2r0duzr21.cloudfront.net/api/v2/selfie/analyze', {
+    const response = await fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/selfie/analyze', {
       method: 'POST',
       body: formData,
     });
@@ -716,7 +716,7 @@ export const analyzeSkin = async (file: File): Promise<ApiResponse<{
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch('https://d1kmi2r0duzr21.cloudfront.net/api/v2/skin/analyze', {
+    const response = await fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/skin/analyze', {
       method: 'POST',
       body: formData,
     });
@@ -939,7 +939,7 @@ export async function processImageLightweight(imageFile: File): Promise<any> {
     const formData = new FormData();
     formData.append('image', imageFile);
     
-    const response = await fetch('https://d1kmi2r0duzr21.cloudfront.net/api/v2/image/process-lightweight', {
+    const response = await fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/image/process-lightweight', {
       method: 'POST',
       body: formData,
     });
@@ -1118,9 +1118,9 @@ export async function checkBackendHealth(): Promise<any> {
     console.log('🏥 Checking backend health...');
     
     const healthChecks = await Promise.allSettled([
-      fetch('https://d1kmi2r0duzr21.cloudfront.net/api/v2/ai/health'),
-      fetch('https://d1kmi2r0duzr21.cloudfront.net/api/v2/image/process-lightweight'),
-      fetch('https://d1kmi2r0duzr21.cloudfront.net/api/health')
+          fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/ai/health'),
+    fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/image/process-lightweight'),
+    fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/health')
     ]);
     
     const results = healthChecks.map((result, index) => {
@@ -1200,7 +1200,7 @@ export async function searchEmbeddingsFast(imageFile: File, topK: number = 5, co
       skinTypes.forEach(skinType => formData.append('skin_types', skinType));
     }
     
-    const response = await fetch('https://d1kmi2r0duzr21.cloudfront.net/api/v2/embedding/search-fast', {
+    const response = await fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/embedding/search-fast', {
       method: 'POST',
       body: formData,
     });
@@ -1302,9 +1302,9 @@ export async function monitorEmbeddingPerformance(): Promise<any> {
     console.log('📊 Monitoring embedding search performance...');
     
     const performanceChecks = await Promise.allSettled([
-      fetch('https://d1kmi2r0duzr21.cloudfront.net/api/v2/embedding/search-fast'),
-      fetch('https://d1kmi2r0duzr21.cloudfront.net/api/v2/ai/health'),
-      fetch('https://d1kmi2r0duzr21.cloudfront.net/api/scin/search')
+          fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/embedding/search-fast'),
+    fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/ai/health'),
+    fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/scin/search')
     ]);
     
     const results = performanceChecks.map((result, index) => {

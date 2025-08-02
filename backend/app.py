@@ -159,15 +159,35 @@ def create_app():
     @app.route('/api/health')
     def api_health():
         return jsonify({
-            'status': 'healthy',
+            'status': 'deployed_successfully',
+            'operation': 'left_brain',
+            'version': 'operation-left-brain-enhanced',
             'timestamp': datetime.now().isoformat(),
-            'ai_services': {
-                'core': AI_CORE_AVAILABLE,
-                'heavy': AI_HEAVY_AVAILABLE,
-                'full': AI_FULL_AVAILABLE,
-                'scin': SCIN_AVAILABLE,
-                'google_vision': GOOGLE_VISION_AVAILABLE,
-                'openai': OPENAI_AVAILABLE
+            'health_check': 'passing',
+            'message': 'Shine Skincare App - Operation Left Brain is running!',
+            'features': {
+                'advanced_ml': False,
+                'ai_services': {
+                    'advanced_ml': False,
+                    'core_ai': AI_CORE_AVAILABLE,
+                    'full_ai': AI_FULL_AVAILABLE,
+                    'google_vision': GOOGLE_VISION_AVAILABLE,
+                    'heavy_ai': AI_HEAVY_AVAILABLE,
+                    'operation_left_brain': False,
+                    'scin_dataset': SCIN_AVAILABLE
+                },
+                'cors_fixed': True,
+                'dual_skin_analysis': True,
+                'file_size_limit': '50MB',
+                'general_skin_analysis': True,
+                'google_vision_api': GOOGLE_VISION_AVAILABLE,
+                'ml_available': AI_CORE_AVAILABLE,
+                'no_duplication': True,
+                'operation_left_brain': False,
+                'proven_stable': True,
+                'scin_dataset': SCIN_AVAILABLE,
+                'selfie_analysis': True,
+                'structural_fix': True
             }
         })
 

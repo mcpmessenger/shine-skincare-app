@@ -19,7 +19,7 @@ export default function HomePage() {
     // Use the CloudFront HTTPS URL
     if (typeof window !== 'undefined') {
       // Use the CloudFront HTTPS proxy
-      const correctBackendUrl = 'https://d1kmi2r0duzr21.cloudfront.net';
+      const correctBackendUrl = 'http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
       console.log('🔧 Using CloudFront HTTPS URL:', correctBackendUrl);
       
       // Update the API client base URL
