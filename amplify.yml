@@ -5,18 +5,10 @@ frontend:
       commands:
         - echo "Installing dependencies..."
         - npm ci
-        - echo "Installing Tailwind CSS globally..."
-        - npm install -g tailwindcss@latest
         - echo "Dependencies installed successfully"
     build:
       commands:
-        - echo "Building Tailwind CSS..."
-        - echo "Current directory: $(pwd)"
-        - echo "Listing app directory:"
-        - ls -la app/
-        - echo "Building Tailwind CSS with correct path..."
-        - npx tailwindcss -i app/globals.css -o app/globals.css --minify || echo "Tailwind compilation failed, continuing with build..."
-        - echo "Building Next.js application..."
+        - echo "Building Next.js application with Tailwind..."
         - npm run build
         - echo "Build completed successfully"
   artifacts:
