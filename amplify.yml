@@ -1,0 +1,44 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - echo "Installing dependencies..."
+        - npm ci
+        - echo "Installing Tailwind CSS globally..."
+        - npm install -g tailwindcss@latest
+        - echo "Dependencies installed successfully"
+    build:
+      commands:
+        - echo "Building Tailwind CSS..."
+        - npx tailwindcss -i ./app/globals.css -o ./app/output.css --minify
+        - echo "Building Next.js application..."
+        - npm run build
+        - echo "Build completed successfully"
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
+
+backend:
+  phases:
+    preBuild:
+      commands:
+        - cd backend
+        - python -m pip install --upgrade pip
+        - pip install -r requirements.txt
+    build:
+      commands:
+        - echo "Backend build completed"
+  artifacts:
+    baseDirectory: backend
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - backend/venv/**/*
+      - backend/__pycache__/**/* 
