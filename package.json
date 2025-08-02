@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:aws": "tailwindcss -i ./app/globals.css -o ./app/output.css --watch=false && next build",
     "start": "next start",
     "lint": "next lint"
   },
