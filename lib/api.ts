@@ -939,7 +939,7 @@ export async function processImageLightweight(imageFile: File): Promise<any> {
     const formData = new FormData();
     formData.append('image', imageFile);
     
-    const response = await fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/image/process-lightweight', {
+    const response = await fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/image/process-lightweight', {
       method: 'POST',
       body: formData,
     });
@@ -1118,9 +1118,9 @@ export async function checkBackendHealth(): Promise<any> {
     console.log('🏥 Checking backend health...');
     
     const healthChecks = await Promise.allSettled([
-          fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/ai/health'),
-    fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/image/process-lightweight'),
-    fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/health')
+          fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/ai/health'),
+fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/image/process-lightweight'),
+fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/health')
     ]);
     
     const results = healthChecks.map((result, index) => {
@@ -1200,7 +1200,7 @@ export async function searchEmbeddingsFast(imageFile: File, topK: number = 5, co
       skinTypes.forEach(skinType => formData.append('skin_types', skinType));
     }
     
-    const response = await fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/embedding/search-fast', {
+    const response = await fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/embedding/search-fast', {
       method: 'POST',
       body: formData,
     });
@@ -1302,9 +1302,9 @@ export async function monitorEmbeddingPerformance(): Promise<any> {
     console.log('📊 Monitoring embedding search performance...');
     
     const performanceChecks = await Promise.allSettled([
-          fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/embedding/search-fast'),
-    fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/ai/health'),
-    fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/scin/search')
+          fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/embedding/search-fast'),
+fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/ai/health'),
+fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/scin/search')
     ]);
     
     const results = performanceChecks.map((result, index) => {

@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     
     // Get the backend URL from environment or use default
-    const backendUrl = process.env.BACKEND_URL || 'http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
+    const backendUrl = process.env.BACKEND_URL || 'https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
     
     // Forward the request to the Flask backend
     const response = await fetch(`${backendUrl}/api/v3/skin/analyze-enhanced`, {
