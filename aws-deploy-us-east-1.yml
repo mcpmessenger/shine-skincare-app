@@ -1,0 +1,64 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - echo "=== INSTALL PHASE (us-east-1) ==="
+      - echo "Installing dependencies..."
+      - npm ci
+      - echo "Installing Tailwind CSS globally..."
+      - npm install -g tailwindcss@latest
+      - echo "Dependencies installed successfully"
+      - echo "AWS Region: $AWS_REGION"
+  
+  pre_build:
+    commands:
+      - echo "=== PRE-BUILD PHASE (us-east-1) ==="
+      - echo "Setting up environment for us-east-1..."
+      - echo "Node version: $(node --version)"
+      - echo "NPM version: $(npm --version)"
+      - echo "Current directory: $(pwd)"
+      - echo "AWS Region: $AWS_REGION"
+      - ls -la
+  
+  build:
+    commands:
+      - echo "=== BUILD PHASE (us-east-1) ==="
+      - echo "Building Tailwind CSS..."
+      - npx tailwindcss -i ./app/globals.css -o ./app/output.css --minify
+      - echo "Building Next.js application..."
+      - npm run build
+      - echo "Build completed successfully"
+      - echo "Build artifacts:"
+      - ls -la .next/
+  
+  post_build:
+    commands:
+      - echo "=== POST-BUILD PHASE (us-east-1) ==="
+      - echo "Build completed on $(date)"
+      - echo "AWS Region: $AWS_REGION"
+      - echo "Build artifacts:"
+      - ls -la .next/
+      - echo "Copying build artifacts to artifacts directory..."
+
+artifacts:
+  files:
+    - .next/**/*
+    - public/**/*
+    - package.json
+    - next.config.mjs
+    - tailwind.config.ts
+    - postcss.config.mjs
+    - app/globals.css
+    - app/output.css
+    - appspec.yml
+    - scripts/**/*
+  discard-paths: no
+  base-directory: .
+
+cache:
+  paths:
+    - node_modules/**/*
+    - .next/cache/**/* 
