@@ -87,8 +87,8 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // Use working Elastic Beanstalk backend URL - FORCE REBUILD
-    this.baseUrl = 'http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
+    // Use working Elastic Beanstalk backend URL with HTTPS
+    this.baseUrl = 'https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
     
     // Debug: Log the actual URL being used
     console.log('🔧 API Client initialized with backend URL:', this.baseUrl);
@@ -99,9 +99,9 @@ class ApiClient {
     });
     
     // Log a clear message about the URL being used
-    console.log('🔒 Using working Elastic Beanstalk backend - FORCE REBUILD');
+    console.log('🔒 Using working Elastic Beanstalk backend with HTTPS - FORCE REBUILD');
     console.log('🚀 BUILD TRIGGER - Backend URL updated for working deployment');
-    console.log('🔧 BACKEND: Using SHINE-env Elastic Beanstalk');
+    console.log('🔧 BACKEND: Using SHINE-env Elastic Beanstalk with HTTPS');
     console.log('🔄 CACHE BUSTING: Timestamp:', new Date().toISOString());
   }
 
@@ -662,7 +662,7 @@ export const analyzeSelfie = async (file: File): Promise<ApiResponse<{
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/selfie/analyze', {
+    const response = await fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/selfie/analyze', {
       method: 'POST',
       body: formData,
     });
@@ -716,7 +716,7 @@ export const analyzeSkin = async (file: File): Promise<ApiResponse<{
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/skin/analyze', {
+    const response = await fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/skin/analyze', {
       method: 'POST',
       body: formData,
     });
