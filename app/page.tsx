@@ -1,256 +1,335 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-
-import SkinAnalysisCard from "@/components/skin-analysis-card"
-import ProductRecommendationCard from "@/components/product-recommendation-card"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { useAuth } from "@/hooks/useAuth"
-import { apiClient, Product } from "@/lib/api"
+import { useState } from 'react'
+import Link from 'next/link'
 
 export default function HomePage() {
-  const { user, loading: authLoading } = useAuth();
-  const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false)
 
-  useEffect(() => {
-    // Use the CloudFront HTTPS URL
-    if (typeof window !== 'undefined') {
-      // Use the CloudFront HTTPS proxy
-      const correctBackendUrl = 'http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
-      console.log('🔧 Using CloudFront HTTPS URL:', correctBackendUrl);
-      
-      // Update the API client base URL
-      (apiClient as any).baseUrl = correctBackendUrl;
-    }
-    
-    // Only load products after auth is ready
-    if (!authLoading) {
-      loadTrendingProducts();
-    }
-  }, [authLoading]);
-
-  const loadTrendingProducts = async () => {
+  const startCamera = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      console.log('🔧 Loading trending products...');
-      
-      const response = await apiClient.getTrendingProducts();
-      console.log('🔧 API Response:', response);
-      
-      // Handle the API response structure
-      if (response && response.data && Array.isArray(response.data)) {
-        setTrendingProducts(response.data);
-      } else if (response && response.data && typeof response.data === 'object' && 'trending_products' in response.data) {
-        // Handle the new response structure from backend
-        setTrendingProducts((response.data as any).trending_products);
-      } else {
-        console.warn('Invalid response structure, using fallback data');
-        // Fallback to mock data if API fails
-        setTrendingProducts([
-          {
-            id: "1",
-            name: "HydraBoost Serum",
-            brand: "AquaGlow",
-            price: 39.99,
-            rating: 4.5,
-            image_urls: ["/placeholder.svg?height=200&width=300"],
-            description: "A powerful hydrating serum infused with hyaluronic acid and ceramides to deeply moisturize and plump the skin.",
-            category: "serum",
-            subcategory: "hydrating",
-            ingredients: ["Hyaluronic Acid", "Ceramides", "Niacinamide"],
-            currency: "USD",
-            availability_status: "available",
-            review_count: 127
-          },
-          {
-            id: "2",
-            name: "ClearSkin Acne Treatment",
-            brand: "DermPure",
-            price: 24.5,
-            rating: 4.0,
-            image_urls: ["/placeholder.svg?height=200&width=300"],
-            description: "Target stubborn breakouts with this salicylic acid and tea tree oil formula, designed to clear pores and reduce inflammation.",
-            category: "treatment",
-            subcategory: "acne",
-            ingredients: ["Salicylic Acid", "Tea Tree Oil", "Zinc PCA"],
-            currency: "USD",
-            availability_status: "available",
-            review_count: 89
-          },
-          {
-            id: "3",
-            name: "Radiant C Cream",
-            brand: "VitaBright",
-            price: 55.0,
-            rating: 4.8,
-            image_urls: ["/placeholder.svg?height=200&width=300"],
-            description: "Brighten and even skin tone with this potent Vitamin C cream, packed with antioxidants for a youthful glow.",
-            category: "moisturizer",
-            subcategory: "brightening",
-            ingredients: ["Vitamin C", "Ferulic Acid", "Vitamin E"],
-            currency: "USD",
-            availability_status: "available",
-            review_count: 203
-          }
-        ]);
-      }
+      await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'user' },
+        audio: false 
+      })
+      setIsCameraActive(true)
     } catch (error) {
-      console.error('Failed to load trending products:', error);
-      setError('Failed to load recommendations. Please try again.');
-      // Fallback to mock data if API fails
-      setTrendingProducts([
-        {
-          id: "1",
-          name: "HydraBoost Serum",
-          brand: "AquaGlow",
-          price: 39.99,
-          rating: 4.5,
-          image_urls: ["/placeholder.svg?height=200&width=300"],
-          description: "A powerful hydrating serum infused with hyaluronic acid and ceramides to deeply moisturize and plump the skin.",
-          category: "serum",
-          subcategory: "hydrating",
-          ingredients: ["Hyaluronic Acid", "Ceramides", "Niacinamide"],
-          currency: "USD",
-          availability_status: "available",
-          review_count: 127
-        },
-        {
-          id: "2",
-          name: "ClearSkin Acne Treatment",
-          brand: "DermPure",
-          price: 24.5,
-          rating: 4.0,
-          image_urls: ["/placeholder.svg?height=200&width=300"],
-          description: "Target stubborn breakouts with this salicylic acid and tea tree oil formula, designed to clear pores and reduce inflammation.",
-          category: "treatment",
-          subcategory: "acne",
-          ingredients: ["Salicylic Acid", "Tea Tree Oil", "Zinc PCA"],
-          currency: "USD",
-          availability_status: "available",
-          review_count: 89
-        },
-        {
-          id: "3",
-          name: "Radiant C Cream",
-          brand: "VitaBright",
-          price: 55.0,
-          rating: 4.8,
-          image_urls: ["/placeholder.svg?height=200&width=300"],
-          description: "Brighten and even skin tone with this potent Vitamin C cream, packed with antioxidants for a youthful glow.",
-          category: "moisturizer",
-          subcategory: "brightening",
-          ingredients: ["Vitamin C", "Ferulic Acid", "Vitamin E"],
-          currency: "USD",
-          availability_status: "available",
-          review_count: 203
-        }
-      ]);
-    } finally {
-      setLoading(false);
+      console.error('Camera access denied:', error)
     }
-  };
-
-  // Show error state if there's an error
-  if (error) {
-    return (
-      <div className="flex flex-col min-h-[100dvh] items-center justify-center">
-        <div className="text-center space-y-4">
-          <h1 className="text-2xl font-bold text-red-600">Something went wrong</h1>
-          <p className="text-muted-foreground">{error}</p>
-          <Button onClick={loadTrendingProducts}>Try Again</Button>
-        </div>
-      </div>
-    );
   }
 
   return (
-    <div className="flex flex-col min-h-[100dvh]">
-      <main className="flex-1 py-12 px-4 md:px-6 lg:py-24">
-        <section className="container mx-auto grid gap-12">
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl">
-              Your Personalized Skincare Journey Starts Here
-            </h1>
-            <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
-              Get AI-powered skin analysis and tailored product recommendations.
-            </p>
-            <div className="flex justify-center gap-4">
-              <Link href="/skin-analysis">
-                <Button size="lg">Start Skin Analysis</Button>
-              </Link>
-              <Link href="/enhanced-skin-analysis">
-                <Button size="lg" variant="outline">
-                  🚀 Enhanced Analysis
-                </Button>
-              </Link>
-              <Link href="/similarity-search">
-                <Button size="lg" variant="outline">
-                  Find Similar Conditions
-                </Button>
-              </Link>
-              <Link href="/recommendations">
-                <Button size="lg" variant="outline">
-                  Explore Products
-                </Button>
-              </Link>
-              <Link href="/test-v2-api">
-                <Button size="lg" variant="outline">
-                  🧠 Test V2 API
-                </Button>
-              </Link>
-            </div>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#000000',
+      color: '#ffffff',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontWeight: 300
+    }}>
+      {/* Header */}
+      <header style={{
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 1000
+      }}>
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '1rem 2rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          {/* Logo */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem'
+          }}>
+            <img 
+              src="https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png"
+              alt="Shine Logo"
+              style={{
+                height: '48px',
+                width: 'auto',
+                filter: 'brightness(0) invert(1)'
+              }}
+            />
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 items-start">
-            <div className="space-y-6">
-              <h2 className="text-3xl font-bold tracking-tighter">Get Your Skin Analyzed</h2>
-              <SkinAnalysisCard />
-            </div>
-            <div className="space-y-6">
-              <h2 className="text-3xl font-bold tracking-tighter">Top Recommendations for You</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
-                {loading ? (
-                  <div className="col-span-2 text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-                    <p className="mt-2 text-muted-foreground">Loading recommendations...</p>
-                  </div>
-                ) : trendingProducts && trendingProducts.length > 0 ? (
-                  trendingProducts.map((product, index) => (
-                    <ProductRecommendationCard key={`${product.id}-${index}`} product={product} />
-                  ))
-                ) : (
-                  <div className="col-span-2 text-center py-8">
-                    <p className="text-muted-foreground">No recommendations available</p>
-                  </div>
-                )}
+          {/* Navigation */}
+          <nav style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2rem'
+          }}>
+            <Link href="/enhanced-skin-analysis" style={{
+              color: '#ffffff',
+              textDecoration: 'none',
+              fontSize: '0.9rem',
+              fontWeight: 300,
+              transition: 'opacity 0.3s ease',
+              opacity: 0.8
+            }}>
+              Analysis
+            </Link>
+            <Link href="/working-test" style={{
+              color: '#ffffff',
+              textDecoration: 'none',
+              fontSize: '0.9rem',
+              fontWeight: 300,
+              transition: 'opacity 0.3s ease',
+              opacity: 0.8
+            }}>
+              Test
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: '3rem 2rem'
+      }}>
+        {/* Camera Interface */}
+        <div style={{
+          textAlign: 'center',
+          marginBottom: '4rem'
+        }}>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.02)',
+            borderRadius: '24px',
+            padding: '3rem 2rem',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(20px)',
+            marginBottom: '2rem'
+          }}>
+            {!isCameraActive ? (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '2rem'
+              }}>
+                <div>
+                  <h1 style={{
+                    fontSize: '2.5rem',
+                    fontWeight: 200,
+                    marginBottom: '1rem',
+                    color: '#ffffff',
+                    letterSpacing: '-0.02em'
+                  }}>
+                    Take a Selfie
+                  </h1>
+                  <p style={{
+                    fontSize: '1rem',
+                    opacity: 0.6,
+                    color: '#ffffff',
+                    fontWeight: 300,
+                    maxWidth: '400px',
+                    margin: '0 auto',
+                    lineHeight: '1.6'
+                  }}>
+                    Capture your selfie for instant AI-powered skin analysis
+                  </p>
+                </div>
+
+                <button
+                  onClick={startCamera}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    padding: '1rem 2rem',
+                    borderRadius: '12px',
+                    fontSize: '0.9rem',
+                    fontWeight: 300,
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  Start Camera
+                </button>
               </div>
-              <div className="flex justify-center">
-                <Link href="/recommendations">
-                  <Button variant="secondary">View All Recommendations</Button>
-                </Link>
+            ) : (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '2rem'
+              }}>
+                <div style={{
+                  width: '280px',
+                  height: '280px',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(255, 255, 255, 0.05)'
+                }}>
+                  <p style={{ color: '#ffffff', opacity: 0.6 }}>Camera Active</p>
+                </div>
+                
+                <button
+                  onClick={() => setIsCameraActive(false)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    padding: '0.8rem 1.5rem',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem',
+                    fontWeight: 300,
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  Stop Camera
+                </button>
               </div>
-            </div>
+            )}
           </div>
-        </section>
-      </main>
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground">&copy; 2025 Shine. All rights reserved.</p>
-        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-          <Link href="#" className="text-xs hover:underline underline-offset-4" prefetch={false}>
-            Terms of Service
+        </div>
+
+        {/* Feature Cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '1.5rem',
+          marginBottom: '4rem'
+        }}>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.02)',
+            borderRadius: '16px',
+            padding: '2rem',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(20px)'
+          }}>
+            <h3 style={{
+              fontSize: '1.2rem',
+              marginBottom: '0.8rem',
+              color: '#ffffff',
+              fontWeight: 300
+            }}>
+              AI-Powered Analysis
+            </h3>
+            <p style={{
+              color: '#ffffff',
+              fontSize: '0.9rem',
+              opacity: 0.6,
+              fontWeight: 300,
+              lineHeight: '1.6'
+            }}>
+              Advanced skin analysis using Google Cloud Vertex AI
+            </p>
+          </div>
+
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.02)',
+            borderRadius: '16px',
+            padding: '2rem',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(20px)'
+          }}>
+            <h3 style={{
+              fontSize: '1.2rem',
+              marginBottom: '0.8rem',
+              color: '#ffffff',
+              fontWeight: 300
+            }}>
+              Instant Results
+            </h3>
+            <p style={{
+              color: '#ffffff',
+              fontSize: '0.9rem',
+              opacity: 0.6,
+              fontWeight: 300,
+              lineHeight: '1.6'
+            }}>
+              Get personalized recommendations in seconds
+            </p>
+          </div>
+
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.02)',
+            borderRadius: '16px',
+            padding: '2rem',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(20px)'
+          }}>
+            <h3 style={{
+              fontSize: '1.2rem',
+              marginBottom: '0.8rem',
+              color: '#ffffff',
+              fontWeight: 300
+            }}>
+              Mobile Optimized
+            </h3>
+            <p style={{
+              color: '#ffffff',
+              fontSize: '0.9rem',
+              opacity: 0.6,
+              fontWeight: 300,
+              lineHeight: '1.6'
+            }}>
+              Perfect for selfie analysis on your phone
+            </p>
+          </div>
+        </div>
+
+        {/* Call to Action */}
+        <div style={{
+          textAlign: 'center',
+          marginTop: '4rem',
+          padding: '3rem 2rem',
+          background: 'rgba(255, 255, 255, 0.02)',
+          borderRadius: '20px',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          backdropFilter: 'blur(20px)'
+        }}>
+          <h2 style={{
+            fontSize: '2rem',
+            marginBottom: '1rem',
+            color: '#ffffff',
+            fontWeight: 200,
+            letterSpacing: '-0.01em'
+          }}>
+            Ready to Transform Your Skin?
+          </h2>
+          <p style={{
+            fontSize: '1rem',
+            marginBottom: '2rem',
+            opacity: 0.6,
+            color: '#ffffff',
+            fontWeight: 300,
+            maxWidth: '500px',
+            margin: '0 auto 2rem',
+            lineHeight: '1.6'
+          }}>
+            Join thousands of users who have discovered their perfect skincare routine
+          </p>
+          <Link href="/enhanced-skin-analysis" style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            color: '#ffffff',
+            textDecoration: 'none',
+            padding: '1rem 2rem',
+            borderRadius: '12px',
+            fontSize: '0.9rem',
+            fontWeight: 300,
+            display: 'inline-block',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            transition: 'all 0.3s ease'
+          }}>
+            Start Your Analysis
           </Link>
-          <Link href="#" className="text-xs hover:underline underline-offset-4" prefetch={false}>
-            Privacy
-          </Link>
-          <Link href="#" className="text-xs hover:underline underline-offset-4" prefetch={false}>
-            Contact
-          </Link>
-        </nav>
-      </footer>
+        </div>
+      </div>
     </div>
   )
-}
+} 
