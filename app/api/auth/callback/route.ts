@@ -114,6 +114,13 @@ export async function POST(request: NextRequest) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       },
+      user_info: {
+        id: userInfo.id,
+        email: userInfo.email,
+        name: userInfo.name,
+        picture: userInfo.picture,
+        access_token: accessToken
+      },
       expires_in: 3600,
       environment: {
         googleClientId: googleClientId ? 'SET' : 'NOT SET',
