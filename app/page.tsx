@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Camera, Upload, Sparkles, Zap, Sun, Brain, CheckCircle, Zap as Target, User, Eye, TrendingUp, ShoppingCart } from 'lucide-react'
+import { Camera, Upload, Sparkles, Zap, Sun, Brain, CheckCircle, Zap as Target, User, Eye, TrendingUp, ShoppingCart, X } from 'lucide-react'
 import Link from 'next/link'
 import { useCart } from '@/hooks/useCart'
+import { useAuth } from '@/hooks/useAuth'
 import { CartDrawer } from '@/components/cart-drawer'
+import { SignInModal } from '@/components/sign-in-modal'
 import { products } from '@/lib/products'
 import { useTheme } from '@/hooks/useTheme'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -88,8 +90,10 @@ interface RealTimeDetectionResult {
 }
 
 export default function EnhancedSkinAnalysis() {
-  const { dispatch } = useCart()
+  const { dispatch, isAuthenticated } = useCart()
+  const { state: authState } = useAuth()
   const { theme } = useTheme()
+  const [showSignInModal, setShowSignInModal] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<EnhancedAnalysisResult | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -108,6 +112,45 @@ export default function EnhancedSkinAnalysis() {
   const [userImage, setUserImage] = useState<string | null>(null)
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
+
+  // Upload face detection states
+  const [uploadFaceDetected, setUploadFaceDetected] = useState(false)
+  const [uploadFaceBounds, setUploadFaceBounds] = useState({ x: 0, y: 0, width: 0, height: 0 })
+  const [uploadFaceDetectionResult, setUploadFaceDetectionResult] = useState<RealTimeDetectionResult | null>(null)
+  const [isDetectingFace, setIsDetectingFace] = useState(false)
+
+  // Theme-aware color utility
+  const getThemeColor = (lightColor: string, darkColor: string) => {
+    return theme === 'dark' ? darkColor : lightColor
+  }
+
+  const getTextColor = (opacity: number = 1) => {
+    return theme === 'dark' 
+      ? `rgba(255, 255, 255, ${opacity})` 
+      : `rgba(0, 0, 0, ${opacity})`
+  }
+
+  const getBgColor = (opacity: number = 0.05) => {
+    return theme === 'dark' 
+      ? `rgba(255, 255, 255, ${opacity})` 
+      : `rgba(0, 0, 0, ${opacity})`
+  }
+
+  const getBorderColor = (opacity: number = 0.1) => {
+    return theme === 'dark' 
+      ? `rgba(255, 255, 255, ${opacity})` 
+      : `rgba(0, 0, 0, ${opacity})`
+  }
+
+  const resetUploadStates = () => {
+    setSelectedFile(null)
+    setUserImage(null)
+    setUploadFaceDetected(false)
+    setUploadFaceBounds({ x: 0, y: 0, width: 0, height: 0 })
+    setUploadFaceDetectionResult(null)
+    setIsDetectingFace(false)
+    setAnalysisResult(null)
+  }
 
   // Product recommendations based on analysis
   const getProductRecommendations = (analysis: EnhancedAnalysisResult) => {
@@ -298,16 +341,62 @@ export default function EnhancedSkinAnalysis() {
     }
   }
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
       const reader = new FileReader()
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         const result = e.target?.result as string
         setUserImage(result)
         setSelectedFile(file)
+        
+        // Reset face detection states
+        setUploadFaceDetected(false)
+        setUploadFaceBounds({ x: 0, y: 0, width: 0, height: 0 })
+        setUploadFaceDetectionResult(null)
+        
+        // Perform face detection on uploaded image
+        await detectFaceInUploadedImage(result)
       }
       reader.readAsDataURL(file)
+    }
+  }
+
+  const detectFaceInUploadedImage = async (imageData: string) => {
+    try {
+      setIsDetectingFace(true)
+      
+      // Call face detection API
+      const response = await fetch('http://localhost:5001/api/v3/face/detect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image_data: imageData
+        })
+      })
+      
+      if (response.ok) {
+        const detectionResult: RealTimeDetectionResult = await response.json()
+        setUploadFaceDetectionResult(detectionResult)
+        
+        if (detectionResult.face_detected) {
+          setUploadFaceDetected(true)
+          setUploadFaceBounds(detectionResult.face_bounds)
+        } else {
+          setUploadFaceDetected(false)
+          setUploadFaceBounds({ x: 0, y: 0, width: 0, height: 0 })
+        }
+      } else {
+        console.error('Face detection failed for uploaded image')
+        setUploadFaceDetected(false)
+      }
+    } catch (error) {
+      console.error('Face detection error for uploaded image:', error)
+      setUploadFaceDetected(false)
+    } finally {
+      setIsDetectingFace(false)
     }
   }
 
@@ -500,18 +589,18 @@ export default function EnhancedSkinAnalysis() {
             alignItems: 'center',
             gap: '1rem'
           }}>
-            <Link href="/catalog" style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-              border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
-              borderRadius: '8px',
-              color: theme === 'dark' ? '#ffffff' : '#000000',
-              textDecoration: 'none',
-              fontSize: '0.9rem',
-              transition: 'all 0.3s ease'
-            }}>
-              View All Products
-            </Link>
+                      <Link href="/catalog" style={{
+            padding: '0.5rem 1rem',
+            backgroundColor: getBgColor(0.1),
+            border: `1px solid ${getBorderColor(0.2)}`,
+            borderRadius: '8px',
+            color: getTextColor(1),
+            textDecoration: 'none',
+            fontSize: '0.9rem',
+            transition: 'all 0.3s ease'
+          }}>
+            View All Products
+          </Link>
             <ThemeToggle />
             <CartDrawer />
           </div>
@@ -540,20 +629,22 @@ export default function EnhancedSkinAnalysis() {
             {/* Mode Selection */}
             <div style={{
               display: 'flex',
-              flexDirection: 'column',
               gap: '1rem',
               marginBottom: '2rem'
             }}>
               <button
                 className="mobile-button"
-                onClick={() => setCameraMode('camera')}
+                onClick={() => {
+                  setCameraMode('camera')
+                  resetUploadStates()
+                }}
                 style={{
                   flex: 1,
                   padding: '1rem',
-                  backgroundColor: cameraMode === 'camera' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  backgroundColor: cameraMode === 'camera' ? getBgColor(0.1) : 'transparent',
+                  border: `1px solid ${getBorderColor(0.2)}`,
                   borderRadius: '12px',
-                  color: '#ffffff',
+                  color: getTextColor(1),
                   cursor: 'pointer',
                   transition: 'all 0.3s ease',
                   display: 'flex',
@@ -565,15 +656,40 @@ export default function EnhancedSkinAnalysis() {
                 <Camera width={20} height={20} />
                 Camera
               </button>
+              
+              <button
+                className="mobile-button"
+                onClick={() => {
+                  setCameraMode('upload')
+                  resetUploadStates()
+                }}
+                style={{
+                  flex: 1,
+                  padding: '1rem',
+                  backgroundColor: cameraMode === 'upload' ? getBgColor(0.1) : 'transparent',
+                  border: `1px solid ${getBorderColor(0.2)}`,
+                  borderRadius: '12px',
+                  color: getTextColor(1),
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <Upload width={20} height={20} />
+                Upload
+              </button>
             </div>
 
             {/* Upload Mode */}
             {cameraMode === 'upload' && (
               <div style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                backgroundColor: getBgColor(0.05),
                 borderRadius: '16px',
                 padding: '2rem',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
+                border: `1px solid ${getBorderColor(0.1)}`
               }}>
                 {/* Phase 2: Demographic Input */}
                 <div style={{
@@ -589,7 +705,7 @@ export default function EnhancedSkinAnalysis() {
                     <h3 style={{
                       fontSize: '1.1rem',
                       fontWeight: 400,
-                      color: '#ffffff'
+                      color: getTextColor(1)
                     }}>
                       Demographic Information (Optional)
                     </h3>
@@ -605,7 +721,7 @@ export default function EnhancedSkinAnalysis() {
                       <label style={{
                         display: 'block',
                         fontSize: '0.9rem',
-                        color: 'rgba(255, 255, 255, 0.7)',
+                        color: getTextColor(0.7),
                         marginBottom: '0.5rem'
                       }}>
                         Age
@@ -617,10 +733,10 @@ export default function EnhancedSkinAnalysis() {
                         style={{
                           width: '100%',
                           padding: '0.75rem',
-                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          backgroundColor: getBgColor(0.1),
+                          border: `1px solid ${getBorderColor(0.2)}`,
                           borderRadius: '8px',
-                          color: '#ffffff',
+                          color: getTextColor(1),
                           fontSize: '0.9rem'
                         }}
                       >
@@ -635,7 +751,7 @@ export default function EnhancedSkinAnalysis() {
                       <label style={{
                         display: 'block',
                         fontSize: '0.9rem',
-                        color: 'rgba(255, 255, 255, 0.7)',
+                        color: getTextColor(0.7),
                         marginBottom: '0.5rem'
                       }}>
                         Ethnicity
@@ -647,10 +763,10 @@ export default function EnhancedSkinAnalysis() {
                         style={{
                           width: '100%',
                           padding: '0.75rem',
-                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          backgroundColor: getBgColor(0.1),
+                          border: `1px solid ${getBorderColor(0.2)}`,
                           borderRadius: '8px',
-                          color: '#ffffff',
+                          color: getTextColor(1),
                           fontSize: '0.9rem'
                         }}
                       >
@@ -664,7 +780,7 @@ export default function EnhancedSkinAnalysis() {
                   
                   <p style={{
                     fontSize: '0.8rem',
-                    color: 'rgba(255, 255, 255, 0.5)',
+                    color: getTextColor(0.5),
                     fontStyle: 'italic'
                   }}>
                     Providing demographic information helps improve analysis accuracy and provides more personalized recommendations.
@@ -678,7 +794,7 @@ export default function EnhancedSkinAnalysis() {
                   <h3 style={{
                     fontSize: '1.2rem',
                     fontWeight: 500,
-                    color: '#ffffff',
+                    color: getTextColor(1),
                     marginBottom: '1rem'
                   }}>
                     Upload Image
@@ -700,27 +816,27 @@ export default function EnhancedSkinAnalysis() {
                     style={{
                       display: 'block',
                       padding: '1rem',
-                      border: '2px dashed rgba(255, 255, 255, 0.3)',
+                      border: `2px dashed ${getBorderColor(0.3)}`,
                       borderRadius: '12px',
                       textAlign: 'center',
                       cursor: 'pointer',
                       transition: 'all 0.3s ease',
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                      backgroundColor: getBgColor(0.05)
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
+                      e.currentTarget.style.borderColor = getBorderColor(0.5)
+                      e.currentTarget.style.backgroundColor = getBgColor(0.1)
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'
+                      e.currentTarget.style.borderColor = getBorderColor(0.3)
+                      e.currentTarget.style.backgroundColor = getBgColor(0.05)
                     }}
                   >
                     <Upload width={24} height={24} style={{ marginBottom: '0.5rem', opacity: 0.7 }} />
                     <p style={{
                       margin: 0,
                       fontSize: '0.9rem',
-                      color: 'rgba(255, 255, 255, 0.8)'
+                      color: getTextColor(0.8)
                     }}>
                       Click to select an image or drag and drop
                     </p>
@@ -735,7 +851,7 @@ export default function EnhancedSkinAnalysis() {
                       <h4 style={{
                         fontSize: '1rem',
                         fontWeight: 500,
-                        color: '#ffffff',
+                        color: getTextColor(1),
                         marginBottom: '0.5rem'
                       }}>
                         Preview
@@ -745,7 +861,7 @@ export default function EnhancedSkinAnalysis() {
                         display: 'inline-block',
                         borderRadius: '8px',
                         overflow: 'hidden',
-                        border: '2px solid rgba(255, 255, 255, 0.2)',
+                        border: `2px solid ${getBorderColor(0.2)}`,
                         maxWidth: '200px',
                         maxHeight: '200px'
                       }}>
@@ -759,7 +875,158 @@ export default function EnhancedSkinAnalysis() {
                             display: 'block'
                           }}
                         />
+                        
+                        {/* Face Detection Overlay */}
+                        {uploadFaceDetected && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '0',
+                            left: '0',
+                            width: '100%',
+                            height: '100%',
+                            pointerEvents: 'none'
+                          }}>
+                            {/* Face Detection Zone */}
+                            <svg
+                              width="100%"
+                              height="100%"
+                              style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0
+                              }}
+                            >
+                              <rect
+                                x={`${uploadFaceBounds.x}%`}
+                                y={`${uploadFaceBounds.y}%`}
+                                width={`${uploadFaceBounds.width}%`}
+                                height={`${uploadFaceBounds.height}%`}
+                                fill="none"
+                                stroke="#10b981"
+                                strokeWidth="2"
+                                strokeDasharray="5,5"
+                                opacity="0.8"
+                              />
+                              
+                              {/* Corner Indicators */}
+                              <circle
+                                cx={`${uploadFaceBounds.x}%`}
+                                cy={`${uploadFaceBounds.y}%`}
+                                r="3"
+                                fill="#10b981"
+                                opacity="0.9"
+                              />
+                              <circle
+                                cx={`${uploadFaceBounds.x + uploadFaceBounds.width}%`}
+                                cy={`${uploadFaceBounds.y}%`}
+                                r="3"
+                                fill="#10b981"
+                                opacity="0.9"
+                              />
+                              <circle
+                                cx={`${uploadFaceBounds.x}%`}
+                                cy={`${uploadFaceBounds.y + uploadFaceBounds.height}%`}
+                                r="3"
+                                fill="#10b981"
+                                opacity="0.9"
+                              />
+                              <circle
+                                cx={`${uploadFaceBounds.x + uploadFaceBounds.width}%`}
+                                cy={`${uploadFaceBounds.y + uploadFaceBounds.height}%`}
+                                r="3"
+                                fill="#10b981"
+                                opacity="0.9"
+                              />
+                            </svg>
+                            
+                            {/* Face Detection Label */}
+                            <div style={{
+                              position: 'absolute',
+                              top: `${Math.max(0, uploadFaceBounds.y - 5)}%`,
+                              left: `${uploadFaceBounds.x}%`,
+                              backgroundColor: 'rgba(16, 185, 129, 0.9)',
+                              color: '#000000',
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '4px',
+                              fontSize: '0.7rem',
+                              fontWeight: 'bold',
+                              transform: 'translateY(-100%)'
+                            }}>
+                              FACE DETECTED
+                            </div>
+                          </div>
+                        )}
                       </div>
+                      
+                      {/* Face Detection Status */}
+                      {isDetectingFace && (
+                        <div style={{
+                          marginTop: '0.5rem',
+                          padding: '0.5rem',
+                          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                          border: '1px solid rgba(59, 130, 246, 0.3)',
+                          borderRadius: '6px',
+                          fontSize: '0.8rem',
+                          color: '#3b82f6'
+                        }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem'
+                          }}>
+                            <div style={{
+                              width: '12px',
+                              height: '12px',
+                              border: '2px solid #3b82f6',
+                              borderTop: '2px solid transparent',
+                              borderRadius: '50%',
+                              animation: 'spin 1s linear infinite'
+                            }} />
+                            Detecting face...
+                          </div>
+                        </div>
+                      )}
+                      
+                      {!isDetectingFace && uploadFaceDetectionResult && (
+                        <div style={{
+                          marginTop: '0.5rem',
+                          padding: '0.5rem',
+                          backgroundColor: uploadFaceDetected ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                          border: uploadFaceDetected ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+                          borderRadius: '6px',
+                          fontSize: '0.8rem',
+                          color: uploadFaceDetected ? '#10b981' : '#ef4444'
+                        }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem'
+                          }}>
+                            {uploadFaceDetected ? (
+                              <>
+                                <CheckCircle width={14} height={14} />
+                                Face detected - Ready for analysis
+                              </>
+                            ) : (
+                              <>
+                                <X width={14} height={14} />
+                                No face detected - Please upload a clear face image
+                              </>
+                            )}
+                          </div>
+                          {uploadFaceDetectionResult.quality_metrics && (
+                            <div style={{
+                              marginTop: '0.25rem',
+                              fontSize: '0.7rem',
+                              opacity: 0.8
+                            }}>
+                              Quality: {uploadFaceDetectionResult.quality_metrics.lighting}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                   
@@ -813,17 +1080,17 @@ export default function EnhancedSkinAnalysis() {
                   {/* Upload Button */}
                   <button
                     onClick={handleUpload}
-                    disabled={!selectedFile || isUploading}
+                    disabled={!selectedFile || isUploading || !uploadFaceDetected}
                     style={{
                       width: '100%',
                       padding: '1rem',
-                      backgroundColor: selectedFile && !isUploading ? '#10b981' : 'rgba(255, 255, 255, 0.1)',
+                      backgroundColor: selectedFile && !isUploading && uploadFaceDetected ? '#10b981' : getBgColor(0.1),
                       border: 'none',
                       borderRadius: '12px',
-                      color: '#ffffff',
+                      color: getTextColor(1),
                       fontSize: '1rem',
                       fontWeight: 500,
-                      cursor: selectedFile && !isUploading ? 'pointer' : 'not-allowed',
+                      cursor: selectedFile && !isUploading && uploadFaceDetected ? 'pointer' : 'not-allowed',
                       transition: 'all 0.3s ease',
                       marginTop: '1rem',
                       display: 'flex',
@@ -833,7 +1100,7 @@ export default function EnhancedSkinAnalysis() {
                     }}
                   >
                     <Sparkles width={20} height={20} />
-                    {isUploading ? 'Analyzing...' : 'Analyze Image'}
+                    {isUploading ? 'Analyzing...' : uploadFaceDetected ? 'Analyze Image' : 'Face Detection Required'}
                   </button>
                 </div>
               </div>
@@ -842,10 +1109,10 @@ export default function EnhancedSkinAnalysis() {
             {/* Camera Mode */}
             {cameraMode === 'camera' && (
               <div style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                backgroundColor: getBgColor(0.05),
                 borderRadius: '16px',
                 padding: '2rem',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
+                border: `1px solid ${getBorderColor(0.1)}`
               }}>
                 {/* Camera View */}
                 <div style={{
@@ -1004,7 +1271,7 @@ export default function EnhancedSkinAnalysis() {
                         {realTimeDetection.face_detected ? '✓ Face Detected' : '✗ No Face'}
                       </div>
                       <div style={{
-                        color: 'rgba(255, 255, 255, 0.7)',
+                        color: getTextColor(0.7),
                         fontSize: '0.7rem'
                       }}>
                         Quality: {realTimeDetection.quality_metrics.lighting}
@@ -1024,10 +1291,10 @@ export default function EnhancedSkinAnalysis() {
                     style={{
                       flex: 1,
                       padding: '1rem',
-                      backgroundColor: faceDetected ? '#10b981' : 'rgba(255, 255, 255, 0.1)',
+                      backgroundColor: faceDetected ? '#10b981' : getBgColor(0.1),
                       border: 'none',
                       borderRadius: '12px',
-                      color: '#ffffff',
+                      color: getTextColor(1),
                       fontSize: '1rem',
                       fontWeight: 500,
                       cursor: faceDetected ? 'pointer' : 'not-allowed',
@@ -1047,9 +1314,9 @@ export default function EnhancedSkinAnalysis() {
                     style={{
                       padding: '1rem',
                       backgroundColor: 'transparent',
-                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      border: `1px solid ${getBorderColor(0.2)}`,
                       borderRadius: '12px',
-                      color: '#ffffff',
+                      color: getTextColor(1),
                       fontSize: '0.9rem',
                       cursor: 'pointer',
                       transition: 'all 0.3s ease'
@@ -1091,10 +1358,10 @@ export default function EnhancedSkinAnalysis() {
           <div>
             {analysisResult ? (
               <div style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                backgroundColor: getBgColor(0.05),
                 borderRadius: '16px',
                 padding: '2rem',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
+                border: `1px solid ${getBorderColor(0.1)}`
               }}>
                 {/* Analysis Header */}
                 <div style={{
@@ -1108,14 +1375,14 @@ export default function EnhancedSkinAnalysis() {
                     <h2 style={{
                       fontSize: '1.5rem',
                       fontWeight: 400,
-                      color: '#ffffff',
+                      color: getTextColor(1),
                       margin: 0
                     }}>
                       Analysis Complete
                     </h2>
                     <p style={{
                       fontSize: '0.9rem',
-                      color: 'rgba(255, 255, 255, 0.7)',
+                      color: getTextColor(0.7),
                       margin: 0
                     }}>
                       Enhanced analysis with demographic awareness
@@ -1132,7 +1399,7 @@ export default function EnhancedSkinAnalysis() {
                     <h3 style={{
                       fontSize: '1.1rem',
                       fontWeight: 500,
-                      color: '#ffffff',
+                      color: getTextColor(1),
                       marginBottom: '1rem'
                     }}>
                       Your Image
@@ -1142,7 +1409,7 @@ export default function EnhancedSkinAnalysis() {
                       display: 'inline-block',
                       borderRadius: '12px',
                       overflow: 'hidden',
-                      border: '2px solid rgba(255, 255, 255, 0.2)',
+                                              border: `2px solid ${getBorderColor(0.2)}`,
                       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
                     }}>
                       <img 
@@ -1173,7 +1440,7 @@ export default function EnhancedSkinAnalysis() {
                     </div>
                     <p style={{
                       fontSize: '0.8rem',
-                      color: 'rgba(255, 255, 255, 0.6)',
+                      color: getTextColor(0.6),
                       marginTop: '0.5rem',
                       margin: 0
                     }}>
@@ -1200,7 +1467,7 @@ export default function EnhancedSkinAnalysis() {
                     <h3 style={{
                       fontSize: '1.2rem',
                       fontWeight: 400,
-                      color: '#ffffff',
+                      color: getTextColor(1),
                       margin: 0
                     }}>
                       Overall Health Score
@@ -1221,7 +1488,7 @@ export default function EnhancedSkinAnalysis() {
                     <div style={{
                       flex: 1,
                       height: '8px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      backgroundColor: getBgColor(0.1),
                       borderRadius: '4px',
                       overflow: 'hidden'
                     }}>
@@ -1243,7 +1510,7 @@ export default function EnhancedSkinAnalysis() {
                     <h3 style={{
                       fontSize: '1.2rem',
                       fontWeight: 400,
-                      color: '#ffffff',
+                      color: getTextColor(1),
                       marginBottom: '1rem'
                     }}>
                       Detected Conditions
@@ -1251,7 +1518,7 @@ export default function EnhancedSkinAnalysis() {
                     {analysisResult.skin_analysis.conditions_detected.map((condition, index) => (
                       <div key={index} style={{
                         padding: '1rem',
-                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        backgroundColor: getBgColor(0.05),
                         borderRadius: '8px',
                         marginBottom: '1rem'
                       }}>
@@ -1264,20 +1531,20 @@ export default function EnhancedSkinAnalysis() {
                           <span style={{
                             fontSize: '1rem',
                             fontWeight: 500,
-                            color: '#ffffff'
+                            color: getTextColor(1)
                           }}>
                             {condition.condition.replace('_', ' ').toUpperCase()}
                           </span>
                           <span style={{
                             fontSize: '0.9rem',
-                            color: 'rgba(255, 255, 255, 0.7)'
+                            color: getTextColor(0.7)
                           }}>
                             {Math.round(condition.confidence * 100)}% confidence
                           </span>
                         </div>
                         <p style={{
                           fontSize: '0.9rem',
-                          color: 'rgba(255, 255, 255, 0.7)',
+                          color: getTextColor(0.7),
                           margin: '0.5rem 0'
                         }}>
                           {condition.description}
@@ -1298,8 +1565,8 @@ export default function EnhancedSkinAnalysis() {
                           </span>
                           <span style={{
                             padding: '0.25rem 0.5rem',
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            color: 'rgba(255, 255, 255, 0.7)',
+                            backgroundColor: getBgColor(0.1),
+                            color: getTextColor(0.7),
                             borderRadius: '4px',
                             fontSize: '0.8rem'
                           }}>
@@ -1318,7 +1585,7 @@ export default function EnhancedSkinAnalysis() {
                   <h3 style={{
                     fontSize: '1.2rem',
                     fontWeight: 400,
-                    color: '#ffffff',
+                    color: getTextColor(1),
                     marginBottom: '1rem'
                   }}>
                     Recommendations
@@ -1331,7 +1598,7 @@ export default function EnhancedSkinAnalysis() {
                     <h4 style={{
                       fontSize: '1rem',
                       fontWeight: 500,
-                      color: '#ffffff',
+                      color: getTextColor(1),
                       marginBottom: '0.5rem'
                     }}>
                       Immediate Care
@@ -1344,9 +1611,9 @@ export default function EnhancedSkinAnalysis() {
                       {analysisResult.recommendations.immediate_care.map((rec, index) => (
                         <li key={index} style={{
                           padding: '0.5rem 0',
-                          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderBottom: `1px solid ${getBorderColor(0.1)}`,
                           fontSize: '0.9rem',
-                          color: 'rgba(255, 255, 255, 0.8)'
+                          color: getTextColor(0.8)
                         }}>
                           • {rec}
                         </li>
@@ -1359,7 +1626,7 @@ export default function EnhancedSkinAnalysis() {
                     <h4 style={{
                       fontSize: '1rem',
                       fontWeight: 500,
-                      color: '#ffffff',
+                      color: getTextColor(1),
                       marginBottom: '0.5rem'
                     }}>
                       Long-term Care
@@ -1372,9 +1639,9 @@ export default function EnhancedSkinAnalysis() {
                       {analysisResult.recommendations.long_term_care.map((rec, index) => (
                         <li key={index} style={{
                           padding: '0.5rem 0',
-                          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderBottom: `1px solid ${getBorderColor(0.1)}`,
                           fontSize: '0.9rem',
-                          color: 'rgba(255, 255, 255, 0.8)'
+                          color: getTextColor(0.8)
                         }}>
                           • {rec}
                         </li>
@@ -1410,7 +1677,7 @@ export default function EnhancedSkinAnalysis() {
                   <h3 style={{
                     fontSize: '1.2rem',
                     fontWeight: 400,
-                    color: '#ffffff',
+                    color: getTextColor(1),
                     marginBottom: '1rem'
                   }}>
                     Recommended Products
@@ -1422,18 +1689,18 @@ export default function EnhancedSkinAnalysis() {
                   }}>
                     {getProductRecommendations(analysisResult).map((product, index) => (
                       <div key={index} style={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        backgroundColor: getBgColor(0.05),
                         borderRadius: '12px',
                         padding: '1rem',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        border: `1px solid ${getBorderColor(0.1)}`,
                         transition: 'all 0.3s ease',
                         cursor: 'pointer'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
+                        e.currentTarget.style.backgroundColor = getBgColor(0.1)
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'
+                        e.currentTarget.style.backgroundColor = getBgColor(0.05)
                       }}
                       >
                         <div style={{
@@ -1459,14 +1726,14 @@ export default function EnhancedSkinAnalysis() {
                             <h4 style={{
                               fontSize: '1rem',
                               fontWeight: 500,
-                              color: '#ffffff',
+                              color: getTextColor(1),
                               margin: '0 0 0.25rem 0'
                             }}>
                               {product.name}
                             </h4>
                             <span style={{
                               fontSize: '0.8rem',
-                              color: 'rgba(255, 255, 255, 0.6)',
+                              color: getTextColor(0.6),
                               textTransform: 'capitalize'
                             }}>
                               {product.category}
@@ -1475,7 +1742,7 @@ export default function EnhancedSkinAnalysis() {
                         </div>
                         <p style={{
                           fontSize: '0.85rem',
-                          color: 'rgba(255, 255, 255, 0.8)',
+                          color: getTextColor(0.8),
                           margin: '0 0 1rem 0',
                           lineHeight: '1.4'
                         }}>
@@ -1494,24 +1761,30 @@ export default function EnhancedSkinAnalysis() {
                             ${product.price.toFixed(2)}
                           </span>
                           <button
-                            onClick={() => dispatch({ type: 'ADD_ITEM', payload: product })}
+                            onClick={() => {
+                              if (isAuthenticated) {
+                                dispatch({ type: 'ADD_ITEM', payload: product })
+                              } else {
+                                setShowSignInModal(true)
+                              }
+                            }}
                             style={{
                               display: 'flex',
                               alignItems: 'center',
                               gap: '0.5rem',
                               padding: '0.5rem 1rem',
-                              backgroundColor: '#3b82f6',
+                              backgroundColor: isAuthenticated ? '#3b82f6' : 'rgba(59, 130, 246, 0.5)',
                               border: '1px solid #3b82f6',
                               borderRadius: '6px',
-                              color: '#ffffff',
-                              cursor: 'pointer',
+                              color: getTextColor(1),
+                              cursor: isAuthenticated ? 'pointer' : 'not-allowed',
                               fontSize: '0.8rem',
                               fontWeight: 'bold',
                               transition: 'all 0.3s ease'
                             }}
                           >
                             <ShoppingCart width={14} height={14} />
-                            Add to Cart
+                            {isAuthenticated ? 'Add to Cart' : 'Sign In to Add'}
                           </button>
                         </div>
                       </div>
@@ -1522,8 +1795,8 @@ export default function EnhancedSkinAnalysis() {
                 {/* Analysis Details */}
                 <div style={{
                   fontSize: '0.8rem',
-                  color: 'rgba(255, 255, 255, 0.5)',
-                  borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: getTextColor(0.5),
+                  borderTop: `1px solid ${getBorderColor(0.1)}`,
                   paddingTop: '1rem'
                 }}>
                   <p style={{ margin: '0.25rem 0' }}>
@@ -1549,24 +1822,24 @@ export default function EnhancedSkinAnalysis() {
               </div>
             ) : (
               <div style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                backgroundColor: getBgColor(0.05),
                 borderRadius: '16px',
                 padding: '2rem',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
+                border: `1px solid ${getBorderColor(0.1)}`,
                 textAlign: 'center'
               }}>
                 <Sparkles width={48} height={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
                 <h3 style={{
                   fontSize: '1.2rem',
                   fontWeight: 400,
-                  color: '#ffffff',
+                  color: getTextColor(1),
                   marginBottom: '0.5rem'
                 }}>
                   Ready for Analysis
                 </h3>
                 <p style={{
                   fontSize: '0.9rem',
-                  color: 'rgba(255, 255, 255, 0.7)'
+                  color: getTextColor(0.7)
                 }}>
                   Upload an image or use the camera to begin your enhanced skin analysis
                 </p>
@@ -1582,6 +1855,13 @@ export default function EnhancedSkinAnalysis() {
           100% { transform: rotate(360deg); }
         }
       `}</style>
+
+      {/* Sign In Modal */}
+      <SignInModal 
+        isOpen={showSignInModal}
+        onClose={() => setShowSignInModal(false)}
+        onSuccess={() => setShowSignInModal(false)}
+      />
     </div>
   )
 } 
