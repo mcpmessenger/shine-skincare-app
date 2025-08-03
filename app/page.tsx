@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Camera, Upload, Sparkles, Zap, Sun, Brain, CheckCircle, Zap as Target, User, Eye, TrendingUp } from 'lucide-react'
+import { Camera, Upload, Sparkles, Zap, Sun, Brain, CheckCircle, Zap as Target, User, Eye, TrendingUp, ShoppingCart } from 'lucide-react'
 import Link from 'next/link'
+import { useCart } from '@/hooks/useCart'
+import { CartDrawer } from '@/components/cart-drawer'
+import { products } from '@/lib/products'
 
 interface EnhancedAnalysisResult {
   status: string
@@ -83,6 +86,7 @@ interface RealTimeDetectionResult {
 }
 
 export default function EnhancedSkinAnalysis() {
+  const { dispatch } = useCart()
   const [isUploading, setIsUploading] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<EnhancedAnalysisResult | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -104,92 +108,32 @@ export default function EnhancedSkinAnalysis() {
 
   // Product recommendations based on analysis
   const getProductRecommendations = (analysis: EnhancedAnalysisResult) => {
-    const products = [
-      {
-        name: "iS Clinical Cleansing Complex",
-        image: "/products/iS Clinical Cleansing Complex.jpg",
-        category: "cleanser",
-        conditions: ["acne", "oily", "congestion"],
-        description: "Gentle yet effective cleanser for acne-prone skin"
-      },
-      {
-        name: "Dermalogica UltraCalming Cleanser",
-        image: "/products/Dermalogica UltraCalming Cleanser.webp",
-        category: "cleanser",
-        conditions: ["sensitivity", "redness", "irritation"],
-        description: "Soothing cleanser for sensitive skin"
-      },
-      {
-        name: "SkinCeuticals C E Ferulic",
-        image: "/products/SkinCeuticals C E Ferulic.webp",
-        category: "serum",
-        conditions: ["aging", "sun_damage", "hyperpigmentation"],
-        description: "Antioxidant serum for aging and sun-damaged skin"
-      },
-      {
-        name: "TNS Advanced+ Serum",
-        image: "/products/TNS_Advanced+_Serum_1oz_2_FullWidth.jpg",
-        category: "serum",
-        conditions: ["aging", "fine_lines", "texture"],
-        description: "Advanced peptide serum for anti-aging"
-      },
-      {
-        name: "PCA SKIN Pigment Gel Pro",
-        image: "/products/PCA SKIN Pigment Gel Pro.jpg",
-        category: "treatment",
-        conditions: ["hyperpigmentation", "dark_spots", "uneven_tone"],
-        description: "Targeted treatment for hyperpigmentation"
-      },
-      {
-        name: "First Aid Beauty Ultra Repair Cream",
-        image: "/products/First Aid Beauty Ultra Repair Cream.webp",
-        category: "moisturizer",
-        conditions: ["dryness", "sensitivity", "barrier_repair"],
-        description: "Intensive moisturizer for dry, sensitive skin"
-      },
-      {
-        name: "EltaMD UV Clear Broad-Spectrum SPF 46",
-        image: "/products/EltaMD UV Clear Broad-Spectrum SPF 46.webp",
-        category: "sunscreen",
-        conditions: ["acne", "sensitivity", "sun_protection"],
-        description: "Oil-free sunscreen for acne-prone skin"
-      },
-      {
-        name: "Allies of Skin Molecular Silk Amino Hydrating Cleanser",
-        image: "/products/Allies of Skin Molecular Silk Amino Hydrating Cleanser.webp",
-        category: "cleanser",
-        conditions: ["dryness", "dehydration", "gentle"],
-        description: "Hydrating cleanser for dry skin"
-      }
-    ]
-
-    // Get detected conditions
-    const detectedConditions = analysis.skin_analysis.conditions_detected.map(c => 
-      c.condition.toLowerCase().replace(/\s+/g, '_')
-    )
-
-    // Score products based on conditions
-    const scoredProducts = products.map(product => {
-      let score = 0
-      product.conditions.forEach(condition => {
-        if (detectedConditions.some(dc => dc.includes(condition) || condition.includes(dc))) {
-          score += 1
-        }
-      })
-      
-      // Bonus for overall skin health
-      if (analysis.skin_analysis.overall_health_score > 0.8) {
-        score += 0.5
-      }
-      
-      return { ...product, score }
-    })
-
-    // Return top 3 products
-    return scoredProducts
-      .filter(p => p.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3)
+    // Filter products based on analysis results
+    let recommendedProducts = [...products]
+    
+    // Filter by detected conditions
+    const conditions = analysis.skin_analysis.conditions_detected.map(c => c.condition.toLowerCase())
+    
+    if (conditions.some(c => c.includes('acne') || c.includes('breakout'))) {
+      recommendedProducts = recommendedProducts.filter(p => 
+        p.category === 'cleanser' || p.category === 'treatment'
+      )
+    }
+    
+    if (conditions.some(c => c.includes('aging') || c.includes('wrinkle'))) {
+      recommendedProducts = recommendedProducts.filter(p => 
+        p.category === 'serum' || p.category === 'treatment'
+      )
+    }
+    
+    if (conditions.some(c => c.includes('pigment') || c.includes('dark'))) {
+      recommendedProducts = recommendedProducts.filter(p => 
+        p.category === 'treatment' || p.category === 'serum'
+      )
+    }
+    
+    // Return top 4 recommendations
+    return recommendedProducts.slice(0, 4)
   }
   
   // Age and race categories
@@ -536,7 +480,27 @@ export default function EnhancedSkinAnalysis() {
                 e.currentTarget.style.display = 'none';
               }}
             />
+          </div>
 
+          {/* Navigation */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem'
+          }}>
+            <Link href="/catalog" style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '8px',
+              color: '#ffffff',
+              textDecoration: 'none',
+              fontSize: '0.9rem',
+              transition: 'all 0.3s ease'
+            }}>
+              View All Products
+            </Link>
+            <CartDrawer />
           </div>
 
 
@@ -908,29 +872,124 @@ export default function EnhancedSkinAnalysis() {
                     }}
                   />
                   
-                  {/* Face Detection Overlay */}
+                  {/* Facial Matrix Overlay */}
                   {faceDetected && (
                     <div style={{
                       position: 'absolute',
-                      top: `${faceBounds.y}px`,
-                      left: `${faceBounds.x}px`,
-                      width: `${faceBounds.width}px`,
-                      height: `${faceBounds.height}px`,
-                      border: '2px solid #3b82f6',
-                      borderRadius: '8px',
+                      top: '0',
+                      left: '0',
+                      width: '100%',
+                      height: '100%',
                       pointerEvents: 'none'
                     }}>
+                      {/* Matrix Scan Line */}
+                      <div className="matrix-scan" style={{
+                        animationDelay: '0s'
+                      }} />
+                      <div className="matrix-scan" style={{
+                        animationDelay: '1s'
+                      }} />
+                      <div className="matrix-scan" style={{
+                        animationDelay: '2s'
+                      }} />
+                      {/* Matrix Grid Lines */}
+                      <svg
+                        width="100%"
+                        height="100%"
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0
+                        }}
+                      >
+                        {/* Vertical Matrix Lines */}
+                        {Array.from({ length: 10 }, (_, i) => (
+                          <line
+                            key={`v-${i}`}
+                            x1={`${(i + 1) * 10}%`}
+                            y1="0"
+                            x2={`${(i + 1) * 10}%`}
+                            y2="100%"
+                            stroke="#00ff41"
+                            strokeWidth="1"
+                            opacity="0.3"
+                            className="matrix-line"
+                          />
+                        ))}
+                        
+                        {/* Horizontal Matrix Lines */}
+                        {Array.from({ length: 8 }, (_, i) => (
+                          <line
+                            key={`h-${i}`}
+                            x1="0"
+                            y1={`${(i + 1) * 12.5}%`}
+                            x2="100%"
+                            y2={`${(i + 1) * 12.5}%`}
+                            stroke="#00ff41"
+                            strokeWidth="1"
+                            opacity="0.3"
+                            className="matrix-line"
+                          />
+                        ))}
+                        
+                        {/* Face Detection Zone */}
+                        <rect
+                          x={`${faceBounds.x}%`}
+                          y={`${faceBounds.y}%`}
+                          width={`${faceBounds.width}%`}
+                          height={`${faceBounds.height}%`}
+                          fill="none"
+                          stroke="#00ff41"
+                          strokeWidth="3"
+                          strokeDasharray="5,5"
+                          opacity="0.8"
+                        />
+                        
+                        {/* Corner Indicators */}
+                        <circle
+                          cx={`${faceBounds.x}%`}
+                          cy={`${faceBounds.y}%`}
+                          r="4"
+                          fill="#00ff41"
+                          opacity="0.9"
+                        />
+                        <circle
+                          cx={`${faceBounds.x + faceBounds.width}%`}
+                          cy={`${faceBounds.y}%`}
+                          r="4"
+                          fill="#00ff41"
+                          opacity="0.9"
+                        />
+                        <circle
+                          cx={`${faceBounds.x}%`}
+                          cy={`${faceBounds.y + faceBounds.height}%`}
+                          r="4"
+                          fill="#00ff41"
+                          opacity="0.9"
+                        />
+                        <circle
+                          cx={`${faceBounds.x + faceBounds.width}%`}
+                          cy={`${faceBounds.y + faceBounds.height}%`}
+                          r="4"
+                          fill="#00ff41"
+                          opacity="0.9"
+                        />
+                      </svg>
+                      
+                      {/* Face Detection Label */}
                       <div style={{
                         position: 'absolute',
-                        top: '-30px',
-                        left: '0',
-                        backgroundColor: '#3b82f6',
-                        color: '#ffffff',
+                        top: `${Math.max(0, faceBounds.y - 5)}%`,
+                        left: `${faceBounds.x}%`,
+                        backgroundColor: 'rgba(0, 255, 65, 0.9)',
+                        color: '#000000',
                         padding: '0.25rem 0.5rem',
                         borderRadius: '4px',
-                        fontSize: '0.8rem'
+                        fontSize: '0.8rem',
+                        fontWeight: 'bold',
+                        transform: 'translateY(-100%)'
                       }}>
-                        Face Detected
+                        FACE DETECTED
                       </div>
                     </div>
                   )}
@@ -1425,11 +1484,44 @@ export default function EnhancedSkinAnalysis() {
                         <p style={{
                           fontSize: '0.85rem',
                           color: 'rgba(255, 255, 255, 0.8)',
-                          margin: 0,
+                          margin: '0 0 1rem 0',
                           lineHeight: '1.4'
                         }}>
                           {product.description}
                         </p>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <span style={{
+                            fontSize: '1.1rem',
+                            fontWeight: 'bold',
+                            color: '#3b82f6'
+                          }}>
+                            ${product.price.toFixed(2)}
+                          </span>
+                          <button
+                            onClick={() => dispatch({ type: 'ADD_ITEM', payload: product })}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              padding: '0.5rem 1rem',
+                              backgroundColor: '#3b82f6',
+                              border: '1px solid #3b82f6',
+                              borderRadius: '6px',
+                              color: '#ffffff',
+                              cursor: 'pointer',
+                              fontSize: '0.8rem',
+                              fontWeight: 'bold',
+                              transition: 'all 0.3s ease'
+                            }}
+                          >
+                            <ShoppingCart width={14} height={14} />
+                            Add to Cart
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

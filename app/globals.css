@@ -198,6 +198,30 @@
   /* Already dark theme, but ensure consistency */
 }
 
+/* Matrix Animation */
+@keyframes matrix-glow {
+  0% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+  100% { opacity: 0.3; }
+}
+
+@keyframes matrix-scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.matrix-line {
+  animation: matrix-glow 2s ease-in-out infinite;
+}
+
+.matrix-scan {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ff41, transparent);
+  animation: matrix-scan 3s linear infinite;
+}
+
 /* Reduced motion for accessibility */
 @media (prefers-reduced-motion: reduce) {
   * {

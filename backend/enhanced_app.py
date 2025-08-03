@@ -276,7 +276,20 @@ def analyze_skin_characteristics(img, gray, hsv, lab):
             results['face_detected'] = True
             results['face_confidence'] = min(0.85 + (len(faces) * 0.05), 0.95)
             (x, y, w, h) = faces[0]
-            results['face_bounds'] = {'x': int(x), 'y': int(y), 'width': int(w), 'height': int(h)}
+            
+            # Convert pixel coordinates to percentages
+            img_height, img_width = gray.shape[:2]
+            x_percent = (x / img_width) * 100
+            y_percent = (y / img_height) * 100
+            width_percent = (w / img_width) * 100
+            height_percent = (h / img_height) * 100
+            
+            results['face_bounds'] = {
+                'x': round(x_percent, 1),
+                'y': round(y_percent, 1),
+                'width': round(width_percent, 1),
+                'height': round(height_percent, 1)
+            }
             
             # Analyze skin in face region
             face_roi = gray[y:y+h, x:x+w]
@@ -688,6 +701,13 @@ def detect_face_realtime():
                 (x, y, w, h) = faces[0]
                 confidence = 0.85 + (len(faces) * 0.05)  # Higher confidence if multiple faces
                 
+                # Convert pixel coordinates to percentages
+                img_height, img_width = gray.shape[:2]
+                x_percent = (x / img_width) * 100
+                y_percent = (y / img_height) * 100
+                width_percent = (w / img_width) * 100
+                height_percent = (h / img_height) * 100
+                
                 # Analyze image quality
                 quality_metrics = analyze_image_quality(img, gray)
                 
@@ -695,10 +715,10 @@ def detect_face_realtime():
                     'status': 'success',
                     'face_detected': True,
                     'face_bounds': {
-                        'x': int(x),
-                        'y': int(y),
-                        'width': int(w),
-                        'height': int(h)
+                        'x': round(x_percent, 1),
+                        'y': round(y_percent, 1),
+                        'width': round(width_percent, 1),
+                        'height': round(height_percent, 1)
                     },
                     'confidence': min(confidence, 0.95),
                     'quality_metrics': quality_metrics,
