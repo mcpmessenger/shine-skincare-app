@@ -8,9 +8,11 @@ import { Menu, Sun, ShoppingCart, User, LogOut } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { CartIcon } from "./cart-icon"
 import { ThemeToggle } from "./theme-toggle"
+import { useTheme } from "next-themes"
 
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuth();
+  const { theme } = useTheme();
 
   const handleLogout = async () => {
     try {
@@ -29,6 +31,9 @@ export default function Header() {
           width={60} 
           height={24} 
           className="h-10 w-auto md:h-12 lg:h-14"
+          style={{
+            filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'none'
+          }}
           unoptimized
         />
         <span className="sr-only">Shine</span>
@@ -91,6 +96,9 @@ export default function Header() {
                   width={60} 
                   height={24} 
                   className="h-10 w-auto"
+                  style={{
+                    filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'none'
+                  }}
                   unoptimized
                 />
                 <span className="sr-only">Shine</span>

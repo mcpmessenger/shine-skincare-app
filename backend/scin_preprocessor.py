@@ -43,22 +43,33 @@ class SCINPreprocessor:
             logger.error(f"Failed to initialize Google Cloud clients: {e}")
     
     def download_scin_images(self) -> List[str]:
-        """Download SCIN images from Google Cloud Storage"""
+        """Get SCIN images from local directory"""
         try:
-            bucket = self.storage_client.bucket(self.bucket_name)
-            blobs = bucket.list_blobs(prefix='scin_dataset/')
+            logger.info("Step 1: Loading local SCIN images...")
             
+            # Look for images in the local scin_dataset/raw directory
+            raw_dir = "scin_dataset/raw"
             image_files = []
-            for blob in blobs:
-                if blob.name.endswith(('.jpg', '.jpeg', '.png')):
-                    local_path = f"temp/{blob.name.split('/')[-1]}"
-                    blob.download_to_filename(local_path)
-                    image_files.append(local_path)
-                    logger.info(f"Downloaded: {blob.name}")
             
-            return image_files
+            if os.path.exists(raw_dir):
+                for condition_dir in os.listdir(raw_dir):
+                    condition_path = os.path.join(raw_dir, condition_dir)
+                    if os.path.isdir(condition_path):
+                        for file in os.listdir(condition_path):
+                            if file.lower().endswith(('.jpg', '.jpeg', '.png')):
+                                image_path = os.path.join(condition_path, file)
+                                image_files.append(image_path)
+                                logger.info(f"Found local image: {image_path}")
+            
+            if image_files:
+                logger.info(f"Found {len(image_files)} local images")
+                return image_files
+            else:
+                logger.warning("No local images found in scin_dataset/raw/")
+                return []
+                
         except Exception as e:
-            logger.error(f"Failed to download SCIN images: {e}")
+            logger.error(f"Failed to load local SCIN images: {e}")
             return []
     
     def isolate_face_with_vision_api(self, image_path: str) -> Dict[str, Any]:
