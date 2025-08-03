@@ -1,163 +1,258 @@
-'use client';
+'use client'
 
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { useCart } from '@/hooks/useCart';
-import { useAuth } from '@/hooks/useAuth';
-import { Minus, Plus, Trash2, ShoppingCart, CreditCard } from 'lucide-react';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react'
+import { X, Plus, Minus, Trash2 } from 'lucide-react'
+import { useCart } from '@/hooks/useCart'
+import { CartIcon } from './cart-icon'
+import Link from 'next/link'
+import { useTheme } from '@/hooks/useTheme'
 
-interface CartDrawerProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
+export const CartDrawer = () => {
+  const { state, dispatch } = useCart()
+  const { theme } = useTheme()
+  const [isOpen, setIsOpen] = useState(false)
 
-export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
-  const { state, removeItem, updateQuantity, clearCart } = useCart();
-  const { isAuthenticated } = useAuth();
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const router = useRouter();
-
-  const handleCheckout = async () => {
-    if (!isAuthenticated) {
-      router.push('/auth/login');
-      onOpenChange(false);
-      return;
+  const updateQuantity = (id: string, quantity: number) => {
+    if (quantity <= 0) {
+      dispatch({ type: 'REMOVE_ITEM', payload: id })
+    } else {
+      dispatch({ type: 'UPDATE_QUANTITY', payload: { id, quantity } })
     }
+  }
 
-    setIsCheckingOut(true);
-    try {
-      // Redirect to checkout page
-      router.push('/checkout');
-      onOpenChange(false);
-    } catch (error) {
-      console.error('Checkout failed:', error);
-    } finally {
-      setIsCheckingOut(false);
-    }
-  };
+  const removeItem = (id: string) => {
+    dispatch({ type: 'REMOVE_ITEM', payload: id })
+  }
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(price);
-  };
+  const clearCart = () => {
+    dispatch({ type: 'CLEAR_CART' })
+  }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[400px] sm:w-[540px]">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5" />
-            Shopping Cart
-            {state.itemCount > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {state.itemCount} {state.itemCount === 1 ? 'item' : 'items'}
-              </Badge>
-            )}
-          </SheetTitle>
-        </SheetHeader>
+    <>
+      <div onClick={() => setIsOpen(true)}>
+        <CartIcon />
+      </div>
 
-        <div className="flex flex-col h-full">
-          {state.items.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
-              <ShoppingCart className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Your cart is empty</h3>
-              <p className="text-muted-foreground mb-4">
-                Add some products to get started with your skincare journey
-              </p>
-              <Button onClick={() => onOpenChange(false)}>
-                Continue Shopping
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="flex-1 overflow-y-auto py-4">
-                <div className="space-y-4">
-                  {state.items.map((item) => (
-                    <div key={item.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                      <div className="w-16 h-16 bg-gray-100 rounded-md flex items-center justify-center">
-                        <img 
-                          src={item.image_url} 
-                          alt={item.name}
-                          className="w-12 h-12 object-cover rounded"
-                        />
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-sm truncate">{item.name}</h4>
-                        <p className="text-sm text-muted-foreground">{item.brand}</p>
-                        <p className="text-sm font-medium">{formatPrice(item.price)}</p>
-                      </div>
+      {isOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          width: '100%',
+          maxWidth: '400px',
+          height: '100vh',
+          backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(10px)',
+          borderLeft: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+          zIndex: 1000,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {/* Header */}
+          <div style={{
+            padding: '1.5rem',
+            borderBottom: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <h2 style={{ color: theme === 'dark' ? '#ffffff' : '#000000', margin: 0, fontSize: '1.25rem' }}>
+              Shopping Cart ({state.items.length} items)
+            </h2>
+            <button
+              onClick={() => setIsOpen(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: theme === 'dark' ? '#ffffff' : '#000000',
+                cursor: 'pointer',
+                padding: '0.5rem'
+              }}
+            >
+              <X size={24} />
+            </button>
+          </div>
 
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        
-                        <span className="w-8 text-center text-sm">{item.quantity}</span>
-                        
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-red-500 hover:text-red-700"
-                          onClick={() => removeItem(item.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
+          {/* Cart Items */}
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '1rem'
+          }}>
+            {state.items.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+                padding: '2rem'
+              }}>
+                Your cart is empty
+              </div>
+            ) : (
+              state.items.map((item) => (
+                <div key={item.id} style={{
+                  display: 'flex',
+                  gap: '1rem',
+                  padding: '1rem',
+                  borderBottom: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+                  marginBottom: '1rem'
+                }}>
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      objectFit: 'cover',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{
+                      color: theme === 'dark' ? '#ffffff' : '#000000',
+                      margin: '0 0 0.5rem 0',
+                      fontSize: '0.9rem'
+                    }}>
+                      {item.name}
+                    </h3>
+                    <p style={{
+                      color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+                      margin: '0 0 0.5rem 0',
+                      fontSize: '0.8rem'
+                    }}>
+                      ${item.price.toFixed(2)}
+                    </p>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}>
+                                             <button
+                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                         style={{
+                           background: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                           border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
+                           color: theme === 'dark' ? '#ffffff' : '#000000',
+                           borderRadius: '4px',
+                           width: '24px',
+                           height: '24px',
+                           display: 'flex',
+                           alignItems: 'center',
+                           justifyContent: 'center',
+                           cursor: 'pointer'
+                         }}
+                       >
+                         <Minus size={12} />
+                       </button>
+                       <span style={{
+                         color: theme === 'dark' ? '#ffffff' : '#000000',
+                         minWidth: '20px',
+                         textAlign: 'center'
+                       }}>
+                         {item.quantity}
+                       </span>
+                       <button
+                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                         style={{
+                           background: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                           border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
+                           color: theme === 'dark' ? '#ffffff' : '#000000',
+                           borderRadius: '4px',
+                           width: '24px',
+                           height: '24px',
+                           display: 'flex',
+                           alignItems: 'center',
+                           justifyContent: 'center',
+                           cursor: 'pointer'
+                         }}
+                       >
+                         <Plus size={12} />
+                       </button>
+                      <button
+                        onClick={() => removeItem(item.id)}
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.2)',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          color: '#ef4444',
+                          borderRadius: '4px',
+                          padding: '0.25rem 0.5rem',
+                          cursor: 'pointer',
+                          marginLeft: 'auto'
+                        }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
+              ))
+            )}
+          </div>
 
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-lg font-semibold">Total</span>
-                  <span className="text-lg font-semibold">{formatPrice(state.total)}</span>
-                </div>
-                
-                <div className="space-y-2">
-                  <Button 
-                    className="w-full" 
-                    onClick={handleCheckout}
-                    disabled={isCheckingOut}
-                  >
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    {isCheckingOut ? 'Processing...' : 'Proceed to Checkout'}
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={clearCart}
-                  >
-                    Clear Cart
-                  </Button>
-                </div>
+          {/* Footer */}
+          {state.items.length > 0 && (
+            <div style={{
+              padding: '1.5rem',
+              borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+              backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1rem'
+              }}>
+                <span style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
+                  Total:
+                </span>
+                <span style={{
+                  color: theme === 'dark' ? '#ffffff' : '#000000',
+                  fontSize: '1.25rem',
+                  fontWeight: 'bold'
+                }}>
+                  ${state.total.toFixed(2)}
+                </span>
               </div>
-            </>
+              <div style={{
+                display: 'flex',
+                gap: '0.5rem'
+              }}>
+                <button
+                  onClick={clearCart}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem',
+                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#ef4444',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  Clear Cart
+                </button>
+                <Link href="/checkout" style={{
+                  flex: 2,
+                  padding: '0.75rem',
+                  backgroundColor: '#3b82f6',
+                  border: '1px solid #3b82f6',
+                  color: '#ffffff',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: 'bold',
+                  textDecoration: 'none',
+                  textAlign: 'center'
+                }}>
+                  Checkout
+                </Link>
+              </div>
+            </div>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
-  );
+      )}
+    </>
+  )
 } 

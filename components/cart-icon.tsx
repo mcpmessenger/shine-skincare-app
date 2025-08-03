@@ -1,40 +1,48 @@
-'use client';
+'use client'
 
-import { ShoppingCart } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { useCart } from '@/hooks/useCart';
-import { useState } from 'react';
-import { CartDrawer } from './cart-drawer';
+import { ShoppingCart } from 'lucide-react'
+import { useCart } from '@/hooks/useCart'
+import { useTheme } from '@/hooks/useTheme'
 
-export function CartIcon() {
-  const { state } = useCart();
-  const [isCartOpen, setIsCartOpen] = useState(false);
+export const CartIcon = () => {
+  const { state } = useCart()
+  const { theme } = useTheme()
+  const itemCount = state.items.reduce((total, item) => total + item.quantity, 0)
 
   return (
-    <>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="relative"
-        onClick={() => setIsCartOpen(true)}
-      >
-        <ShoppingCart className="h-5 w-5" />
-        {state.itemCount > 0 && (
-          <Badge 
-            variant="destructive" 
-            className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
-          >
-            {state.itemCount > 99 ? '99+' : state.itemCount}
-          </Badge>
-        )}
-        <span className="sr-only">Cart</span>
-      </Button>
-      
-      <CartDrawer 
-        open={isCartOpen} 
-        onOpenChange={setIsCartOpen} 
-      />
-    </>
-  );
+    <div style={{
+      position: 'relative',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '40px',
+      height: '40px',
+      borderRadius: '50%',
+      backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+      border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
+      transition: 'all 0.3s ease'
+    }}>
+      <ShoppingCart size={20} color={theme === 'dark' ? "#ffffff" : "#000000"} />
+      {itemCount > 0 && (
+        <div style={{
+          position: 'absolute',
+          top: '-8px',
+          right: '-8px',
+          backgroundColor: '#ef4444',
+          color: '#ffffff',
+          borderRadius: '50%',
+          width: '20px',
+          height: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '0.75rem',
+          fontWeight: 'bold'
+        }}>
+          {itemCount}
+        </div>
+      )}
+    </div>
+  )
 } 

@@ -1,299 +1,178 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { useCart } from '@/hooks/useCart';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, CreditCard, CheckCircle } from 'lucide-react';
-import Link from 'next/link';
+import { useState, useEffect } from 'react'
+import { useCart } from '@/hooks/useCart'
+import { loadStripe } from '@stripe/stripe-js'
+import { Elements } from '@stripe/react-stripe-js'
+import { CheckoutForm } from '@/components/checkout-form'
+import { useTheme } from '@/hooks/useTheme'
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 export default function CheckoutPage() {
-  const { state, clearCart } = useCart();
-  const { isAuthenticated, user } = useAuth();
-  const router = useRouter();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    name: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    cardNumber: '',
-    expiryDate: '',
-    cvv: ''
-  });
+  const { state } = useCart()
+  const { theme } = useTheme()
+  const [clientSecret, setClientSecret] = useState('')
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/auth/login');
-      return;
+    if (state.total > 0) {
+      fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount: state.total }),
+      })
+        .then((res) => res.json())
+        .then((data) => setClientSecret(data.clientSecret))
     }
+  }, [state.total])
 
-    if (state.items.length === 0) {
-      router.push('/');
-      return;
-    }
-
-    // Pre-fill form with user data if available
-    if (user) {
-      setFormData(prev => ({
-        ...prev,
-        email: user.email || '',
-        name: user.name || ''
-      }));
-    }
-  }, [isAuthenticated, user, state.items.length, router]);
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(price);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsProcessing(true);
-
-    try {
-      // In a real implementation, you would:
-      // 1. Create a payment intent on your backend
-      // 2. Use Stripe Elements for secure card input
-      // 3. Process the payment through Stripe
-      
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simulate successful payment
-      setPaymentSuccess(true);
-      
-      // Clear cart after successful payment
-      setTimeout(() => {
-        clearCart();
-        router.push('/');
-      }, 3000);
-      
-    } catch (error) {
-      console.error('Payment failed:', error);
-      alert('Payment failed. Please try again.');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  if (paymentSuccess) {
+  if (state.items.length === 0) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center">
-          <CardContent className="pt-6">
-            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Payment Successful!</h2>
-            <p className="text-muted-foreground mb-4">
-              Thank you for your purchase. You will receive a confirmation email shortly.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Redirecting to homepage...
-            </p>
-          </CardContent>
-        </Card>
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
+        color: theme === 'dark' ? '#ffffff' : '#000000',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          textAlign: 'center',
+          padding: '2rem'
+        }}>
+          <h1>Your cart is empty</h1>
+          <p>Add some products to your cart to continue</p>
+        </div>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Shopping
-          </Link>
-        </div>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
+      color: theme === 'dark' ? '#ffffff' : '#000000'
+    }}>
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: '2rem 1rem'
+      }}>
+        <h1 style={{
+          textAlign: 'center',
+          marginBottom: '2rem',
+          fontSize: '2rem'
+        }}>
+          Checkout
+        </h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '2rem',
+          '@media (max-width: 768px)': {
+            gridTemplateColumns: '1fr'
+          }
+        }}>
           {/* Order Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Summary</CardTitle>
-              <CardDescription>{state.itemCount} items in your cart</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {state.items.map((item) => (
-                <div key={item.id} className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-gray-100 rounded-md flex items-center justify-center">
-                    <img 
-                      src={item.image_url} 
-                      alt={item.name}
-                      className="w-12 h-12 object-cover rounded"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium">{item.name}</h4>
-                    <p className="text-sm text-muted-foreground">{item.brand}</p>
-                    <p className="text-sm">Qty: {item.quantity}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{formatPrice(item.price * item.quantity)}</p>
-                  </div>
+          <div style={{
+            backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+            borderRadius: '16px',
+            padding: '2rem',
+            border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
+            backdropFilter: 'blur(10px)'
+          }}>
+            <h2 style={{
+              marginBottom: '1.5rem',
+              fontSize: '1.5rem'
+            }}>
+              Order Summary
+            </h2>
+            
+            {state.items.map((item) => (
+                             <div key={item.id} style={{
+                 display: 'flex',
+                 gap: '1rem',
+                 padding: '1rem 0',
+                 borderBottom: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)'
+               }}>
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  style={{
+                    width: '60px',
+                    height: '60px',
+                    objectFit: 'cover',
+                    borderRadius: '8px'
+                  }}
+                />
+                <div style={{ flex: 1 }}>
+                  <h3 style={{
+                    margin: '0 0 0.5rem 0',
+                    fontSize: '1rem'
+                  }}>
+                    {item.name}
+                  </h3>
+                                     <p style={{
+                     color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+                     margin: '0 0 0.5rem 0'
+                   }}>
+                     Quantity: {item.quantity}
+                   </p>
+                  <span style={{
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    color: '#3b82f6'
+                  }}>
+                    ${(item.price * item.quantity).toFixed(2)}
+                  </span>
                 </div>
-              ))}
-              
-              <Separator />
-              
-              <div className="flex justify-between items-center text-lg font-semibold">
-                <span>Total</span>
-                <span>{formatPrice(state.total)}</span>
               </div>
-            </CardContent>
-          </Card>
+            ))}
+            
+                         <div style={{
+               marginTop: '2rem',
+               paddingTop: '1rem',
+               borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)'
+             }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: '1.2rem',
+                fontWeight: 'bold'
+              }}>
+                <span>Total:</span>
+                <span>${state.total.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
 
           {/* Payment Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Payment Information
-              </CardTitle>
-              <CardDescription>
-                Enter your payment details to complete your purchase
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="state">State</Label>
-                    <Input
-                      id="state"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="zipCode">ZIP Code</Label>
-                    <Input
-                      id="zipCode"
-                      name="zipCode"
-                      value={formData.zipCode}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <Label htmlFor="cardNumber">Card Number</Label>
-                  <Input
-                    id="cardNumber"
-                    name="cardNumber"
-                    placeholder="1234 5678 9012 3456"
-                    value={formData.cardNumber}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="expiryDate">Expiry Date</Label>
-                    <Input
-                      id="expiryDate"
-                      name="expiryDate"
-                      placeholder="MM/YY"
-                      value={formData.expiryDate}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="cvv">CVV</Label>
-                    <Input
-                      id="cvv"
-                      name="cvv"
-                      placeholder="123"
-                      value={formData.cvv}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? 'Processing Payment...' : `Pay ${formatPrice(state.total)}`}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+          <div style={{
+            backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+            borderRadius: '16px',
+            padding: '2rem',
+            border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
+            backdropFilter: 'blur(10px)'
+          }}>
+            <h2 style={{
+              marginBottom: '1.5rem',
+              fontSize: '1.5rem'
+            }}>
+              Payment Information
+            </h2>
+            
+            {clientSecret && (
+              <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <CheckoutForm />
+              </Elements>
+            )}
+          </div>
         </div>
       </div>
     </div>
-  );
+  )
 } 
