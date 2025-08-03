@@ -5,9 +5,11 @@ import { X, Plus, Minus, Trash2 } from 'lucide-react'
 import { useCart } from '@/hooks/useCart'
 import { CartIcon } from './cart-icon'
 import Link from 'next/link'
+import { useTheme } from '@/hooks/useTheme'
 
 export const CartDrawer = () => {
   const { state, dispatch } = useCart()
+  const { theme } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
 
   const updateQuantity = (id: string, quantity: number) => {
@@ -40,9 +42,9 @@ export const CartDrawer = () => {
           width: '100%',
           maxWidth: '400px',
           height: '100vh',
-          backgroundColor: 'rgba(0, 0, 0, 0.95)',
+          backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.95)' : 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(10px)',
-          borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+          borderLeft: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
           zIndex: 1000,
           overflow: 'hidden',
           display: 'flex',
@@ -51,12 +53,12 @@ export const CartDrawer = () => {
           {/* Header */}
           <div style={{
             padding: '1.5rem',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            borderBottom: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center'
           }}>
-            <h2 style={{ color: '#ffffff', margin: 0, fontSize: '1.25rem' }}>
+            <h2 style={{ color: theme === 'dark' ? '#ffffff' : '#000000', margin: 0, fontSize: '1.25rem' }}>
               Shopping Cart ({state.items.length} items)
             </h2>
             <button
@@ -64,7 +66,7 @@ export const CartDrawer = () => {
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#ffffff',
+                color: theme === 'dark' ? '#ffffff' : '#000000',
                 cursor: 'pointer',
                 padding: '0.5rem'
               }}
@@ -82,7 +84,7 @@ export const CartDrawer = () => {
             {state.items.length === 0 ? (
               <div style={{
                 textAlign: 'center',
-                color: 'rgba(255, 255, 255, 0.7)',
+                color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
                 padding: '2rem'
               }}>
                 Your cart is empty
@@ -93,7 +95,7 @@ export const CartDrawer = () => {
                   display: 'flex',
                   gap: '1rem',
                   padding: '1rem',
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderBottom: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
                   marginBottom: '1rem'
                 }}>
                   <img
@@ -108,14 +110,14 @@ export const CartDrawer = () => {
                   />
                   <div style={{ flex: 1 }}>
                     <h3 style={{
-                      color: '#ffffff',
+                      color: theme === 'dark' ? '#ffffff' : '#000000',
                       margin: '0 0 0.5rem 0',
                       fontSize: '0.9rem'
                     }}>
                       {item.name}
                     </h3>
                     <p style={{
-                      color: 'rgba(255, 255, 255, 0.7)',
+                      color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
                       margin: '0 0 0.5rem 0',
                       fontSize: '0.8rem'
                     }}>
@@ -126,47 +128,47 @@ export const CartDrawer = () => {
                       alignItems: 'center',
                       gap: '0.5rem'
                     }}>
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.1)',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                          color: '#ffffff',
-                          borderRadius: '4px',
-                          width: '24px',
-                          height: '24px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <Minus size={12} />
-                      </button>
-                      <span style={{
-                        color: '#ffffff',
-                        minWidth: '20px',
-                        textAlign: 'center'
-                      }}>
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.1)',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                          color: '#ffffff',
-                          borderRadius: '4px',
-                          width: '24px',
-                          height: '24px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <Plus size={12} />
-                      </button>
+                                             <button
+                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                         style={{
+                           background: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                           border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
+                           color: theme === 'dark' ? '#ffffff' : '#000000',
+                           borderRadius: '4px',
+                           width: '24px',
+                           height: '24px',
+                           display: 'flex',
+                           alignItems: 'center',
+                           justifyContent: 'center',
+                           cursor: 'pointer'
+                         }}
+                       >
+                         <Minus size={12} />
+                       </button>
+                       <span style={{
+                         color: theme === 'dark' ? '#ffffff' : '#000000',
+                         minWidth: '20px',
+                         textAlign: 'center'
+                       }}>
+                         {item.quantity}
+                       </span>
+                       <button
+                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                         style={{
+                           background: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                           border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
+                           color: theme === 'dark' ? '#ffffff' : '#000000',
+                           borderRadius: '4px',
+                           width: '24px',
+                           height: '24px',
+                           display: 'flex',
+                           alignItems: 'center',
+                           justifyContent: 'center',
+                           cursor: 'pointer'
+                         }}
+                       >
+                         <Plus size={12} />
+                       </button>
                       <button
                         onClick={() => removeItem(item.id)}
                         style={{
@@ -192,8 +194,8 @@ export const CartDrawer = () => {
           {state.items.length > 0 && (
             <div style={{
               padding: '1.5rem',
-              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-              backgroundColor: 'rgba(0, 0, 0, 0.3)'
+              borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+              backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)'
             }}>
               <div style={{
                 display: 'flex',
@@ -201,11 +203,11 @@ export const CartDrawer = () => {
                 alignItems: 'center',
                 marginBottom: '1rem'
               }}>
-                <span style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                <span style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
                   Total:
                 </span>
                 <span style={{
-                  color: '#ffffff',
+                  color: theme === 'dark' ? '#ffffff' : '#000000',
                   fontSize: '1.25rem',
                   fontWeight: 'bold'
                 }}>

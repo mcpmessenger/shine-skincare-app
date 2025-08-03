@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { useCart } from '@/hooks/useCart'
 import { CartDrawer } from '@/components/cart-drawer'
 import { products } from '@/lib/products'
+import { useTheme } from '@/hooks/useTheme'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 interface EnhancedAnalysisResult {
   status: string
@@ -87,6 +89,7 @@ interface RealTimeDetectionResult {
 
 export default function EnhancedSkinAnalysis() {
   const { dispatch } = useCart()
+  const { theme } = useTheme()
   const [isUploading, setIsUploading] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<EnhancedAnalysisResult | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -439,16 +442,16 @@ export default function EnhancedSkinAnalysis() {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#000000',
-      color: '#ffffff',
+      backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
+      color: theme === 'dark' ? '#ffffff' : '#000000',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       fontWeight: 300
     }}>
       {/* Header */}
       <header style={{
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)',
         backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        borderBottom: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
         position: 'sticky',
         top: 0,
         zIndex: 1000
@@ -490,16 +493,17 @@ export default function EnhancedSkinAnalysis() {
           }}>
             <Link href="/catalog" style={{
               padding: '0.5rem 1rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
+              backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+              border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
               borderRadius: '8px',
-              color: '#ffffff',
+              color: theme === 'dark' ? '#ffffff' : '#000000',
               textDecoration: 'none',
               fontSize: '0.9rem',
               transition: 'all 0.3s ease'
             }}>
               View All Products
             </Link>
+            <ThemeToggle />
             <CartDrawer />
           </div>
 

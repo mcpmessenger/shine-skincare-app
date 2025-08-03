@@ -2,9 +2,11 @@
 
 import { ShoppingCart } from 'lucide-react'
 import { useCart } from '@/hooks/useCart'
+import { useTheme } from '@/hooks/useTheme'
 
 export const CartIcon = () => {
   const { state } = useCart()
+  const { theme } = useTheme()
   const itemCount = state.items.reduce((total, item) => total + item.quantity, 0)
 
   return (
@@ -17,11 +19,11 @@ export const CartIcon = () => {
       width: '40px',
       height: '40px',
       borderRadius: '50%',
-      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-      border: '1px solid rgba(255, 255, 255, 0.2)',
+      backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+      border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
       transition: 'all 0.3s ease'
     }}>
-      <ShoppingCart size={20} color="#ffffff" />
+      <ShoppingCart size={20} color={theme === 'dark' ? "#ffffff" : "#000000"} />
       {itemCount > 0 && (
         <div style={{
           position: 'absolute',

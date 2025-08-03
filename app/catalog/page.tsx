@@ -5,9 +5,12 @@ import { ShoppingCart, Star, Filter } from 'lucide-react'
 import { useCart } from '@/hooks/useCart'
 import { products } from '@/lib/products'
 import { CartDrawer } from '@/components/cart-drawer'
+import { useTheme } from '@/hooks/useTheme'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function CatalogPage() {
   const { dispatch } = useCart()
+  const { theme } = useTheme()
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortBy, setSortBy] = useState('name')
 
@@ -37,8 +40,8 @@ export default function CatalogPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      color: '#ffffff'
+      backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
+      color: theme === 'dark' ? '#ffffff' : '#000000'
     }}>
       {/* Header */}
       <div style={{
@@ -66,7 +69,14 @@ export default function CatalogPage() {
             Product Catalog
           </h1>
         </div>
-        <CartDrawer />
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem'
+        }}>
+          <ThemeToggle />
+          <CartDrawer />
+        </div>
       </div>
 
       {/* Filters */}
@@ -94,11 +104,11 @@ export default function CatalogPage() {
             style={{
               padding: '0.5rem 1rem',
               backgroundColor: selectedCategory === category 
-                ? 'rgba(255, 255, 255, 0.2)' 
-                : 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
+                ? (theme === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)')
+                : (theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'),
+              border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
               borderRadius: '20px',
-              color: '#ffffff',
+              color: theme === 'dark' ? '#ffffff' : '#000000',
               cursor: 'pointer',
               fontSize: '0.8rem',
               textTransform: 'capitalize'
@@ -113,10 +123,10 @@ export default function CatalogPage() {
           onChange={(e) => setSortBy(e.target.value)}
           style={{
             padding: '0.5rem',
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
+            backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+            border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
             borderRadius: '8px',
-            color: '#ffffff',
+            color: theme === 'dark' ? '#ffffff' : '#000000',
             fontSize: '0.8rem',
             marginLeft: 'auto'
           }}
@@ -138,17 +148,13 @@ export default function CatalogPage() {
       }}>
         {sortedProducts.map((product) => (
           <div key={product.id} style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
             borderRadius: '16px',
             padding: '1.5rem',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
+            border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
             backdropFilter: 'blur(10px)',
             transition: 'all 0.3s ease',
-            cursor: 'pointer',
-            ':hover': {
-              transform: 'translateY(-4px)',
-              boxShadow: '0 8px 25px rgba(0, 0, 0, 0.3)'
-            }
+            cursor: 'pointer'
           }}>
             <img
               src={product.image}
@@ -185,7 +191,7 @@ export default function CatalogPage() {
             </div>
             
             <p style={{
-              color: 'rgba(255, 255, 255, 0.7)',
+              color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
               fontSize: '0.9rem',
               margin: '0 0 1rem 0',
               lineHeight: '1.4'

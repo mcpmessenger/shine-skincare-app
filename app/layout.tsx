@@ -3,6 +3,7 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { CartProvider } from '@/hooks/useCart'
+import { ThemeProvider } from '@/hooks/useTheme'
 
 export const metadata: Metadata = {
   title: 'Shine - AI-Powered Skincare',
@@ -35,9 +36,11 @@ export default function RootLayout({
         minHeight: '100vh',
         fontWeight: 300
       }}>
-        <CartProvider>
-          {children}
-        </CartProvider>
+        <ThemeProvider>
+          <CartProvider>
+            {children}
+          </CartProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

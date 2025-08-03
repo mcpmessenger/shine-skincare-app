@@ -5,11 +5,13 @@ import { useCart } from '@/hooks/useCart'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements } from '@stripe/react-stripe-js'
 import { CheckoutForm } from '@/components/checkout-form'
+import { useTheme } from '@/hooks/useTheme'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 export default function CheckoutPage() {
   const { state } = useCart()
+  const { theme } = useTheme()
   const [clientSecret, setClientSecret] = useState('')
 
   useEffect(() => {
@@ -30,8 +32,8 @@ export default function CheckoutPage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: '#ffffff',
+        backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
+        color: theme === 'dark' ? '#ffffff' : '#000000',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center'
@@ -50,8 +52,8 @@ export default function CheckoutPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      color: '#ffffff'
+      backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
+      color: theme === 'dark' ? '#ffffff' : '#000000'
     }}>
       <div style={{
         maxWidth: '1200px',
@@ -76,10 +78,10 @@ export default function CheckoutPage() {
         }}>
           {/* Order Summary */}
           <div style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
             borderRadius: '16px',
             padding: '2rem',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
+            border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
             backdropFilter: 'blur(10px)'
           }}>
             <h2 style={{
@@ -90,12 +92,12 @@ export default function CheckoutPage() {
             </h2>
             
             {state.items.map((item) => (
-              <div key={item.id} style={{
-                display: 'flex',
-                gap: '1rem',
-                padding: '1rem 0',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
-              }}>
+                             <div key={item.id} style={{
+                 display: 'flex',
+                 gap: '1rem',
+                 padding: '1rem 0',
+                 borderBottom: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)'
+               }}>
                 <img
                   src={item.image}
                   alt={item.name}
@@ -113,12 +115,12 @@ export default function CheckoutPage() {
                   }}>
                     {item.name}
                   </h3>
-                  <p style={{
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    margin: '0 0 0.5rem 0'
-                  }}>
-                    Quantity: {item.quantity}
-                  </p>
+                                     <p style={{
+                     color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+                     margin: '0 0 0.5rem 0'
+                   }}>
+                     Quantity: {item.quantity}
+                   </p>
                   <span style={{
                     fontSize: '1.1rem',
                     fontWeight: 'bold',
@@ -130,11 +132,11 @@ export default function CheckoutPage() {
               </div>
             ))}
             
-            <div style={{
-              marginTop: '2rem',
-              paddingTop: '1rem',
-              borderTop: '1px solid rgba(255, 255, 255, 0.1)'
-            }}>
+                         <div style={{
+               marginTop: '2rem',
+               paddingTop: '1rem',
+               borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)'
+             }}>
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -150,10 +152,10 @@ export default function CheckoutPage() {
 
           {/* Payment Form */}
           <div style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
             borderRadius: '16px',
             padding: '2rem',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
+            border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
             backdropFilter: 'blur(10px)'
           }}>
             <h2 style={{
