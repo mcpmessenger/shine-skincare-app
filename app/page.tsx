@@ -94,7 +94,7 @@ export default function EnhancedSkinAnalysis() {
   const [analysisResult, setAnalysisResult] = useState<EnhancedAnalysisResult | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [cameraMode, setCameraMode] = useState<'upload' | 'camera'>('upload')
+  const [cameraMode, setCameraMode] = useState<'upload' | 'camera'>('camera')
   const [isCameraActive, setIsCameraActive] = useState(false)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [faceDetected, setFaceDetected] = useState(false)
@@ -465,10 +465,11 @@ export default function EnhancedSkinAnalysis() {
           alignItems: 'center'
         }}>
           {/* Logo */}
-          <div style={{
+          <Link href="/" style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '1rem'
+            gap: '1rem',
+            textDecoration: 'none'
           }}>
             <img 
               src="https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png"
@@ -476,14 +477,22 @@ export default function EnhancedSkinAnalysis() {
               style={{
                 height: '48px',
                 width: 'auto',
-                objectFit: 'contain'
+                objectFit: 'contain',
+                cursor: 'pointer',
+                transition: 'opacity 0.3s ease'
               }}
               onError={(e) => {
                 console.error('Logo failed to load');
                 e.currentTarget.style.display = 'none';
               }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.8';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
             />
-          </div>
+          </Link>
 
           {/* Navigation */}
           <div style={{
@@ -537,27 +546,6 @@ export default function EnhancedSkinAnalysis() {
             }}>
               <button
                 className="mobile-button"
-                onClick={() => setCameraMode('upload')}
-                style={{
-                  flex: 1,
-                  padding: '1rem',
-                  backgroundColor: cameraMode === 'upload' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: '12px',
-                  color: '#ffffff',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                <Upload width={20} height={20} />
-                Upload Image
-              </button>
-                            <button
-                className="mobile-button"
                 onClick={() => setCameraMode('camera')}
                 style={{
                   flex: 1,
@@ -565,7 +553,7 @@ export default function EnhancedSkinAnalysis() {
                   backgroundColor: cameraMode === 'camera' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
                   border: '1px solid rgba(255, 255, 255, 0.2)',
                   borderRadius: '12px',
-                      color: '#ffffff',
+                  color: '#ffffff',
                   cursor: 'pointer',
                   transition: 'all 0.3s ease',
                   display: 'flex',

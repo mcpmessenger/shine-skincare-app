@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16'
-})
+// Only import Stripe if the secret key is available
+let stripe: any = null
+try {
+  if (process.env.STRIPE_SECRET_KEY) {
+    const Stripe = require('stripe')
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2023-10-16'
+    })
+  }
+} catch (error) {
+  console.warn('Stripe not configured, payment features will be disabled')
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,6 +22,13 @@ export async function POST(request: NextRequest) {
         { error: 'Amount is required' },
         { status: 400 }
       )
+    }
+
+    // If Stripe is not configured, return a mock response for development
+    if (!stripe) {
+      return NextResponse.json({
+        clientSecret: 'pi_mock_secret_key_for_development_only',
+      })
     }
 
     const paymentIntent = await stripe.paymentIntents.create({
