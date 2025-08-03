@@ -4,6 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { CartProvider } from '@/hooks/useCart'
 import { ThemeProvider } from '@/hooks/useTheme'
+import { AuthProvider } from '@/hooks/useAuth'
 
 export const metadata: Metadata = {
   title: 'Shine - AI-Powered Skincare',
@@ -37,9 +38,11 @@ export default function RootLayout({
         fontWeight: 300
       }}>
         <ThemeProvider>
-          <CartProvider>
-            {children}
-          </CartProvider>
+          <AuthProvider>
+            <CartProvider>
+              {children}
+            </CartProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

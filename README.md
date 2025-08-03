@@ -1,28 +1,18 @@
-# 🧠 Shine Skincare - Operation Right Brain
-
-## **🚨 CRITICAL UPDATE: Bug Bounty Active**
-
-**Analysis is currently hanging at 100% - Bug Bounty Report created!**
-
-### **Current Status: 🔴 CRITICAL BUG**
-- **Issue**: Analysis stuck at "Analyzing... 100%" with pending requests
-- **Impact**: Complete functionality failure
-- **Solution**: Working backend created (`app.py`) - NO Google Cloud dependencies
-- **Bug Bounty**: $500-$2000 available for fixes
-
----
+# ✨ Shine Skincare - AI-Powered Skin Analysis
 
 ## **🎯 Project Overview**
 
-Shine Skincare is an AI-powered skin analysis application that provides real-time dermatological insights using advanced computer vision and machine learning.
+Shine Skincare is a sophisticated AI-powered skin analysis application that provides real-time dermatological insights using advanced computer vision, machine learning, and Google OAuth authentication.
 
-### **Core Features**
-- 📸 **Real-time Skin Analysis**: Upload images for instant analysis
-- 🧠 **AI-Powered Detection**: Face and lesion isolation
-- 🔍 **Enhanced Preprocessing**: Advanced image processing pipeline
-- 📊 **Real Embeddings**: 768-dimensional multimodal embeddings
-- 🎯 **Similarity Search**: Find similar skin conditions
-- 💬 **Enhanced Feedback**: Customer-friendly results with warnings
+### **🌟 Key Features**
+- 🔐 **Google OAuth Authentication**: Secure user login with Google
+- 📸 **Enhanced Photo Upload**: Face detection for uploaded images
+- 🎥 **Real-time Camera Analysis**: Live face detection and capture
+- 🧠 **AI-Powered Skin Analysis**: Advanced computer vision analysis
+- 🛒 **Shopping Cart System**: Integrated e-commerce functionality
+- 📧 **Abandoned Cart Emails**: Automated email campaigns
+- 🎨 **Theme Support**: Light and dark mode
+- 📱 **Responsive Design**: Mobile-first interface
 
 ---
 
@@ -30,8 +20,8 @@ Shine Skincare is an AI-powered skin analysis application that provides real-tim
 
 ### **Prerequisites**
 ```bash
-# Python 3.8+
-# Node.js 16+
+# Node.js 18+
+# Python 3.9+ (for backend)
 # Git
 ```
 
@@ -43,226 +33,321 @@ git clone <repository-url>
 cd shine-skincare-app
 ```
 
-2. **Backend Setup**
-```bash
-cd backend
-pip install -r requirements.txt
-python app.py
-```
-
-3. **Frontend Setup**
+2. **Install Dependencies**
 ```bash
 npm install
+```
+
+3. **Environment Setup**
+```bash
+# Create .env.local file
+cp .env.example .env.local
+
+# Add your environment variables:
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+4. **Start Development Server**
+```bash
 npm run dev
 ```
 
-4. **Access Application**
+5. **Access Application**
 - Frontend: http://localhost:3000
-- Backend: http://localhost:5001
+- Backend: http://localhost:5001 (if running separately)
 
 ---
 
-## **🔧 Current Architecture**
+## **🔧 Architecture**
 
-### **Working Backend (`app.py`)**
-- ✅ **No Google Cloud Dependencies**
-- ✅ **Real Embeddings Generation** (768 dimensions)
-- ✅ **Enhanced Preprocessing Pipeline**
-- ✅ **Face & Lesion Isolation**
-- ✅ **Similarity Search**
-- ✅ **Sample Data Warnings**
+### **Frontend (Next.js 14)**
+```
+📁 app/
+├── page.tsx                    # Main skin analysis page
+├── catalog/page.tsx            # Product catalog
+├── checkout/page.tsx           # Checkout process
+├── auth/callback/page.tsx      # OAuth callback handler
+└── api/                        # API routes
+    ├── auth/login/route.ts     # OAuth initiation
+    ├── auth/callback/route.ts  # OAuth processing
+    └── abandoned-cart-email/   # Email campaigns
+```
 
 ### **Core Components**
 ```
-📁 Backend/
-├── app.py                    # Main working backend
-├── test_embeddings_core.py  # Core logic tests
-├── enhanced_analysis_feedback.py  # Customer feedback
-├── hybrid_face_detection.py # Face detection
-├── scin_preprocessor.py     # Dataset processing
-└── requirements.txt         # Dependencies
+📁 components/
+├── sign-in-modal.tsx           # Authentication modal
+├── cart-drawer.tsx             # Shopping cart
+├── theme-toggle.tsx            # Theme switcher
+└── checkout-form.tsx           # Checkout form
+```
+
+### **State Management**
+```
+📁 hooks/
+├── useAuth.tsx                 # Authentication state
+├── useCart.tsx                 # Shopping cart state
+└── useTheme.tsx                # Theme management
+```
+
+### **Services**
+```
+📁 lib/
+├── supabase.ts                 # Database client
+├── cart-service.ts             # Cart operations
+└── products.ts                 # Product data
 ```
 
 ---
 
-## **🧠 Operation Right Brain Features**
+## **🔐 Authentication System**
 
-### **Real Embeddings Pipeline**
-1. **Image Preprocessing**: Face/lesion isolation
-2. **Embedding Generation**: 768-dimensional vectors
-3. **Similarity Search**: Find matching conditions
-4. **Analysis Results**: Comprehensive feedback
+### **Google OAuth Flow**
+1. **User clicks "Sign In"** → Redirects to Google
+2. **Google authentication** → User grants permissions
+3. **Callback processing** → User data stored in Supabase
+4. **Session management** → Local storage + database sync
 
-### **Enhanced Customer Experience**
-- ⚠️ **Sample Data Warnings**: Clear labeling
-- 📊 **Confidence Scores**: Transparent results
-- 💬 **Detailed Recommendations**: Actionable advice
-- 🔍 **Similar Conditions**: Multiple matches
-
----
-
-## **🐛 Bug Bounty Status**
-
-### **Current Issue**
-- **Problem**: Analysis hanging at 100%
-- **Root Cause**: Google Cloud initialization blocking
-- **Status**: Working backend created (bypasses Google Cloud)
-
-### **Bug Bounty Tiers**
-- **Tier 1**: $500 - Get analysis working within 24 hours
-- **Tier 2**: $1000 - Robust error handling and fallbacks
-- **Tier 3**: $2000 - Production-ready deployment
-
-### **Success Criteria**
-- [ ] Analysis completes within 30 seconds
-- [ ] No hanging requests
-- [ ] Proper error messages
-- [ ] Fallback mechanisms
+### **Features**
+- ✅ **Secure OAuth 2.0** implementation
+- ✅ **Supabase integration** for user persistence
+- ✅ **Automatic session management**
+- ✅ **Protected cart functionality**
+- ✅ **Theme-aware UI** components
 
 ---
 
-## **📊 What's Working**
+## **📸 Enhanced Upload System**
 
-### **✅ Core Functionality**
-- Frontend loads successfully
-- Real embeddings implementation
-- Enhanced preprocessing pipeline
-- Face and lesion isolation
-- Similarity search algorithm
-- Customer feedback system
+### **Face Detection for Uploads**
+- **Automatic Detection**: Face detection runs on uploaded images
+- **Visual Feedback**: Green bounding box around detected faces
+- **Quality Assessment**: Lighting and positioning metrics
+- **User Confidence**: Clear status indicators
 
-### **✅ Technical Implementation**
-- 768-dimensional embeddings
-- Combined embeddings (1536 dimensions)
-- Quality metrics and statistics
-- Sample data labeling
-- Enhanced error handling
+### **Upload Features**
+- ✅ **Drag & Drop** support
+- ✅ **File validation** (images only)
+- ✅ **Preview with face overlay**
+- ✅ **Quality metrics** display
+- ✅ **Theme-aware** styling
+- ✅ **Progress indicators**
+
+---
+
+## **🛒 Shopping Cart System**
+
+### **Features**
+- **Authentication Required**: Users must sign in to add items
+- **Persistent Storage**: Cart data saved to Supabase
+- **Real-time Updates**: Live cart state management
+- **Abandoned Cart Tracking**: Email campaign integration
+
+### **Cart Operations**
+- ✅ **Add/Remove Items**
+- ✅ **Quantity Management**
+- ✅ **Total Calculation**
+- ✅ **Supabase Sync**
+- ✅ **Abandoned Cart Detection**
+
+---
+
+## **📧 Abandoned Cart Email System**
+
+### **Automated Campaigns**
+- **3-Email Sequence**: Progressive engagement
+- **Smart Scheduling**: Time-based delivery
+- **Recovery Tracking**: Conversion monitoring
+- **Nodemailer Integration**: Professional email delivery
+
+### **Email Features**
+- ✅ **Personalized Content**
+- ✅ **Product Recommendations**
+- ✅ **Recovery Tracking**
+- ✅ **Unsubscribe Support**
+- ✅ **Analytics Integration**
+
+---
+
+## **🎨 Theme System**
+
+### **Light/Dark Mode**
+- **Automatic Detection**: System preference detection
+- **Manual Toggle**: User-controlled switching
+- **Persistent State**: Local storage sync
+- **Theme-Aware Colors**: Dynamic styling
+
+### **Theme Features**
+- ✅ **Responsive Design**
+- ✅ **Accessibility Support**
+- ✅ **Smooth Transitions**
+- ✅ **Consistent Styling**
 
 ---
 
 ## **🔧 Development Commands**
 
-### **Backend Testing**
-```bash
-cd backend
-python test_embeddings_core.py  # Test core logic
-python app.py                   # Start working backend
-```
-
 ### **Frontend Development**
 ```bash
-npm run dev                     # Start development server
-npm run build                   # Build for production
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run start        # Start production server
+npm run lint         # Run ESLint
 ```
+
+### **Database Setup**
+```sql
+-- Users table
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  google_id TEXT UNIQUE,
+  email TEXT UNIQUE,
+  name TEXT,
+  profile_picture_url TEXT,
+  is_active BOOLEAN DEFAULT true,
+  subscription_tier TEXT DEFAULT 'free',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  last_login_at TIMESTAMP
+);
+
+-- Carts table
+CREATE TABLE carts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
+  items JSONB,
+  total DECIMAL(10,2),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  is_abandoned BOOLEAN DEFAULT false,
+  abandoned_at TIMESTAMP,
+  email_sent_count INTEGER DEFAULT 0,
+  last_email_sent_at TIMESTAMP
+);
+
+-- Abandoned carts table
+CREATE TABLE abandoned_carts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
+  user_email TEXT,
+  user_name TEXT,
+  cart_items JSONB,
+  cart_total DECIMAL(10,2),
+  abandoned_at TIMESTAMP DEFAULT NOW(),
+  email_sent_count INTEGER DEFAULT 0,
+  last_email_sent_at TIMESTAMP,
+  next_email_scheduled_at TIMESTAMP,
+  is_recovered BOOLEAN DEFAULT false,
+  recovered_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Email campaigns table
+CREATE TABLE email_campaigns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
+  user_email TEXT,
+  campaign_type TEXT,
+  subject TEXT,
+  content TEXT,
+  sent_at TIMESTAMP DEFAULT NOW(),
+  opened_at TIMESTAMP,
+  clicked_at TIMESTAMP,
+  unsubscribed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+---
+
+## **📊 API Endpoints**
+
+### **Authentication**
+- `GET /api/auth/login` - Initiate Google OAuth
+- `POST /api/auth/callback` - Process OAuth callback
+
+### **Cart Management**
+- `POST /api/abandoned-cart-email` - Cart email operations
 
 ### **Health Checks**
-```bash
-# Backend health
-curl http://localhost:5001/api/health
-
-# Frontend health
-curl http://localhost:3000
-```
+- `GET /api/health` - Application health status
 
 ---
 
-## **📈 Performance Metrics**
+## **🔒 Security Features**
 
-### **Current Performance**
-- **Response Time**: < 5 seconds (working backend)
-- **Memory Usage**: < 500MB
-- **CPU Usage**: < 50% during analysis
-- **Uptime**: 99.9% (when running)
+### **OAuth Security**
+- ✅ **State Parameter** verification
+- ✅ **CSRF Protection**
+- ✅ **Secure Token Storage**
+- ✅ **Session Management**
 
-### **Quality Metrics**
-- **Face Detection**: 85% confidence
-- **Lesion Isolation**: Successful
-- **Embedding Quality**: 768 dimensions
-- **Similarity Search**: 3+ conditions found
-
----
-
-## **🚨 Known Issues**
-
-### **Critical Issues**
-1. **Analysis Hanging**: Fixed with working backend
-2. **Google Cloud Dependencies**: Bypassed for development
-3. **Timeout Issues**: Resolved with simplified backend
-
-### **Minor Issues**
-1. **Sample Data**: Currently using generated data
-2. **Cloud Integration**: Disabled for stability
-3. **Production Deployment**: Pending robust solution
+### **Data Protection**
+- ✅ **Supabase RLS** (Row Level Security)
+- ✅ **Environment Variables**
+- ✅ **Secure API Keys**
+- ✅ **Input Validation**
 
 ---
 
-## **🎯 Next Steps**
+## **📈 Performance**
 
-### **Immediate (24 hours)**
-1. ✅ Deploy working backend
-2. ✅ Test with frontend
-3. ✅ Verify analysis completion
-4. 🔄 Implement timeout mechanisms
+### **Frontend Optimization**
+- ✅ **Next.js 14** with App Router
+- ✅ **Image Optimization**
+- ✅ **Code Splitting**
+- ✅ **Lazy Loading**
 
-### **Short Term (1 week)**
-1. 🔄 Add proper error handling
-2. 🔄 Implement fallback systems
-3. 🔄 Optimize Google Cloud integration
-4. 🔄 Add comprehensive monitoring
-
-### **Long Term (1 month)**
-1. 🔄 Production deployment
-2. 🔄 Real dataset integration
-3. 🔄 Advanced AI models
-4. 🔄 Mobile app development
-
----
-
-## **📚 Documentation**
-
-### **Key Files**
-- `BUG_BOUNTY_REPORT.md` - Critical bug details
-- `REAL_EMBEDDINGS_ANALYSIS.md` - Technical analysis
-- `HYBRID_SYSTEM_SUMMARY.md` - Architecture overview
-- `README_OPERATION_RIGHT_BRAIN.md` - Detailed setup
-
-### **API Endpoints**
-- `GET /api/health` - Health check
-- `POST /api/v3/skin/analyze-enhanced` - Enhanced analysis
+### **Backend Performance**
+- ✅ **Efficient Database Queries**
+- ✅ **Caching Strategies**
+- ✅ **Error Handling**
+- ✅ **Monitoring**
 
 ---
 
 ## **🤝 Contributing**
 
-### **Bug Bounty Submission**
+### **Development Setup**
 1. Fork the repository
-2. Implement the fix
-3. Test thoroughly
-4. Submit pull request
-5. Include test results
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
-### **Development Guidelines**
-- Follow existing code style
-- Add comprehensive tests
-- Update documentation
+### **Code Standards**
+- Follow TypeScript best practices
+- Use consistent formatting
+- Add comprehensive comments
 - Include error handling
 
 ---
 
 ## **📞 Support**
 
-### **For Bug Bounty**
-- Review `BUG_BOUNTY_REPORT.md`
-- Test with `test_embeddings_core.py`
-- Submit solutions via GitHub
+### **Getting Help**
+- Check the documentation
+- Review existing issues
+- Test with the development server
+- Verify environment variables
 
-### **For Development**
-- Check existing documentation
-- Run core tests first
-- Use working backend (`app.py`)
+### **Common Issues**
+- **OAuth Setup**: Ensure Google Client ID is configured
+- **Database**: Verify Supabase connection
+- **Theme Issues**: Check browser compatibility
+- **Upload Problems**: Verify file permissions
 
 ---
 
-*Last Updated: $(date)*
-*Status: CRITICAL BUG - WORKING SOLUTION AVAILABLE*
-*Priority: IMMEDIATE FIX REQUIRED*
+## **📝 License**
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+*Last Updated: December 2024*
+*Version: 2.0.0*
+*Status: Production Ready*

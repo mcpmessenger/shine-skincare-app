@@ -3,16 +3,20 @@
 import { useState } from 'react'
 import { ShoppingCart, Star, Filter } from 'lucide-react'
 import { useCart } from '@/hooks/useCart'
+import { useAuth } from '@/hooks/useAuth'
 import { products } from '@/lib/products'
 import { CartDrawer } from '@/components/cart-drawer'
+import { SignInModal } from '@/components/sign-in-modal'
 import { useTheme } from '@/hooks/useTheme'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function CatalogPage() {
-  const { dispatch } = useCart()
+  const { dispatch, isAuthenticated } = useCart()
+  const { state: authState } = useAuth()
   const { theme } = useTheme()
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortBy, setSortBy] = useState('name')
+  const [showSignInModal, setShowSignInModal] = useState(false)
 
   const categories = ['all', 'cleanser', 'serum', 'moisturizer', 'treatment', 'sunscreen']
 
@@ -34,7 +38,11 @@ export default function CatalogPage() {
   })
 
   const addToCart = (product: any) => {
-    dispatch({ type: 'ADD_ITEM', payload: product })
+    if (isAuthenticated) {
+      dispatch({ type: 'ADD_ITEM', payload: product })
+    } else {
+      setShowSignInModal(true)
+    }
   }
 
   return (
@@ -222,18 +230,18 @@ export default function CatalogPage() {
                   alignItems: 'center',
                   gap: '0.5rem',
                   padding: '0.75rem 1.5rem',
-                  backgroundColor: '#3b82f6',
+                  backgroundColor: isAuthenticated ? '#3b82f6' : 'rgba(59, 130, 246, 0.5)',
                   border: '1px solid #3b82f6',
                   borderRadius: '8px',
                   color: '#ffffff',
-                  cursor: 'pointer',
+                  cursor: isAuthenticated ? 'pointer' : 'not-allowed',
                   fontSize: '0.9rem',
                   fontWeight: 'bold',
                   transition: 'all 0.3s ease'
                 }}
               >
                 <ShoppingCart size={16} />
-                Add to Cart
+                {isAuthenticated ? 'Add to Cart' : 'Sign In to Add'}
               </button>
             </div>
           </div>
@@ -251,6 +259,13 @@ export default function CatalogPage() {
           <p>Try adjusting your filters</p>
         </div>
       )}
+
+      {/* Sign In Modal */}
+      <SignInModal 
+        isOpen={showSignInModal}
+        onClose={() => setShowSignInModal(false)}
+        onSuccess={() => setShowSignInModal(false)}
+      />
     </div>
   )
 } 
