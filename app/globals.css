@@ -106,3 +106,103 @@
     @apply animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600;
   }
 }
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  /* Reduce padding and margins for mobile */
+  .mobile-container {
+    padding: 0.5rem !important;
+  }
+  
+  /* Stack grid items vertically on mobile */
+  .mobile-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  /* Make buttons more touch-friendly */
+  .mobile-button {
+    min-height: 44px !important;
+    padding: 0.75rem 1rem !important;
+  }
+  
+  /* Optimize text sizes for mobile */
+  .mobile-text {
+    font-size: 0.9rem !important;
+  }
+  
+  .mobile-heading {
+    font-size: 1.2rem !important;
+  }
+  
+  /* Improve form elements for mobile */
+  .mobile-select {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    padding: 0.75rem !important;
+  }
+  
+  /* Optimize camera view for mobile */
+  .mobile-camera {
+    width: 100% !important;
+    height: 300px !important;
+    object-fit: cover !important;
+  }
+  
+  /* Improve product cards for mobile */
+  .mobile-product-card {
+    flex-direction: column !important;
+    padding: 1rem !important;
+  }
+  
+  .mobile-product-image {
+    width: 100% !important;
+    height: 200px !important;
+    object-fit: cover !important;
+  }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  /* Increase touch targets */
+  button, select, input {
+    min-height: 44px;
+  }
+  
+  /* Add touch feedback */
+  button:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Landscape mobile optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+  .mobile-container {
+    padding: 0.25rem !important;
+  }
+  
+  .mobile-grid {
+    gap: 0.5rem !important;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* Dark mode optimizations */
+@media (prefers-color-scheme: dark) {
+  /* Already dark theme, but ensure consistency */
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

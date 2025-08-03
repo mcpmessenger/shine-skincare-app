@@ -2,9 +2,6 @@ import type { Metadata } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
-import { AuthProvider } from '@/hooks/useAuth'
-import { CartProvider } from '@/hooks/useCart'
-import { ThemeProvider } from '@/components/theme-provider'
 
 export const metadata: Metadata = {
   title: 'Shine - AI-Powered Skincare',
@@ -37,18 +34,7 @@ export default function RootLayout({
         minHeight: '100vh',
         fontWeight: 300
       }}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem={true}
-          disableTransitionOnChange={false}
-        >
-          <AuthProvider>
-            <CartProvider>
-              {children}
-            </CartProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        {children}
       </body>
     </html>
   )

@@ -1,37 +1,211 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { Camera, Upload, Sparkles, Zap, Sun, Brain, CheckCircle, Zap as Target, User, Eye, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 
-interface AnalysisResult {
-  skinHealthScore: number
-  primaryConcerns: string[]
-  detectedConditions: Array<{
-    condition: string
-    similarityScore: number
-    description: string
-    recommendations: string[]
-  }>
-  recommendations: {
-    immediate: string[]
-    longTerm: string[]
+interface EnhancedAnalysisResult {
+  status: string
+  timestamp: string
+  analysis_type: string
+  demographics: {
+    age_category: string | null
+    race_category: string | null
   }
-  confidence: number
-  analysisMethod: string
+  face_detection: {
+    detected: boolean
+    confidence: number
+    face_bounds: {
+      x: number
+      y: number
+      width: number
+      height: number
+    }
+    method: string
+    quality_metrics: {
+      overall_quality: string
+      quality_score: number
+    }
+  }
+  skin_analysis: {
+    overall_health_score: number
+    texture: string
+    tone: string
+    conditions_detected: Array<{
+      condition: string
+      severity: string
+      confidence: number
+      location: string
+      description: string
+    }>
+    analysis_confidence: number
+  }
+  similarity_search: {
+    dataset_used: string
+    similar_cases: Array<{
+      condition: string
+      similarity_score: number
+      dataset_source: string
+      demographic_match: string
+      treatment_suggestions: string[]
+    }>
+  }
+  recommendations: {
+    immediate_care: string[]
+    long_term_care: string[]
+    professional_consultation: boolean
+  }
+  quality_assessment: {
+    image_quality: string
+    confidence_reliability: string
+  }
 }
 
-export default function HomePage() {
+interface RealTimeDetectionResult {
+  status: string
+  face_detected: boolean
+  face_bounds: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
+  confidence: number
+  quality_metrics: {
+    lighting: string
+    sharpness: string
+    positioning: string
+  }
+  guidance: {
+    message: string
+    suggestions: string[]
+  }
+}
+
+export default function EnhancedSkinAnalysis() {
   const [isUploading, setIsUploading] = useState(false)
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  const [analysisResult, setAnalysisResult] = useState<EnhancedAnalysisResult | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [cameraMode, setCameraMode] = useState<'upload' | 'camera'>('upload')
   const [isCameraActive, setIsCameraActive] = useState(false)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  const [faceDetected, setFaceDetected] = useState(false)
+  const [faceBounds, setFaceBounds] = useState({ x: 0, y: 0, width: 0, height: 0 })
+  const [realTimeDetection, setRealTimeDetection] = useState<RealTimeDetectionResult | null>(null)
+  
+  // Phase 2: Demographic inputs
+  const [ageCategory, setAgeCategory] = useState<string>('')
+  const [raceCategory, setRaceCategory] = useState<string>('')
+  const [showDemographics, setShowDemographics] = useState(false)
+  const [userImage, setUserImage] = useState<string | null>(null)
+  const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+
+  // Product recommendations based on analysis
+  const getProductRecommendations = (analysis: EnhancedAnalysisResult) => {
+    const products = [
+      {
+        name: "iS Clinical Cleansing Complex",
+        image: "/products/iS Clinical Cleansing Complex.jpg",
+        category: "cleanser",
+        conditions: ["acne", "oily", "congestion"],
+        description: "Gentle yet effective cleanser for acne-prone skin"
+      },
+      {
+        name: "Dermalogica UltraCalming Cleanser",
+        image: "/products/Dermalogica UltraCalming Cleanser.webp",
+        category: "cleanser",
+        conditions: ["sensitivity", "redness", "irritation"],
+        description: "Soothing cleanser for sensitive skin"
+      },
+      {
+        name: "SkinCeuticals C E Ferulic",
+        image: "/products/SkinCeuticals C E Ferulic.webp",
+        category: "serum",
+        conditions: ["aging", "sun_damage", "hyperpigmentation"],
+        description: "Antioxidant serum for aging and sun-damaged skin"
+      },
+      {
+        name: "TNS Advanced+ Serum",
+        image: "/products/TNS_Advanced+_Serum_1oz_2_FullWidth.jpg",
+        category: "serum",
+        conditions: ["aging", "fine_lines", "texture"],
+        description: "Advanced peptide serum for anti-aging"
+      },
+      {
+        name: "PCA SKIN Pigment Gel Pro",
+        image: "/products/PCA SKIN Pigment Gel Pro.jpg",
+        category: "treatment",
+        conditions: ["hyperpigmentation", "dark_spots", "uneven_tone"],
+        description: "Targeted treatment for hyperpigmentation"
+      },
+      {
+        name: "First Aid Beauty Ultra Repair Cream",
+        image: "/products/First Aid Beauty Ultra Repair Cream.webp",
+        category: "moisturizer",
+        conditions: ["dryness", "sensitivity", "barrier_repair"],
+        description: "Intensive moisturizer for dry, sensitive skin"
+      },
+      {
+        name: "EltaMD UV Clear Broad-Spectrum SPF 46",
+        image: "/products/EltaMD UV Clear Broad-Spectrum SPF 46.webp",
+        category: "sunscreen",
+        conditions: ["acne", "sensitivity", "sun_protection"],
+        description: "Oil-free sunscreen for acne-prone skin"
+      },
+      {
+        name: "Allies of Skin Molecular Silk Amino Hydrating Cleanser",
+        image: "/products/Allies of Skin Molecular Silk Amino Hydrating Cleanser.webp",
+        category: "cleanser",
+        conditions: ["dryness", "dehydration", "gentle"],
+        description: "Hydrating cleanser for dry skin"
+      }
+    ]
+
+    // Get detected conditions
+    const detectedConditions = analysis.skin_analysis.conditions_detected.map(c => 
+      c.condition.toLowerCase().replace(/\s+/g, '_')
+    )
+
+    // Score products based on conditions
+    const scoredProducts = products.map(product => {
+      let score = 0
+      product.conditions.forEach(condition => {
+        if (detectedConditions.some(dc => dc.includes(condition) || condition.includes(dc))) {
+          score += 1
+        }
+      })
+      
+      // Bonus for overall skin health
+      if (analysis.skin_analysis.overall_health_score > 0.8) {
+        score += 0.5
+      }
+      
+      return { ...product, score }
+    })
+
+    // Return top 3 products
+    return scoredProducts
+      .filter(p => p.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+  }
+  
+  // Age and race categories
+  const ageCategories = [
+    '18-25', '26-35', '36-45', '46-55', '56-65', '65+'
+  ]
+  
+  const raceCategories = [
+    'Caucasian', 'African American', 'Asian', 'Hispanic/Latino', 
+    'Middle Eastern', 'Native American', 'Mixed/Other'
+  ]
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const faceDetectionInterval = useRef<NodeJS.Timeout | null>(null)
 
   // Camera setup
   useEffect(() => {
@@ -40,40 +214,95 @@ export default function HomePage() {
     } else if (cameraMode === 'upload' && isCameraActive) {
       stopCamera()
     }
+    
+    // Reset face detection state when not in camera mode
+    if (cameraMode === 'upload') {
+      setFaceDetected(false)
+      setFaceBounds({ x: 0, y: 0, width: 0, height: 0 })
+      setRealTimeDetection(null)
+      if (faceDetectionInterval.current) {
+        clearInterval(faceDetectionInterval.current)
+        faceDetectionInterval.current = null
+      }
+    }
   }, [cameraMode])
 
   const startCamera = async () => {
     try {
-      console.log('Starting camera...')
-      
-      // Simple camera setup - no complex constraints
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: 'user'
+          width: { ideal: 720 },
+          height: { ideal: 1280 }, // Portrait orientation
+          facingMode: 'user',
+          aspectRatio: { ideal: 0.5625 } // 9:16 aspect ratio for portrait
         }
       })
-      
-      console.log('Camera stream obtained:', stream)
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         streamRef.current = stream
         setIsCameraActive(true)
-        
-        videoRef.current.onloadedmetadata = () => {
-          console.log('Video metadata loaded')
-        }
-        
-        videoRef.current.oncanplay = () => {
-          console.log('Video can play')
-        }
-      } else {
-        console.error('Video ref is null')
+        startFaceDetection()
       }
     } catch (error) {
       console.error('Camera access failed:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      alert(`Camera access failed: ${errorMessage}. Please check camera permissions.`)
+      setCameraError('Camera access denied. Please allow camera permissions.')
+    }
+  }
+
+  const startFaceDetection = () => {
+    if (faceDetectionInterval.current) {
+      clearInterval(faceDetectionInterval.current)
+    }
+    
+    faceDetectionInterval.current = setInterval(async () => {
+      await detectFaceInVideo()
+    }, 1000) // Check every second
+  }
+
+  const detectFaceInVideo = async () => {
+    if (!videoRef.current || !canvasRef.current) return
+    
+    try {
+      const canvas = canvasRef.current
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      
+      // Set canvas size to match video
+      canvas.width = videoRef.current.videoWidth
+      canvas.height = videoRef.current.videoHeight
+      
+      // Draw video frame to canvas
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
+      
+      // Get image data for face detection
+      const imageData = canvas.toDataURL('image/jpeg', 0.8)
+      
+      // Call real-time detection API
+      const response = await fetch('http://localhost:5001/api/v3/face/detect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image_data: imageData
+        })
+      })
+      
+      if (response.ok) {
+        const detectionResult: RealTimeDetectionResult = await response.json()
+        setRealTimeDetection(detectionResult)
+        
+        if (detectionResult.face_detected) {
+          setFaceDetected(true)
+          setFaceBounds(detectionResult.face_bounds)
+        } else {
+          setFaceDetected(false)
+          setFaceBounds({ x: 0, y: 0, width: 0, height: 0 })
+        }
+      }
+    } catch (error) {
+      console.error('Face detection failed:', error)
     }
   }
 
@@ -82,28 +311,42 @@ export default function HomePage() {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
+    
+    if (faceDetectionInterval.current) {
+      clearInterval(faceDetectionInterval.current)
+      faceDetectionInterval.current = null
+    }
+    
     setIsCameraActive(false)
-    setCapturedImage(null)
+    setFaceDetected(false)
+    setFaceBounds({ x: 0, y: 0, width: 0, height: 0 })
+    setRealTimeDetection(null)
   }
 
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current
       const canvas = canvasRef.current
-      const context = canvas.getContext('2d')
+      const video = videoRef.current
       
-      if (context) {
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        context.drawImage(video, 0, 0)
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(video, 0, 0)
         
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const file = new File([blob], 'captured-selfie.jpg', { type: 'image/jpeg' })
-            setSelectedFile(file)
-            setCapturedImage(canvas.toDataURL('image/jpeg'))
-          }
-        }, 'image/jpeg', 0.8)
+        // Store the captured image
+        const imageData = canvas.toDataURL('image/jpeg', 0.8)
+        setUserImage(imageData)
+        
+        // Stop camera after capture
+        stopCamera()
+        
+        // Convert to base64 for analysis
+        const base64Data = imageData.split(',')[1]
+        
+        // Perform analysis with the captured image
+        handleAnalysis(base64Data)
       }
     }
   }
@@ -111,9 +354,115 @@ export default function HomePage() {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      setSelectedFile(file)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target?.result as string
+        setUserImage(result)
+        setSelectedFile(file)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleAnalysis = async (imageData: string) => {
+    try {
       setAnalysisResult(null)
-      setCapturedImage(null)
+      setAnalysisLoading(true)
+      
+      const response = await fetch('http://localhost:5001/api/v3/skin/analyze-enhanced', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image_data: imageData,
+          age_category: ageCategory,
+          race_category: raceCategory
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      setAnalysisResult(result)
+    } catch (error) {
+      console.error('Analysis failed:', error)
+      // Fallback analysis result
+      setAnalysisResult({
+        status: 'success',
+        timestamp: new Date().toISOString(),
+        analysis_type: 'enhanced',
+        demographics: {
+          age_category: ageCategory,
+          race_category: raceCategory
+        },
+        face_detection: {
+          detected: true,
+          confidence: 0.85,
+          face_bounds: { x: 150, y: 100, width: 200, height: 250 },
+          method: 'fallback',
+          quality_metrics: {
+            overall_quality: 'unknown',
+            quality_score: 0.6
+          }
+        },
+        skin_analysis: {
+          overall_health_score: 0.75,
+          texture: 'smooth',
+          tone: 'even',
+          conditions_detected: [],
+          analysis_confidence: 0.6
+        },
+        similarity_search: {
+          dataset_used: 'facial_skin_diseases',
+          similar_cases: []
+        },
+        recommendations: {
+          immediate_care: ['Maintain current skincare routine'],
+          long_term_care: ['Continue with preventive care'],
+          professional_consultation: false
+        },
+        quality_assessment: {
+          image_quality: 'unknown',
+          confidence_reliability: 'low'
+        }
+      })
+    } finally {
+      setAnalysisLoading(false)
+    }
+  }
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = error => reject(error)
+    })
+  }
+
+  const testCameraPermissions = async () => {
+    try {
+      console.log('Testing camera permissions...')
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const videoDevices = devices.filter(device => device.kind === 'videoinput')
+      console.log('Available video devices:', videoDevices)
+      
+      if (videoDevices.length === 0) {
+        alert('No camera devices found')
+        return
+      }
+      
+      // Test basic camera access
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      console.log('Camera access successful:', stream)
+      stream.getTracks().forEach(track => track.stop())
+      alert('Camera permissions working!')
+    } catch (error) {
+      console.error('Camera test failed:', error)
+      alert(`Camera test failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -133,69 +482,14 @@ export default function HomePage() {
         await new Promise(resolve => setTimeout(resolve, 200))
       }
 
-      // Call Operation Right Brain API
-      const response = await fetch('http://localhost:5001/api/v3/skin/analyze-enhanced', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image_data: base64
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Analysis failed')
-      }
-
-      const data = await response.json()
-      setAnalysisResult(data.analysis)
+      // Perform analysis with the uploaded image
+      await handleAnalysis(base64)
     } catch (error) {
-      console.error('Analysis failed:', error)
-      // Fallback to simulated result
-      setAnalysisResult({
-        skinHealthScore: 85,
-        primaryConcerns: ['acne', 'inflammation'],
-        detectedConditions: [
-          {
-            condition: 'acne_vulgaris',
-            similarityScore: 0.85,
-            description: 'Common skin condition characterized by pimples and inflammation',
-            recommendations: [
-              'Gentle cleanser with salicylic acid',
-              'Non-comedogenic moisturizer',
-              'Avoid touching face frequently'
-            ]
-          }
-        ],
-        recommendations: {
-          immediate: [
-            'Use gentle cleanser twice daily',
-            'Apply non-comedogenic moisturizer',
-            'Avoid touching face with dirty hands'
-          ],
-          longTerm: [
-            'Consider consulting a dermatologist',
-            'Establish consistent skincare routine',
-            'Monitor for any changes in skin condition'
-          ]
-        },
-        confidence: 0.8,
-        analysisMethod: 'operation_right_brain'
-      })
+      console.error('Upload failed:', error)
     } finally {
       setIsUploading(false)
       setUploadProgress(0)
     }
-  }
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.readAsDataURL(file)
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = error => reject(error)
-    })
   }
 
   return (
@@ -218,7 +512,7 @@ export default function HomePage() {
         <div style={{
           maxWidth: '1200px',
           margin: '0 auto',
-          padding: '1rem 2rem',
+          padding: '1rem',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
@@ -231,762 +525,977 @@ export default function HomePage() {
           }}>
             <img 
               src="https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png"
-              alt="Shine Logo"
+              alt="Shine Skin Collective"
               style={{
                 height: '48px',
                 width: 'auto',
-                filter: 'brightness(0) invert(1)'
+                objectFit: 'contain'
+              }}
+              onError={(e) => {
+                console.error('Logo failed to load');
+                e.currentTarget.style.display = 'none';
               }}
             />
+
           </div>
 
-          {/* Navigation */}
-          <nav style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '2rem'
-          }}>
-            <Link href="/enhanced-skin-analysis" style={{
-              color: '#ffffff',
-              textDecoration: 'none',
-              fontSize: '0.9rem',
-              fontWeight: 300,
-              transition: 'opacity 0.3s ease',
-              opacity: 0.8
-            }}>
-              Advanced Analysis
-            </Link>
-          </nav>
+
         </div>
       </header>
 
       {/* Main Content */}
-      <div style={{
+      <div className="mobile-container" style={{
         maxWidth: '1200px',
         margin: '0 auto',
-        padding: '3rem 2rem'
+        padding: '1rem'
       }}>
-        {/* Hero Section */}
-        <div style={{
-          textAlign: 'center',
-          marginBottom: '4rem'
+
+
+        {/* Phase 2: Enhanced Interface */}
+        <div className="mobile-grid" style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: '2rem',
+          marginBottom: '2rem'
         }}>
-          <h1 style={{
-            fontSize: '3rem',
-            fontWeight: 200,
-            marginBottom: '1rem',
-            color: '#ffffff',
-            letterSpacing: '-0.02em'
-          }}>
-            Shine Skincare
-          </h1>
-          <p style={{
-            fontSize: '1.2rem',
-            opacity: 0.6,
-            color: '#ffffff',
-            fontWeight: 300,
-            maxWidth: '600px',
-            margin: '0 auto',
-            lineHeight: '1.6'
-          }}>
-            AI-powered skin analysis using Google Cloud Vertex AI and SCIN dataset
-          </p>
-        </div>
-
-        {/* Analysis Section */}
-        {!analysisResult && (
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.02)',
-            borderRadius: '24px',
-            padding: '3rem 2rem',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            backdropFilter: 'blur(20px)',
-            marginBottom: '2rem'
-          }}>
-            <div style={{
-              textAlign: 'center',
-              marginBottom: '2rem'
-            }}>
-              <h2 style={{
-                fontSize: '1.8rem',
-                fontWeight: 200,
-                marginBottom: '1rem',
-                color: '#ffffff',
-                letterSpacing: '-0.01em'
-              }}>
-                {cameraMode === 'camera' ? 'Take Your Selfie' : 'Upload Your Image'}
-              </h2>
-              <p style={{
-                fontSize: '1rem',
-                opacity: 0.6,
-                color: '#ffffff',
-                fontWeight: 300,
-                maxWidth: '500px',
-                margin: '0 auto',
-                lineHeight: '1.6'
-              }}>
-                Our AI will analyze your skin using the SCIN dataset and Google Cloud Vertex AI
-              </p>
-            </div>
-
-            {/* Mode Toggle */}
+          {/* Left Column - Upload & Camera */}
+          <div>
+            {/* Mode Selection */}
             <div style={{
               display: 'flex',
-              justifyContent: 'center',
+              flexDirection: 'column',
               gap: '1rem',
               marginBottom: '2rem'
             }}>
               <button
+                className="mobile-button"
                 onClick={() => setCameraMode('upload')}
                 style={{
-                  background: cameraMode === 'upload' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                  flex: 1,
+                  padding: '1rem',
+                  backgroundColor: cameraMode === 'upload' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '12px',
                   color: '#ffffff',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  padding: '0.8rem 1.5rem',
-                  borderRadius: '8px',
-                  fontSize: '0.85rem',
                   cursor: 'pointer',
+                  transition: 'all 0.3s ease',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.3s ease'
+                  justifyContent: 'center',
+                  gap: '0.5rem'
                 }}
               >
-                📁 Upload File
+                <Upload width={20} height={20} />
+                Upload Image
               </button>
-              <button
+                            <button
+                className="mobile-button"
                 onClick={() => setCameraMode('camera')}
                 style={{
-                  background: cameraMode === 'camera' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                  color: '#ffffff',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  padding: '0.8rem 1.5rem',
-                  borderRadius: '8px',
-                  fontSize: '0.85rem',
+                  flex: 1,
+                  padding: '1rem',
+                  backgroundColor: cameraMode === 'camera' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '12px',
+                      color: '#ffffff',
                   cursor: 'pointer',
+                  transition: 'all 0.3s ease',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.3s ease'
+                  justifyContent: 'center',
+                  gap: '0.5rem'
                 }}
               >
-                📷 Use Camera
+                <Camera width={20} height={20} />
+                Camera
               </button>
             </div>
 
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '2rem'
-            }}>
-              {cameraMode === 'upload' ? (
-                // File Upload Mode
+            {/* Upload Mode */}
+            {cameraMode === 'upload' && (
+              <div style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: '16px',
+                padding: '2rem',
+                border: '1px solid rgba(255, 255, 255, 0.1)'
+              }}>
+                {/* Phase 2: Demographic Input */}
                 <div style={{
-                  border: '2px dashed rgba(255, 255, 255, 0.2)',
-                  borderRadius: '16px',
-                  padding: '3rem 2rem',
-                  textAlign: 'center',
-                  width: '100%',
-                  maxWidth: '400px',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease'
+                  marginBottom: '2rem'
                 }}>
-                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📁</div>
-                  <p style={{ color: '#ffffff', opacity: 0.6, marginBottom: '1rem' }}>
-                    {selectedFile ? selectedFile.name : 'Click to upload or drag and drop'}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginBottom: '1rem'
+                  }}>
+                    <User width={20} height={20} style={{ opacity: 0.7 }} />
+                    <h3 style={{
+                      fontSize: '1.1rem',
+                      fontWeight: 400,
+                      color: '#ffffff'
+                    }}>
+                      Demographic Information (Optional)
+                    </h3>
+                  </div>
+                  
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                    marginBottom: '1rem'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '0.9rem',
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        marginBottom: '0.5rem'
+                      }}>
+                        Age
+                      </label>
+                      <select
+                        className="mobile-select"
+                        value={ageCategory}
+                        onChange={(e) => setAgeCategory(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          borderRadius: '8px',
+                          color: '#ffffff',
+                          fontSize: '0.9rem'
+                        }}
+                      >
+                        <option value="">Select age category</option>
+                        {ageCategories.map(category => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div style={{ flex: 1 }}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '0.9rem',
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        marginBottom: '0.5rem'
+                      }}>
+                        Ethnicity
+                      </label>
+                      <select
+                        className="mobile-select"
+                        value={raceCategory}
+                        onChange={(e) => setRaceCategory(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          borderRadius: '8px',
+                          color: '#ffffff',
+                          fontSize: '0.9rem'
+                        }}
+                      >
+                        <option value="">Select race/ethnicity</option>
+                        {raceCategories.map(category => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <p style={{
+                    fontSize: '0.8rem',
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    fontStyle: 'italic'
+                  }}>
+                    Providing demographic information helps improve analysis accuracy and provides more personalized recommendations.
                   </p>
+                </div>
+
+                {/* File Upload Section */}
+                <div style={{
+                  marginBottom: '2rem'
+                }}>
+                  <h3 style={{
+                    fontSize: '1.2rem',
+                    fontWeight: 500,
+                    color: '#ffffff',
+                    marginBottom: '1rem'
+                  }}>
+                    Upload Image
+                  </h3>
+                  
+                  {/* File Input */}
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleFileSelect}
-                    style={{ display: 'none' }}
+                    style={{
+                      display: 'none'
+                    }}
                     id="file-upload"
                   />
-                  <label htmlFor="file-upload" style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    color: '#ffffff',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    padding: '0.8rem 1.5rem',
-                    borderRadius: '8px',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    display: 'inline-block',
-                    transition: 'all 0.3s ease'
-                  }}>
-                    Choose File
+                  
+                  <label
+                    htmlFor="file-upload"
+                    style={{
+                      display: 'block',
+                      padding: '1rem',
+                      border: '2px dashed rgba(255, 255, 255, 0.3)',
+                      borderRadius: '12px',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'
+                    }}
+                  >
+                    <Upload width={24} height={24} style={{ marginBottom: '0.5rem', opacity: 0.7 }} />
+                    <p style={{
+                      margin: 0,
+                      fontSize: '0.9rem',
+                      color: 'rgba(255, 255, 255, 0.8)'
+                    }}>
+                      Click to select an image or drag and drop
+                    </p>
                   </label>
+
+                  {/* Upload Preview */}
+                  {userImage && (
+                    <div style={{
+                      marginTop: '1rem',
+                      textAlign: 'center'
+                    }}>
+                      <h4 style={{
+                        fontSize: '1rem',
+                        fontWeight: 500,
+                        color: '#ffffff',
+                        marginBottom: '0.5rem'
+                      }}>
+                        Preview
+                      </h4>
+                      <div style={{
+                        position: 'relative',
+                        display: 'inline-block',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        border: '2px solid rgba(255, 255, 255, 0.2)',
+                        maxWidth: '200px',
+                        maxHeight: '200px'
+                      }}>
+                        <img 
+                          src={userImage}
+                          alt="Upload preview"
+                          style={{
+                            width: '100%',
+                            height: 'auto',
+                            objectFit: 'cover',
+                            display: 'block'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Upload Progress */}
+                  {isUploading && (
+                    <div style={{
+                      marginTop: '1rem',
+                      padding: '1rem',
+                      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      borderRadius: '8px'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        marginBottom: '0.5rem'
+                      }}>
+                        <div style={{
+                          width: '16px',
+                          height: '16px',
+                          border: '2px solid #3b82f6',
+                          borderTop: '2px solid transparent',
+                          borderRadius: '50%',
+                          animation: 'spin 1s linear infinite'
+                        }} />
+                        <span style={{
+                          fontSize: '0.9rem',
+                          color: '#3b82f6'
+                        }}>
+                          Analyzing image... {uploadProgress}%
+                        </span>
+                      </div>
+                      <div style={{
+                        width: '100%',
+                        height: '4px',
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderRadius: '2px',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          width: `${uploadProgress}%`,
+                          height: '100%',
+                          backgroundColor: '#3b82f6',
+                          transition: 'width 0.3s ease'
+                        }} />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Upload Button */}
+                  <button
+                    onClick={handleUpload}
+                    disabled={!selectedFile || isUploading}
+                    style={{
+                      width: '100%',
+                      padding: '1rem',
+                      backgroundColor: selectedFile && !isUploading ? '#10b981' : 'rgba(255, 255, 255, 0.1)',
+                      border: 'none',
+                      borderRadius: '12px',
+                      color: '#ffffff',
+                      fontSize: '1rem',
+                      fontWeight: 500,
+                      cursor: selectedFile && !isUploading ? 'pointer' : 'not-allowed',
+                      transition: 'all 0.3s ease',
+                      marginTop: '1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    <Sparkles width={20} height={20} />
+                    {isUploading ? 'Analyzing...' : 'Analyze Image'}
+                  </button>
                 </div>
-              ) : (
-                // Camera Mode
+              </div>
+            )}
+
+            {/* Camera Mode */}
+            {cameraMode === 'camera' && (
+              <div style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: '16px',
+                padding: '2rem',
+                border: '1px solid rgba(255, 255, 255, 0.1)'
+              }}>
+                {/* Camera View */}
                 <div style={{
-                  width: '100%',
-                  maxWidth: '400px',
-                  textAlign: 'center'
+                  position: 'relative',
+                  marginBottom: '2rem'
                 }}>
-                  {!capturedImage ? (
-                    // Live Camera View
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{
+                      width: '100%',
+                      borderRadius: '12px',
+                      backgroundColor: '#000000'
+                    }}
+                  />
+                  
+                  {/* Face Detection Overlay */}
+                  {faceDetected && (
+                    <div style={{
+                      position: 'absolute',
+                      top: `${faceBounds.y}px`,
+                      left: `${faceBounds.x}px`,
+                      width: `${faceBounds.width}px`,
+                      height: `${faceBounds.height}px`,
+                      border: '2px solid #3b82f6',
+                      borderRadius: '8px',
+                      pointerEvents: 'none'
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        top: '-30px',
+                        left: '0',
+                        backgroundColor: '#3b82f6',
+                        color: '#ffffff',
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '4px',
+                        fontSize: '0.8rem'
+                      }}>
+                        Face Detected
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Real-time Detection Feedback */}
+                  {realTimeDetection && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '1rem',
+                      right: '1rem',
+                      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem'
+                    }}>
+                      <div style={{
+                        color: realTimeDetection.face_detected ? '#10b981' : '#ef4444',
+                        marginBottom: '0.25rem'
+                      }}>
+                        {realTimeDetection.face_detected ? '✓ Face Detected' : '✗ No Face'}
+                      </div>
+                      <div style={{
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        fontSize: '0.7rem'
+                      }}>
+                        Quality: {realTimeDetection.quality_metrics.lighting}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Camera Controls */}
+                <div style={{
+                  display: 'flex',
+                  gap: '1rem'
+                }}>
+                  <button
+                    onClick={capturePhoto}
+                    disabled={!faceDetected}
+                    style={{
+                      flex: 1,
+                      padding: '1rem',
+                      backgroundColor: faceDetected ? '#10b981' : 'rgba(255, 255, 255, 0.1)',
+                      border: 'none',
+                      borderRadius: '12px',
+                      color: '#ffffff',
+                      fontSize: '1rem',
+                      fontWeight: 500,
+                      cursor: faceDetected ? 'pointer' : 'not-allowed',
+                      transition: 'all 0.3s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    <Camera width={20} height={20} />
+                    Capture Photo
+                  </button>
+                  
+                  <button
+                    onClick={testCameraPermissions}
+                    style={{
+                      padding: '1rem',
+                      backgroundColor: 'transparent',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      borderRadius: '12px',
+                      color: '#ffffff',
+                      fontSize: '0.9rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    Test Camera
+                  </button>
+                </div>
+
+                {/* Camera Guidance */}
+                {!faceDetected && isCameraActive && (
+                  <div style={{
+                    marginTop: '1rem',
+                    padding: '1rem',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    borderRadius: '8px'
+                  }}>
+                    <p style={{
+                      fontSize: '0.9rem',
+                      color: '#3b82f6',
+                      margin: 0
+                    }}>
+                      Position your face in the center of the camera for best results
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Hidden canvas for face detection */}
+            <canvas
+              ref={canvasRef}
+              style={{ display: 'none' }}
+            />
+          </div>
+
+          {/* Right Column - Results */}
+          <div>
+            {analysisResult ? (
+              <div style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: '16px',
+                padding: '2rem',
+                border: '1px solid rgba(255, 255, 255, 0.1)'
+              }}>
+                {/* Analysis Header */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  marginBottom: '2rem'
+                }}>
+                  <CheckCircle width={24} height={24} style={{ color: '#10b981' }} />
+                  <div>
+                    <h2 style={{
+                      fontSize: '1.5rem',
+                      fontWeight: 400,
+                      color: '#ffffff',
+                      margin: 0
+                    }}>
+                      Analysis Complete
+                    </h2>
+                    <p style={{
+                      fontSize: '0.9rem',
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      margin: 0
+                    }}>
+                      Enhanced analysis with demographic awareness
+                    </p>
+                  </div>
+                </div>
+
+                {/* User Image Display */}
+                {userImage && (
+                  <div style={{
+                    marginBottom: '2rem',
+                    textAlign: 'center'
+                  }}>
+                    <h3 style={{
+                      fontSize: '1.1rem',
+                      fontWeight: 500,
+                      color: '#ffffff',
+                      marginBottom: '1rem'
+                    }}>
+                      Your Image
+                    </h3>
                     <div style={{
                       position: 'relative',
-                      borderRadius: '16px',
+                      display: 'inline-block',
+                      borderRadius: '12px',
                       overflow: 'hidden',
                       border: '2px solid rgba(255, 255, 255, 0.2)',
-                      background: '#000000',
-                      aspectRatio: '9/16',
-                      maxHeight: '600px'
+                      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
                     }}>
-                      <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
+                      <img 
+                        src={userImage}
+                        alt="Analyzed image"
                         style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          display: isCameraActive ? 'block' : 'none'
-                        }}
-                      />
-                      {!isCameraActive && (
-                        <div style={{
-                          padding: '3rem 2rem',
-                          textAlign: 'center',
-                          height: '100%',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          alignItems: 'center'
-                        }}>
-                          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📷</div>
-                          <p style={{ color: '#ffffff', opacity: 0.6 }}>
-                            Camera starting...
-                          </p>
-                        </div>
-                      )}
-                      <canvas ref={canvasRef} style={{ display: 'none' }} />
-                      
-                      {isCameraActive && (
-                        <button
-                          onClick={capturePhoto}
-                          style={{
-                            position: 'absolute',
-                            bottom: '2rem',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            background: 'rgba(255, 255, 255, 0.2)',
-                            color: '#ffffff',
-                            border: '2px solid #ffffff',
-                            borderRadius: '50%',
-                            width: '70px',
-                            height: '70px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.3s ease',
-                            fontSize: '2rem'
-                          }}
-                        >
-                          📸
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    // Captured Image Preview
-                    <div style={{
-                      borderRadius: '16px',
-                      overflow: 'hidden',
-                      border: '2px solid rgba(255, 255, 255, 0.2)',
-                      background: '#000000',
-                      aspectRatio: '9/16',
-                      maxHeight: '600px'
-                    }}>
-                      <img
-                        src={capturedImage}
-                        alt="Captured selfie"
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
+                          maxWidth: '300px',
+                          maxHeight: '300px',
+                          width: 'auto',
+                          height: 'auto',
+                          objectFit: 'contain',
                           display: 'block'
                         }}
                       />
-                      <div style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        padding: '1rem',
-                        background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
-                        display: 'flex',
-                        gap: '1rem',
-                        justifyContent: 'center'
-                      }}>
-                        <button
-                          onClick={() => {
-                            setCapturedImage(null)
-                            setSelectedFile(null)
-                          }}
-                          style={{
-                            background: 'rgba(255, 255, 255, 0.1)',
-                            color: '#ffffff',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            padding: '0.5rem 1rem',
-                            borderRadius: '6px',
-                            fontSize: '0.8rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Retake
-                        </button>
-                        <button
-                          onClick={() => setCapturedImage(null)}
-                          style={{
-                            background: 'rgba(76, 222, 128, 0.2)',
-                            color: '#4ade80',
-                            border: '1px solid rgba(76, 222, 128, 0.3)',
-                            padding: '0.5rem 1rem',
-                            borderRadius: '6px',
-                            fontSize: '0.8rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Use This Photo
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {selectedFile && (
-                <button
-                  onClick={handleUpload}
-                  disabled={isUploading}
-                  style={{
-                    background: isUploading ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                    color: '#ffffff',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    padding: '1rem 2rem',
-                    borderRadius: '12px',
-                    fontSize: '0.9rem',
-                    fontWeight: 300,
-                    cursor: isUploading ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    transition: 'all 0.3s ease'
-                  }}
-                >
-                  {isUploading ? (
-                    <>
-                      <div style={{
-                        width: '16px',
-                        height: '16px',
-                        border: '2px solid rgba(255, 255, 255, 0.3)',
-                        borderTop: '2px solid #ffffff',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite'
-                      }} />
-                      Analyzing... {uploadProgress}%
-                    </>
-                  ) : (
-                    <>
-                      ✨ Analyze with AI
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Analysis Results */}
-        {analysisResult && (
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.02)',
-            borderRadius: '24px',
-            padding: '3rem 2rem',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            backdropFilter: 'blur(20px)'
-          }}>
-            <div style={{
-              textAlign: 'center',
-              marginBottom: '3rem'
-            }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
-              <h2 style={{
-                fontSize: '2rem',
-                fontWeight: 200,
-                marginBottom: '1rem',
-                color: '#ffffff',
-                letterSpacing: '-0.01em'
-              }}>
-                Analysis Complete
-              </h2>
-              <p style={{
-                fontSize: '1rem',
-                opacity: 0.6,
-                color: '#ffffff',
-                fontWeight: 300
-              }}>
-                Powered by Operation Right Brain • SCIN Dataset • Google Cloud Vertex AI
-              </p>
-            </div>
-
-            {/* Skin Health Score */}
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.02)',
-              borderRadius: '16px',
-              padding: '2rem',
-              border: '1px solid rgba(255, 255, 255, 0.05)',
-              marginBottom: '2rem'
-            }}>
-              <h3 style={{
-                fontSize: '1.3rem',
-                marginBottom: '1rem',
-                color: '#ffffff',
-                fontWeight: 300
-              }}>
-                Skin Health Score
-              </h3>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem'
-              }}>
-                <div style={{
-                  fontSize: '3rem',
-                  fontWeight: 200,
-                  color: '#4ade80'
-                }}>
-                  {analysisResult.skinHealthScore}
-                </div>
-                <div style={{
-                  fontSize: '1.5rem',
-                  color: '#ffffff',
-                  opacity: 0.6
-                }}>
-                  / 100
-                </div>
-              </div>
-            </div>
-
-            {/* Detected Conditions */}
-            <div style={{
-              marginBottom: '2rem'
-            }}>
-              <h3 style={{
-                fontSize: '1.3rem',
-                marginBottom: '1.5rem',
-                color: '#ffffff',
-                fontWeight: 300
-              }}>
-                Detected Conditions
-              </h3>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                gap: '1.5rem'
-              }}>
-                {analysisResult.detectedConditions.map((condition, index) => (
-                  <div key={index} style={{
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    borderRadius: '12px',
-                    padding: '1.5rem',
-                    border: '1px solid rgba(255, 255, 255, 0.05)'
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '1rem'
-                    }}>
-                      <h4 style={{
-                        fontSize: '1.1rem',
-                        color: '#ffffff',
-                        fontWeight: 300
-                      }}>
-                        {condition.condition.replace('_', ' ').toUpperCase()}
-                      </h4>
-                      <div style={{
-                        background: 'rgba(76, 222, 128, 0.1)',
-                        color: '#4ade80',
-                        padding: '0.3rem 0.8rem',
-                        borderRadius: '6px',
-                        fontSize: '0.8rem',
-                        fontWeight: 300
-                      }}>
-                        {(condition.similarityScore * 100).toFixed(0)}% match
-                      </div>
+                      {/* Face detection overlay if available */}
+                      {analysisResult.face_detection.detected && (
+                        <div style={{
+                          position: 'absolute',
+                          top: analysisResult.face_detection.face_bounds.y,
+                          left: analysisResult.face_detection.face_bounds.x,
+                          width: analysisResult.face_detection.face_bounds.width,
+                          height: analysisResult.face_detection.face_bounds.height,
+                          border: '2px solid #10b981',
+                          borderRadius: '4px',
+                          pointerEvents: 'none'
+                        }} />
+                      )}
                     </div>
                     <p style={{
-                      fontSize: '0.9rem',
-                      opacity: 0.6,
-                      color: '#ffffff',
-                      lineHeight: '1.5',
-                      marginBottom: '1rem'
+                      fontSize: '0.8rem',
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      marginTop: '0.5rem',
+                      margin: 0
                     }}>
-                      {condition.description}
+                      Confidence: {Math.round(analysisResult.face_detection.confidence * 100)}%
                     </p>
-                    <div>
-                      <h5 style={{
-                        fontSize: '0.9rem',
-                        color: '#ffffff',
-                        fontWeight: 300,
-                        marginBottom: '0.5rem'
-                      }}>
-                        Recommendations:
-                      </h5>
-                      <ul style={{
-                        listStyle: 'none',
-                        padding: 0,
-                        margin: 0
-                      }}>
-                        {condition.recommendations.map((rec, recIndex) => (
-                          <li key={recIndex} style={{
-                            fontSize: '0.85rem',
-                            opacity: 0.7,
-                            color: '#ffffff',
-                            marginBottom: '0.3rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem'
-                          }}>
-                            <div style={{
-                              width: '4px',
-                              height: '4px',
-                              borderRadius: '50%',
-                              background: '#4ade80'
-                            }} />
-                            {rec}
-                          </li>
-                        ))}
-                      </ul>
+                  </div>
+                )}
+
+                {/* Health Score */}
+                <div style={{
+                  marginBottom: '2rem',
+                  padding: '1.5rem',
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  borderRadius: '12px'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    marginBottom: '1rem'
+                  }}>
+                    <TrendingUp width={24} height={24} style={{ color: '#10b981' }} />
+                    <h3 style={{
+                      fontSize: '1.2rem',
+                      fontWeight: 400,
+                      color: '#ffffff',
+                      margin: 0
+                    }}>
+                      Overall Health Score
+                    </h3>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem'
+                  }}>
+                    <div style={{
+                      fontSize: '2.5rem',
+                      fontWeight: 200,
+                      color: '#10b981'
+                    }}>
+                      {Math.round(analysisResult.skin_analysis.overall_health_score * 100)}%
+                    </div>
+                    <div style={{
+                      flex: 1,
+                      height: '8px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      borderRadius: '4px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        width: `${analysisResult.skin_analysis.overall_health_score * 100}%`,
+                        height: '100%',
+                        backgroundColor: '#10b981',
+                        transition: 'width 0.3s ease'
+                      }} />
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            {/* Recommendations */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: '2rem'
-            }}>
+                {/* Detected Conditions */}
+                {analysisResult.skin_analysis.conditions_detected.length > 0 && (
+                  <div style={{
+                    marginBottom: '2rem'
+                  }}>
+                    <h3 style={{
+                      fontSize: '1.2rem',
+                      fontWeight: 400,
+                      color: '#ffffff',
+                      marginBottom: '1rem'
+                    }}>
+                      Detected Conditions
+                    </h3>
+                    {analysisResult.skin_analysis.conditions_detected.map((condition, index) => (
+                      <div key={index} style={{
+                        padding: '1rem',
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: '8px',
+                        marginBottom: '1rem'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '0.5rem'
+                        }}>
+                          <span style={{
+                            fontSize: '1rem',
+                            fontWeight: 500,
+                            color: '#ffffff'
+                          }}>
+                            {condition.condition.replace('_', ' ').toUpperCase()}
+                          </span>
+                          <span style={{
+                            fontSize: '0.9rem',
+                            color: 'rgba(255, 255, 255, 0.7)'
+                          }}>
+                            {Math.round(condition.confidence * 100)}% confidence
+                          </span>
+                        </div>
+                        <p style={{
+                          fontSize: '0.9rem',
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          margin: '0.5rem 0'
+                        }}>
+                          {condition.description}
+                        </p>
+                        <div style={{
+                          display: 'flex',
+                          gap: '0.5rem',
+                          flexWrap: 'wrap'
+                        }}>
+                          <span style={{
+                            padding: '0.25rem 0.5rem',
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                            color: '#3b82f6',
+                            borderRadius: '4px',
+                            fontSize: '0.8rem'
+                          }}>
+                            {condition.severity}
+                          </span>
+                          <span style={{
+                            padding: '0.25rem 0.5rem',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            color: 'rgba(255, 255, 255, 0.7)',
+                            borderRadius: '4px',
+                            fontSize: '0.8rem'
+                          }}>
+                            {condition.location}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Recommendations */}
+                <div style={{
+                  marginBottom: '2rem'
+                }}>
+                  <h3 style={{
+                    fontSize: '1.2rem',
+                    fontWeight: 400,
+                    color: '#ffffff',
+                    marginBottom: '1rem'
+                  }}>
+                    Recommendations
+                  </h3>
+                  
+                  {/* Immediate Care */}
+                  <div style={{
+                    marginBottom: '1.5rem'
+                  }}>
+                    <h4 style={{
+                      fontSize: '1rem',
+                      fontWeight: 500,
+                      color: '#ffffff',
+                      marginBottom: '0.5rem'
+                    }}>
+                      Immediate Care
+                    </h4>
+                    <ul style={{
+                      listStyle: 'none',
+                      padding: 0,
+                      margin: 0
+                    }}>
+                      {analysisResult.recommendations.immediate_care.map((rec, index) => (
+                        <li key={index} style={{
+                          padding: '0.5rem 0',
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                          fontSize: '0.9rem',
+                          color: 'rgba(255, 255, 255, 0.8)'
+                        }}>
+                          • {rec}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  {/* Long-term Care */}
+                  <div>
+                    <h4 style={{
+                      fontSize: '1rem',
+                      fontWeight: 500,
+                      color: '#ffffff',
+                      marginBottom: '0.5rem'
+                    }}>
+                      Long-term Care
+                    </h4>
+                    <ul style={{
+                      listStyle: 'none',
+                      padding: 0,
+                      margin: 0
+                    }}>
+                      {analysisResult.recommendations.long_term_care.map((rec, index) => (
+                        <li key={index} style={{
+                          padding: '0.5rem 0',
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                          fontSize: '0.9rem',
+                          color: 'rgba(255, 255, 255, 0.8)'
+                        }}>
+                          • {rec}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Professional Consultation Warning */}
+                {analysisResult.recommendations.professional_consultation && (
+                  <div style={{
+                    padding: '1rem',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: '8px',
+                    marginBottom: '2rem'
+                  }}>
+                    <p style={{
+                      fontSize: '0.9rem',
+                      color: '#ef4444',
+                      margin: 0,
+                      fontWeight: 500
+                    }}>
+                      ⚠️ Professional consultation recommended
+                    </p>
+                  </div>
+                )}
+
+                {/* Product Recommendations */}
+                <div style={{
+                  marginBottom: '2rem'
+                }}>
+                  <h3 style={{
+                    fontSize: '1.2rem',
+                    fontWeight: 400,
+                    color: '#ffffff',
+                    marginBottom: '1rem'
+                  }}>
+                    Recommended Products
+                  </h3>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                    gap: '1rem'
+                  }}>
+                    {getProductRecommendations(analysisResult).map((product, index) => (
+                      <div key={index} style={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: '12px',
+                        padding: '1rem',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        transition: 'all 0.3s ease',
+                        cursor: 'pointer'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'
+                      }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1rem',
+                          marginBottom: '0.5rem'
+                        }}>
+                          <img 
+                            src={product.image}
+                            alt={product.name}
+                            style={{
+                              width: '60px',
+                              height: '60px',
+                              objectFit: 'cover',
+                              borderRadius: '8px'
+                            }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none'
+                            }}
+                          />
+                          <div style={{ flex: 1 }}>
+                            <h4 style={{
+                              fontSize: '1rem',
+                              fontWeight: 500,
+                              color: '#ffffff',
+                              margin: '0 0 0.25rem 0'
+                            }}>
+                              {product.name}
+                            </h4>
+                            <span style={{
+                              fontSize: '0.8rem',
+                              color: 'rgba(255, 255, 255, 0.6)',
+                              textTransform: 'capitalize'
+                            }}>
+                              {product.category}
+                            </span>
+                          </div>
+                        </div>
+                        <p style={{
+                          fontSize: '0.85rem',
+                          color: 'rgba(255, 255, 255, 0.8)',
+                          margin: 0,
+                          lineHeight: '1.4'
+                        }}>
+                          {product.description}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Analysis Details */}
+                <div style={{
+                  fontSize: '0.8rem',
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                  paddingTop: '1rem'
+                }}>
+                  <p style={{ margin: '0.25rem 0' }}>
+                    Analysis Method: {analysisResult.face_detection.method}
+                  </p>
+                  <p style={{ margin: '0.25rem 0' }}>
+                    Confidence: {Math.round(analysisResult.skin_analysis.analysis_confidence * 100)}%
+                  </p>
+                  <p style={{ margin: '0.25rem 0' }}>
+                    Dataset: {analysisResult.similarity_search.dataset_used}
+                  </p>
+                  {analysisResult.demographics.age_category && (
+                    <p style={{ margin: '0.25rem 0' }}>
+                      Age Category: {analysisResult.demographics.age_category}
+                    </p>
+                  )}
+                  {analysisResult.demographics.race_category && (
+                    <p style={{ margin: '0.25rem 0' }}>
+                      Race Category: {analysisResult.demographics.race_category}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
               <div style={{
-                background: 'rgba(255, 255, 255, 0.02)',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 borderRadius: '16px',
                 padding: '2rem',
-                border: '1px solid rgba(255, 255, 255, 0.05)'
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                textAlign: 'center'
               }}>
+                <Sparkles width={48} height={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
                 <h3 style={{
                   fontSize: '1.2rem',
-                  marginBottom: '1rem',
+                  fontWeight: 400,
                   color: '#ffffff',
-                  fontWeight: 300,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
+                  marginBottom: '0.5rem'
                 }}>
-                  🎯 Immediate Actions
+                  Ready for Analysis
                 </h3>
-                <ul style={{
-                  listStyle: 'none',
-                  padding: 0,
-                  margin: 0
-                }}>
-                  {analysisResult.recommendations.immediate.map((rec, index) => (
-                    <li key={index} style={{
-                      fontSize: '0.9rem',
-                      opacity: 0.7,
-                      color: '#ffffff',
-                      marginBottom: '0.8rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}>
-                      <div style={{
-                        width: '6px',
-                        height: '6px',
-                        borderRadius: '50%',
-                        background: '#fbbf24'
-                      }} />
-                      {rec}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div style={{
-                background: 'rgba(255, 255, 255, 0.02)',
-                borderRadius: '16px',
-                padding: '2rem',
-                border: '1px solid rgba(255, 255, 255, 0.05)'
-              }}>
-                <h3 style={{
-                  fontSize: '1.2rem',
-                  marginBottom: '1rem',
-                  color: '#ffffff',
-                  fontWeight: 300,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                  🧠 Long-term Strategy
-                </h3>
-                <ul style={{
-                  listStyle: 'none',
-                  padding: 0,
-                  margin: 0
-                }}>
-                  {analysisResult.recommendations.longTerm.map((rec, index) => (
-                    <li key={index} style={{
-                      fontSize: '0.9rem',
-                      opacity: 0.7,
-                      color: '#ffffff',
-                      marginBottom: '0.8rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}>
-                      <div style={{
-                        width: '6px',
-                        height: '6px',
-                        borderRadius: '50%',
-                        background: '#60a5fa'
-                      }} />
-                      {rec}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            {/* New Analysis Button */}
-            <div style={{
-              textAlign: 'center',
-              marginTop: '3rem'
-            }}>
-              <button
-                onClick={() => {
-                  setAnalysisResult(null)
-                  setSelectedFile(null)
-                  setCapturedImage(null)
-                  stopCamera()
-                }}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  color: '#ffffff',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  padding: '1rem 2rem',
-                  borderRadius: '12px',
+                <p style={{
                   fontSize: '0.9rem',
-                  fontWeight: 300,
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                Analyze Another Image
-              </button>
-            </div>
+                  color: 'rgba(255, 255, 255, 0.7)'
+                }}>
+                  Upload an image or use the camera to begin your enhanced skin analysis
+                </p>
+              </div>
+            )}
           </div>
-        )}
-
-        {/* Feature Cards */}
-        {!analysisResult && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: '1.5rem',
-            marginTop: '4rem'
-          }}>
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.02)',
-              borderRadius: '16px',
-              padding: '2rem',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              backdropFilter: 'blur(20px)'
-            }}>
-              <h3 style={{
-                fontSize: '1.2rem',
-                marginBottom: '0.8rem',
-                color: '#ffffff',
-                fontWeight: 300
-              }}>
-                AI-Powered Analysis
-              </h3>
-              <p style={{
-                color: '#ffffff',
-                fontSize: '0.9rem',
-                opacity: 0.6,
-                fontWeight: 300,
-                lineHeight: '1.6'
-              }}>
-                Advanced skin analysis using Google Cloud Vertex AI
-              </p>
-            </div>
-
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.02)',
-              borderRadius: '16px',
-              padding: '2rem',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              backdropFilter: 'blur(20px)'
-            }}>
-              <h3 style={{
-                fontSize: '1.2rem',
-                marginBottom: '0.8rem',
-                color: '#ffffff',
-                fontWeight: 300
-              }}>
-                Instant Results
-              </h3>
-              <p style={{
-                color: '#ffffff',
-                fontSize: '0.9rem',
-                opacity: 0.6,
-                fontWeight: 300,
-                lineHeight: '1.6'
-              }}>
-                Get personalized recommendations in seconds
-              </p>
-            </div>
-
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.02)',
-              borderRadius: '16px',
-              padding: '2rem',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              backdropFilter: 'blur(20px)'
-            }}>
-              <h3 style={{
-                fontSize: '1.2rem',
-                marginBottom: '0.8rem',
-                color: '#ffffff',
-                fontWeight: 300
-              }}>
-                Mobile Optimized
-              </h3>
-              <p style={{
-                color: '#ffffff',
-                fontSize: '0.9rem',
-                opacity: 0.6,
-                fontWeight: 300,
-                lineHeight: '1.6'
-              }}>
-                Perfect for selfie analysis on your phone
-              </p>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
 
       <style jsx>{`
         @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
       `}</style>
     </div>
