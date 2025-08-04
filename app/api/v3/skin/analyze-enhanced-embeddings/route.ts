@@ -19,9 +19,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the backend URL from environment or use default
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
     
     try {
+      // Add detailed logging for debugging
+      console.log('🔍 Enhanced Analysis Proxy Debug');
+      console.log('Backend URL:', `${backendUrl}/api/v3/skin/analyze-enhanced-embeddings`);
+      console.log('Request payload size:', JSON.stringify(requestBody).length);
+      console.log('Request payload keys:', Object.keys(requestBody));
+      
       // First try to forward the request to the Flask backend
       const response = await fetch(`${backendUrl}/api/v3/skin/analyze-enhanced-embeddings`, {
         method: 'POST',
@@ -30,6 +36,9 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify(requestBody),
       });
+
+      console.log('Backend response status:', response.status);
+      console.log('Backend response headers:', Object.fromEntries(response.headers.entries()));
 
       if (response.ok) {
         const result = await response.json();
@@ -45,6 +54,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(result);
       } else {
         // If Flask backend fails, provide a fallback response
+        console.log('❌ Flask backend failed with status:', response.status);
+        console.log('Backend error response:', await response.text());
         console.log('Flask backend unavailable, using fallback for skin analysis');
         return NextResponse.json(
           { 
@@ -100,6 +111,9 @@ export async function POST(request: NextRequest) {
       }
     } catch (fetchError) {
       // If fetch fails (backend not running), provide fallback
+      console.log('❌ Flask backend connection failed:', fetchError);
+      console.log('Error type:', typeof fetchError);
+      console.log('Error message:', fetchError instanceof Error ? fetchError.message : 'Unknown error');
       console.log('Flask backend connection failed, using fallback for skin analysis');
       return NextResponse.json(
         { 

@@ -157,7 +157,7 @@ class EnhancedFaceAnalyzer:
             }
     
     def _detect_and_isolate_face(self, image_data: bytes) -> Dict:
-        """Detect and isolate face from image"""
+        """Detect and isolate face from image using the same logic as the working face detection"""
         try:
             # Convert bytes to numpy array
             nparr = np.frombuffer(image_data, np.uint8)
@@ -169,41 +169,101 @@ class EnhancedFaceAnalyzer:
             # Convert to grayscale for face detection
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             
-            # Detect faces using OpenCV
-            faces = []
-            if self.face_cascade:
-                faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)
+            # Log image dimensions for debugging
+            logger.info(f"Image dimensions: {img.shape}")
+            logger.info(f"Grayscale image dimensions: {gray.shape}")
             
-            # If no frontal faces, try profile detection
-            if len(faces) == 0 and self.profile_cascade:
-                faces = self.profile_cascade.detectMultiScale(gray, 1.1, 4)
+            # Load face cascade classifier
+            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
             
+            # Check if cascade loaded successfully
+            if face_cascade.empty():
+                logger.error("Failed to load face cascade classifier")
+                return {'face_detected': False, 'error': 'Face detection model failed to load'}
+            
+            logger.info("Face cascade classifier loaded successfully")
+            
+            # Detect faces with initial parameters (same as working detection)
+            faces = face_cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.05,  # More sensitive scaling
+                minNeighbors=3,     # Reduced from 5 to 3 for better detection
+                minSize=(20, 20)    # Smaller minimum face size
+            )
+            
+            logger.info(f"Initial face detection result: {len(faces)} faces found")
+            if len(faces) > 0:
+                logger.info(f"Face coordinates: {faces[0]}")
+            
+            # If no faces found with initial parameters, try more lenient ones
             if len(faces) == 0:
-                return {'face_detected': False, 'error': 'No face detected'}
+                logger.info("Trying more lenient face detection parameters")
+                faces = face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.02,  # Even more sensitive
+                    minNeighbors=2,     # Very lenient
+                    minSize=(15, 15)    # Very small minimum
+                )
+                logger.info(f"Lenient detection result: {len(faces)} faces found")
+                if len(faces) > 0:
+                    logger.info(f"Face coordinates (lenient): {faces[0]}")
             
-            # Get the largest face (assumed to be the main subject)
-            largest_face = max(faces, key=lambda x: x[2] * x[3])
-            x, y, w, h = largest_face
+            # If still no faces, try even more aggressive parameters
+            if len(faces) == 0:
+                logger.info("Trying very aggressive face detection parameters")
+                faces = face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.01,  # Very sensitive
+                    minNeighbors=1,     # Most lenient
+                    minSize=(10, 10)    # Very small minimum
+                )
+                logger.info(f"Aggressive detection result: {len(faces)} faces found")
+                if len(faces) > 0:
+                    logger.info(f"Face coordinates (aggressive): {faces[0]}")
             
-            # Extract face region
-            face_roi = img[y:y+h, x:x+w]
-            
-            # Assess face quality
-            quality_metrics = self._assess_image_quality(img, face_roi)
-            
-            return {
-                'face_detected': True,
-                'confidence': 0.95,  # Placeholder confidence
-                'face_bounds': {
-                    'x': int(x),
-                    'y': int(y),
-                    'width': int(w),
-                    'height': int(h)
-                },
-                'face_roi': face_roi,
-                'quality_metrics': quality_metrics,
-                'method': 'opencv_cascade'
-            }
+            if len(faces) > 0:
+                # Face detected - use the first face
+                (x, y, w, h) = faces[0]
+                confidence = 0.85 + (len(faces) * 0.05)  # Higher confidence if multiple faces
+                
+                # Extract face region
+                face_roi = img[y:y+h, x:x+w]
+                
+                # Assess face quality
+                quality_metrics = self._assess_image_quality(img, face_roi)
+                
+                return {
+                    'face_detected': True,
+                    'confidence': min(confidence, 0.95),
+                    'face_bounds': {
+                        'x': int(x),
+                        'y': int(y),
+                        'width': int(w),
+                        'height': int(h)
+                    },
+                    'face_roi': face_roi,
+                    'quality_metrics': quality_metrics,
+                    'method': 'opencv_cascade_enhanced'
+                }
+            else:
+                # No face detected
+                return {
+                    'face_detected': False,
+                    'error': 'No face detected',
+                    'confidence': 0.0,
+                    'face_bounds': {
+                        'x': 0,
+                        'y': 0,
+                        'width': 0,
+                        'height': 0
+                    },
+                    'quality_metrics': {
+                        'lighting': 'unknown',
+                        'sharpness': 'unknown',
+                        'positioning': 'no_face'
+                    },
+                    'method': 'opencv_cascade_enhanced'
+                }
             
         except Exception as e:
             logger.error(f"Face detection error: {e}")

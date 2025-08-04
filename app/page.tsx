@@ -10,6 +10,7 @@ import { SignInModal } from '@/components/sign-in-modal'
 import { products } from '@/lib/products'
 import { useTheme } from '@/hooks/useTheme'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { directBackendClient, isDirectBackendAvailable } from '@/lib/direct-backend'
 
 interface EnhancedAnalysisResult {
   status: string
@@ -150,7 +151,7 @@ export default function EnhancedSkinAnalysis() {
   const [conditionResult, setConditionResult] = useState<ConditionAnalysisResult | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [analysisType, setAnalysisType] = useState<'enhanced' | 'demographic' | 'condition'>('enhanced')
+  const [analysisType, setAnalysisType] = useState<'enhanced' | 'demographic' | 'condition' | 'basic'>('enhanced')
   const [demographicInfo, setDemographicInfo] = useState({
     age: '',
     gender: '',
@@ -344,6 +345,9 @@ export default function EnhancedSkinAnalysis() {
       // Get image data for face detection
       const imageData = canvas.toDataURL('image/jpeg', 0.8)
       
+      // Extract base64 data from data URL
+      const base64Data = imageData.split(',')[1]
+      
       // Call real-time detection API
       const response = await fetch('/api/v3/face/detect', {
         method: 'POST',
@@ -351,7 +355,7 @@ export default function EnhancedSkinAnalysis() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          image_data: imageData
+          image_data: base64Data
         })
       })
       
@@ -439,6 +443,9 @@ export default function EnhancedSkinAnalysis() {
     try {
       setIsDetectingFace(true)
       
+      // Extract base64 data from data URL
+      const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData
+      
       // Call face detection API
       const response = await fetch('/api/v3/face/detect', {
         method: 'POST',
@@ -446,7 +453,7 @@ export default function EnhancedSkinAnalysis() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          image_data: imageData
+          image_data: base64Data
         })
       })
       
@@ -479,16 +486,81 @@ export default function EnhancedSkinAnalysis() {
       return
     }
 
+    // Extract base64 data from data URL
+    const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData
+
     setIsAnalyzing(true)
     setAnalysisError(null)
     setAnalysisProgress(0)
 
     try {
-      let response
-      let result
+      let response: Response
+      let result: any
 
       // Choose analysis type based on user selection
       switch (analysisType) {
+        case 'basic':
+          // Basic analysis using the integrated system with embedded conditions and normalized data
+          // Pass face detection result if available
+          const basicPayload: any = {
+            image_data: base64Data,
+            analysis_type: 'integrated',
+            user_parameters: {
+              age_category: ageCategory,
+              race_category: raceCategory
+            }
+          }
+          
+          // Add face detection result if available
+          if (uploadFaceDetectionResult && uploadFaceDetectionResult.face_detected) {
+            basicPayload.face_detection_result = {
+              face_detected: uploadFaceDetectionResult.face_detected,
+              confidence: uploadFaceDetectionResult.confidence,
+              face_bounds: uploadFaceDetectionResult.face_bounds
+            }
+          }
+          
+          // Try proxy first, then fallback to direct backend
+          try {
+            response = await fetch('/api/v3/skin/analyze-basic', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(basicPayload)
+            })
+            
+            if (response.ok) {
+              result = await response.json()
+              setAnalysisResult(result)
+              setDemographicResult(null)
+              setConditionResult(null)
+            } else {
+              console.log('❌ Proxy failed, trying direct backend...')
+              // Fallback to direct backend
+              const directResult = await directBackendClient.basicAnalysis(basicPayload)
+              if (directResult.success && directResult.data) {
+                setAnalysisResult(directResult.data)
+                setDemographicResult(null)
+                setConditionResult(null)
+              } else {
+                throw new Error(`Basic analysis failed: ${directResult.error}`)
+              }
+            }
+          } catch (error) {
+            console.log('❌ Proxy failed, trying direct backend...')
+            // Fallback to direct backend
+            const directResult = await directBackendClient.basicAnalysis(basicPayload)
+            if (directResult.success && directResult.data) {
+              setAnalysisResult(directResult.data)
+              setDemographicResult(null)
+              setConditionResult(null)
+            } else {
+              throw new Error(`Basic analysis failed: ${directResult.error}`)
+            }
+          }
+          break
+
         case 'demographic':
           // Demographic analysis with UTKFace
           response = await fetch('/api/v3/skin/analyze-demographic', {
@@ -497,7 +569,7 @@ export default function EnhancedSkinAnalysis() {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              image_data: imageData,
+              image_data: base64Data,
               age: demographicInfo.age,
               gender: demographicInfo.gender,
               ethnicity: demographicInfo.ethnicity
@@ -522,7 +594,7 @@ export default function EnhancedSkinAnalysis() {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              image_data: imageData
+              image_data: base64Data
             })
           })
           
@@ -539,38 +611,33 @@ export default function EnhancedSkinAnalysis() {
         case 'enhanced':
         default:
           // Enhanced analysis (existing functionality)
-          response = await fetch('/api/v3/skin/analyze-enhanced-embeddings', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              image_data: imageData,
-              analysis_type: 'comprehensive',
-              user_parameters: {
-                age_category: ageCategory,
-                race_category: raceCategory
-              }
-            })
-          })
+          // Pass face detection result if available
+          const enhancedPayload: any = {
+            image_data: base64Data,
+            analysis_type: 'comprehensive',
+            user_parameters: {
+              age_category: ageCategory,
+              race_category: raceCategory
+            }
+          }
           
-          if (response.ok) {
-            result = await response.json()
-            setAnalysisResult(result)
-            setDemographicResult(null)
-            setConditionResult(null)
-          } else {
-            // Fallback to enhanced analysis
-            response = await fetch('/api/v3/skin/analyze-enhanced', {
+          // Add face detection result if available
+          if (uploadFaceDetectionResult && uploadFaceDetectionResult.face_detected) {
+            enhancedPayload.face_detection_result = {
+              face_detected: uploadFaceDetectionResult.face_detected,
+              confidence: uploadFaceDetectionResult.confidence,
+              face_bounds: uploadFaceDetectionResult.face_bounds
+            }
+          }
+          
+          // Try proxy first, then fallback to direct backend
+          try {
+            response = await fetch('/api/v3/skin/analyze-enhanced-embeddings', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({
-                image_data: imageData,
-                age_category: ageCategory,
-                race_category: raceCategory
-              })
+              body: JSON.stringify(enhancedPayload)
             })
             
             if (response.ok) {
@@ -579,7 +646,27 @@ export default function EnhancedSkinAnalysis() {
               setDemographicResult(null)
               setConditionResult(null)
             } else {
-              throw new Error(`Enhanced analysis failed: ${response.statusText}`)
+              console.log('❌ Proxy failed, trying direct backend...')
+              // Fallback to direct backend
+              const directResult = await directBackendClient.enhancedAnalysis(enhancedPayload)
+              if (directResult.success && directResult.data) {
+                setAnalysisResult(directResult.data)
+                setDemographicResult(null)
+                setConditionResult(null)
+              } else {
+                throw new Error(`Enhanced analysis failed: ${directResult.error}`)
+              }
+            }
+          } catch (error) {
+            console.log('❌ Proxy failed, trying direct backend...')
+            // Fallback to direct backend
+            const directResult = await directBackendClient.enhancedAnalysis(enhancedPayload)
+            if (directResult.success && directResult.data) {
+              setAnalysisResult(directResult.data)
+              setDemographicResult(null)
+              setConditionResult(null)
+            } else {
+              throw new Error(`Enhanced analysis failed: ${directResult.error}`)
             }
           }
           break
@@ -592,24 +679,24 @@ export default function EnhancedSkinAnalysis() {
         result: result
       }])
 
-      // Generate recommendations based on analysis type
-      if (result) {
-        if (analysisType === 'demographic' && result.recommendations) {
-          setRecommendations([
-            ...result.recommendations.demographic_specific || [],
-            ...result.recommendations.general_health || []
-          ])
-        } else if (analysisType === 'condition' && result.recommendations) {
-          setRecommendations(result.recommendations)
-        } else if (analysisType === 'enhanced' && result.recommendations) {
-          setRecommendations([
-            ...result.recommendations.immediate_care || [],
-            ...result.recommendations.long_term_care || []
-          ])
-        }
+              // Generate recommendations based on analysis type
+        if (result) {
+          if (analysisType === 'demographic' && result.recommendations) {
+            setRecommendations([
+              ...result.recommendations.demographic_specific || [],
+              ...result.recommendations.general_health || []
+            ])
+          } else if (analysisType === 'condition' && result.recommendations) {
+            setRecommendations(result.recommendations)
+          } else if ((analysisType === 'enhanced' || analysisType === 'basic') && result.recommendations) {
+            setRecommendations([
+              ...result.recommendations.immediate_care || [],
+              ...result.recommendations.long_term_care || []
+            ])
+          }
 
-        // Generate product recommendations for enhanced analysis
-        if (analysisType === 'enhanced' && result) {
+        // Generate product recommendations for enhanced and basic analysis
+        if ((analysisType === 'enhanced' || analysisType === 'basic') && result) {
           const products = getProductRecommendations(result)
           setProductRecommendations(products)
         }
@@ -794,6 +881,7 @@ export default function EnhancedSkinAnalysis() {
                 onClick={() => {
                   setUploadMethod('camera')
                   resetUploadStates()
+                  startCamera()
                 }}
                 style={{
                   flex: 1,
@@ -1106,6 +1194,29 @@ export default function EnhancedSkinAnalysis() {
                       <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Condition</span>
                       <span style={{ fontSize: '0.7rem', color: getTextColor(0.6), textAlign: 'center' }}>
                         Specific skin condition identification
+                      </span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setAnalysisType('basic')}
+                      style={{
+                        padding: '1rem',
+                        backgroundColor: analysisType === 'basic' ? getBgColor(0.15) : getBgColor(0.05),
+                        border: `1px solid ${analysisType === 'basic' ? getBorderColor(0.4) : getBorderColor(0.2)}`,
+                        borderRadius: '8px',
+                        color: getTextColor(1),
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <CheckCircle width={20} height={20} />
+                      <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Basic</span>
+                      <span style={{ fontSize: '0.7rem', color: getTextColor(0.6), textAlign: 'center' }}>
+                        Integrated analysis with embedded conditions and normalized data
                       </span>
                     </button>
                   </div>
@@ -1809,6 +1920,35 @@ export default function EnhancedSkinAnalysis() {
                       </div>
                     </div>
                   )}
+                  
+                  {/* Additional guidance for no face detected in upload */}
+                  {uploadFaceDetectionResult && !uploadFaceDetectionResult.face_detected && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '1rem',
+                      left: '1rem',
+                      right: '1rem',
+                      backgroundColor: 'rgba(59, 130, 246, 0.9)',
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem'
+                    }}>
+                      <div style={{
+                        color: '#ffffff',
+                        fontWeight: 500,
+                        marginBottom: '0.25rem'
+                      }}>
+                        📸 No Face Detected
+                      </div>
+                      <div style={{
+                        color: '#ffffff',
+                        fontSize: '0.7rem',
+                        opacity: 0.9
+                      }}>
+                        Try a different image with better lighting and a clear, centered face
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Camera Controls */}
@@ -1887,6 +2027,41 @@ export default function EnhancedSkinAnalysis() {
 
           {/* Right Column - Results */}
           <div>
+            {/* Analysis Error Display */}
+            {analysisError && (
+              <div style={{
+                marginBottom: '1rem',
+                padding: '1rem',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: '8px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  marginBottom: '0.5rem'
+                }}>
+                  <div style={{ color: '#ef4444', fontSize: '1.2rem' }}>⚠️</div>
+                  <h4 style={{
+                    fontSize: '1rem',
+                    fontWeight: 500,
+                    color: '#ef4444',
+                    margin: 0
+                  }}>
+                    Analysis Error
+                  </h4>
+                </div>
+                <p style={{
+                  fontSize: '0.9rem',
+                  color: '#ef4444',
+                  margin: 0
+                }}>
+                  {analysisError}
+                </p>
+              </div>
+            )}
+            
             {analysisResult ? (
               <div style={{
                 backgroundColor: getBgColor(0.05),
@@ -1977,6 +2152,52 @@ export default function EnhancedSkinAnalysis() {
                     }}>
                       Confidence: {analysisResult?.face_detection?.confidence ? Math.round(analysisResult.face_detection?.confidence * 100) : 0}%
                     </p>
+                    
+                    {/* Face Detection Guidance */}
+                    {!analysisResult?.face_detection?.detected && (
+                      <div style={{
+                        marginTop: '1rem',
+                        padding: '1rem',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        border: '1px solid rgba(59, 130, 246, 0.3)',
+                        borderRadius: '8px'
+                      }}>
+                        <h4 style={{
+                          fontSize: '1rem',
+                          fontWeight: 500,
+                          color: '#3b82f6',
+                          margin: '0 0 0.5rem 0'
+                        }}>
+                          📸 No Face Detected
+                        </h4>
+                        <p style={{
+                          fontSize: '0.9rem',
+                          color: '#3b82f6',
+                          margin: '0 0 0.5rem 0'
+                        }}>
+                          We couldn't detect a face in your image. This could be due to:
+                        </p>
+                        <ul style={{
+                          fontSize: '0.85rem',
+                          color: '#3b82f6',
+                          margin: 0,
+                          paddingLeft: '1.5rem'
+                        }}>
+                          <li>Poor lighting - try taking the photo in better light</li>
+                          <li>Face too small or not centered in the frame</li>
+                          <li>Blurry or low-quality image</li>
+                          <li>Face partially obscured or at wrong angle</li>
+                        </ul>
+                        <p style={{
+                          fontSize: '0.85rem',
+                          color: '#3b82f6',
+                          margin: '0.5rem 0 0 0',
+                          fontStyle: 'italic'
+                        }}>
+                          💡 Tip: Hold your phone steady, ensure good lighting, and position your face in the center of the camera.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 

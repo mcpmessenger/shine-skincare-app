@@ -1,0 +1,42 @@
+{
+  "timestamp": "2025-08-04T14:38:42.627443",
+  "total_conditions": 6,
+  "conditions": [
+    "healthy",
+    "acne",
+    "actinic_keratosis",
+    "basal_cell_carcinoma",
+    "eczemaa",
+    "rosacea"
+  ],
+  "embedding_info": {
+    "dimensions": 2304,
+    "embedding_type": "Enhanced_Multi_Model"
+  },
+  "condition_details": {
+    "healthy": {
+      "image_count": 20,
+      "embedding_dimensions": 2304
+    },
+    "acne": {
+      "image_count": 20,
+      "embedding_dimensions": 2304
+    },
+    "actinic_keratosis": {
+      "image_count": 20,
+      "embedding_dimensions": 2304
+    },
+    "basal_cell_carcinoma": {
+      "image_count": 20,
+      "embedding_dimensions": 2304
+    },
+    "eczemaa": {
+      "image_count": 20,
+      "embedding_dimensions": 2304
+    },
+    "rosacea": {
+      "image_count": 20,
+      "embedding_dimensions": 2304
+    }
+  }
+}

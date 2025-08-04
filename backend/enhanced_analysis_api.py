@@ -1,410 +1,683 @@
 #!/usr/bin/env python3
 """
 Enhanced Analysis API for Shine Skincare App
-Uses scaled datasets and more parameters for improved accuracy
+Provides normalized skin analysis using healthy baselines and condition matching
 """
 
 import os
 import json
 import logging
+import base64
 import numpy as np
 import cv2
-from typing import Dict, List, Optional, Tuple
-import base64
-import requests
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from datetime import datetime
-import tempfile
-from pathlib import Path
-from PIL import Image
-import io
+import traceback
 
-# Import our scaled dataset manager
-from scaled_dataset_manager import ScaledDatasetManager
-from enhanced_analysis_algorithms import EnhancedSkinAnalyzer
+# Import our integrated analysis system
+from integrated_skin_analysis import IntegratedSkinAnalysis
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class EnhancedAnalysisAPI:
-    """Enhanced analysis API with scaled datasets and more parameters"""
-    
-    def __init__(self):
-        """Initialize the enhanced analysis API"""
-        self.dataset_manager = ScaledDatasetManager()
-        self.skin_analyzer = EnhancedSkinAnalyzer()
-        self.analysis_cache = {}
-        
-        # Analysis configurations
-        self.analysis_configs = {
-            'comprehensive': {
-                'datasets': ['skin_lesion_archive', 'isic_2020', 'ham10000'],
-                'parameters': ['demographic', 'clinical', 'imaging', 'environmental'],
-                'confidence_threshold': 0.85
-            },
-            'focused': {
-                'datasets': ['dermnet', 'fitzpatrick17k'],
-                'parameters': ['clinical', 'imaging'],
-                'confidence_threshold': 0.90
-            },
-            'research': {
-                'datasets': ['skin_lesion_archive', 'isic_2020', 'ham10000', 'dermnet', 'fitzpatrick17k'],
-                'parameters': ['demographic', 'clinical', 'imaging', 'environmental', 'temporal'],
-                'confidence_threshold': 0.95
-            }
-        }
-        
-        logger.info("✅ Enhanced analysis API initialized")
-    
-    def analyze_skin_enhanced(self, image_data: bytes, analysis_type: str = 'comprehensive', 
-                             user_parameters: Dict = None) -> Dict:
-        """
-        Perform enhanced skin analysis with scaled datasets
-        
-        Args:
-            image_data: Raw image data
-            analysis_type: Type of analysis ('comprehensive', 'focused', 'research')
-            user_parameters: Additional user parameters
-        
-        Returns:
-            Enhanced analysis results
-        """
-        try:
-            # Get analysis configuration
-            config = self.analysis_configs.get(analysis_type, self.analysis_configs['comprehensive'])
-            
-            # Generate enhanced embedding
-            embedding_result = self.dataset_manager.generate_enhanced_embedding(
-                image_data, 
-                config['datasets'][0]  # Use primary dataset
-            )
-            
-            # Perform comprehensive analysis
-            analysis_result = self._perform_comprehensive_analysis(
-                image_data, 
-                embedding_result, 
-                config, 
-                user_parameters
-            )
-            
-            # Add metadata
-            analysis_result['metadata'] = {
-                'timestamp': datetime.now().isoformat(),
-                'analysis_type': analysis_type,
-                'datasets_used': config['datasets'],
-                'parameters_analyzed': config['parameters'],
-                'confidence_threshold': config['confidence_threshold'],
-                'embedding_dimensions': embedding_result['dimensions'],
-                'total_parameters': embedding_result['metadata']['total_parameters']
-            }
-            
-            # Convert numpy types to Python types for JSON serialization
-            def convert_numpy_types(obj):
-                """Convert numpy types to Python types for JSON serialization"""
-                if isinstance(obj, np.integer):
-                    return int(obj)
-                elif isinstance(obj, np.floating):
-                    return float(obj)
-                elif isinstance(obj, np.ndarray):
-                    return obj.tolist()
-                elif isinstance(obj, np.bool_):
-                    return bool(obj)
-                elif isinstance(obj, dict):
-                    return {key: convert_numpy_types(value) for key, value in obj.items()}
-                elif isinstance(obj, list):
-                    return [convert_numpy_types(item) for item in obj]
-                else:
-                    return obj
-            
-            # Convert the result
-            analysis_result = convert_numpy_types(analysis_result)
-            
-            logger.info(f"✅ Enhanced analysis completed: {analysis_type}")
-            return analysis_result
-            
-        except Exception as e:
-            logger.error(f"❌ Enhanced analysis failed: {e}")
-            return self._generate_fallback_analysis()
-    
-    def _perform_comprehensive_analysis(self, image_data: bytes, embedding_result: Dict, 
-                                     config: Dict, user_parameters: Dict = None) -> Dict:
-        """Perform comprehensive analysis with multiple datasets and parameters"""
-        
-        # Convert bytes to numpy array for analysis
-        image = Image.open(io.BytesIO(image_data))
-        image_array = np.array(image)
-        
-        # Convert RGB to BGR for OpenCV
-        image_array_bgr = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
-        
-        # Face detection and isolation
-        logger.info("🔍 Starting face detection...")
-        logger.info(f"Image array type: {type(image_array_bgr)}, shape: {image_array_bgr.shape}, dtype: {image_array_bgr.dtype}")
-        
-        # Convert numpy array back to bytes for the analyzer
-        _, buffer = cv2.imencode('.jpg', image_array_bgr)
-        image_bytes = buffer.tobytes()
-        
-        face_analysis = self.skin_analyzer.analyze_face_with_demographics(image_bytes)
-        logger.info(f"✅ Face detection completed: {face_analysis.get('face_detected')}")
-        
-        # Extract face ROI if detected
-        face_roi = None
-        if face_analysis.get('face_detected'):
-            face_bounds = face_analysis.get('primary_face', {})
-            x, y, w, h = face_bounds.get('x', 0), face_bounds.get('y', 0), face_bounds.get('width', 0), face_bounds.get('height', 0)
-            if w > 0 and h > 0:
-                face_roi = image_array_bgr[y:y+h, x:x+w]
-                logger.info(f"✅ Face ROI extracted: {face_roi.shape}")
-        
-        # Skin condition analysis
-        logger.info("🔍 Starting skin conditions analysis...")
-        logger.info(f"Analysis image type: {type(image_array_bgr)}, shape: {image_array_bgr.shape}")
-        
-        # Use the face analysis result for skin analysis
-        skin_analysis = face_analysis.get('skin_analysis', {})
-        if not skin_analysis:
-            # Fallback skin analysis
-            skin_analysis = {
-                'health_score': 0.5,
-                'conditions_detected': [],
-                'texture': 'unknown',
-                'tone': 'unknown',
-                'analysis_confidence': 0.0
-            }
-        logger.info(f"✅ Skin analysis completed: health_score={skin_analysis.get('health_score', 0)}")
-        
-        # Demographic analysis
-        demographic_analysis = self._analyze_demographics(image_data, user_parameters)
-        
-        # Clinical assessment
-        clinical_assessment = self._analyze_clinical_factors(embedding_result, user_parameters)
-        
-        # Environmental factors
-        environmental_analysis = self._analyze_environmental_factors(user_parameters)
-        
-        # Quality assessment
-        quality_assessment = self._assess_analysis_quality(embedding_result, face_analysis)
-        
-        # Generate recommendations
-        recommendations = self._generate_enhanced_recommendations(
-            skin_analysis, 
-            clinical_assessment, 
-            environmental_analysis,
-            quality_assessment
-        )
-        
-        return {
-            'face_detection': face_analysis,
-            'skin_conditions': skin_analysis,
-            'demographics': demographic_analysis,
-            'clinical_assessment': clinical_assessment,
-            'environmental_factors': environmental_analysis,
-            'quality_assessment': quality_assessment,
-            'recommendations': recommendations,
-            'confidence_score': embedding_result['confidence_score'],
-            'embedding_info': {
-                'dimensions': embedding_result['dimensions'],
-                'dataset_used': embedding_result['dataset_used'],
-                'parameters': embedding_result['parameters']
-            }
-        }
-    
-    # Face detection is now handled by EnhancedSkinAnalyzer
-    
-    def _calculate_face_quality(self, face_roi: np.ndarray) -> Dict:
-        """Calculate face quality metrics"""
-        try:
-            gray = cv2.cvtColor(face_roi, cv2.COLOR_BGR2GRAY)
-            
-            # Brightness
-            brightness = np.mean(gray)
-            
-            # Contrast
-            contrast = np.std(gray)
-            
-            # Sharpness
-            laplacian = cv2.Laplacian(gray, cv2.CV_64F)
-            sharpness = np.var(laplacian)
-            
-            # Face size (larger is better)
-            size_score = min(1.0, (face_roi.shape[0] * face_roi.shape[1]) / 50000)
-            
-            # Overall quality score
-            overall_score = (
-                (brightness / 128) * 0.25 +
-                (contrast / 50) * 0.25 +
-                (sharpness / 1000) * 0.25 +
-                size_score * 0.25
-            )
-            
-            return {
-                'brightness': float(brightness),
-                'contrast': float(contrast),
-                'sharpness': float(sharpness),
-                'size_score': float(size_score),
-                'overall_score': float(overall_score)
-            }
-            
-        except Exception as e:
-            logger.error(f"❌ Face quality calculation failed: {e}")
-            return {
-                'brightness': 0,
-                'contrast': 0,
-                'sharpness': 0,
-                'size_score': 0,
-                'overall_score': 0
-            }
-    
-    # Skin conditions analysis is now handled by EnhancedSkinAnalyzer
-    
-    # Old analysis methods removed - now using EnhancedSkinAnalyzer
-    
-    # All old analysis methods removed - now using EnhancedSkinAnalyzer
-    
-    def _analyze_demographics(self, image_data: bytes, user_parameters: Dict = None) -> Dict:
-        """Analyze demographic factors"""
-        # This would integrate with user parameters and image analysis
-        return {
-            'age_group': user_parameters.get('age_group', 'unknown') if user_parameters else 'unknown',
-            'skin_type': user_parameters.get('skin_type', 'unknown') if user_parameters else 'unknown',
-            'ethnicity': user_parameters.get('ethnicity', 'unknown') if user_parameters else 'unknown'
-        }
-    
-    def _analyze_clinical_factors(self, embedding_result: Dict, user_parameters: Dict = None) -> Dict:
-        """Analyze clinical factors"""
-        return {
-            'previous_treatments': user_parameters.get('previous_treatments', []) if user_parameters else [],
-            'family_history': user_parameters.get('family_history', []) if user_parameters else [],
-            'current_medications': user_parameters.get('current_medications', []) if user_parameters else [],
-            'allergies': user_parameters.get('allergies', []) if user_parameters else []
-        }
-    
-    def _analyze_environmental_factors(self, user_parameters: Dict = None) -> Dict:
-        """Analyze environmental factors"""
-        return {
-            'sun_exposure': user_parameters.get('sun_exposure', 'unknown') if user_parameters else 'unknown',
-            'climate': user_parameters.get('climate', 'unknown') if user_parameters else 'unknown',
-            'occupation': user_parameters.get('occupation', 'unknown') if user_parameters else 'unknown',
-            'lifestyle_factors': user_parameters.get('lifestyle_factors', []) if user_parameters else []
-        }
-    
-    def _assess_analysis_quality(self, embedding_result: Dict, face_analysis: Dict) -> Dict:
-        """Assess the quality of the analysis"""
-        quality_score = 0.0
-        
-        # Embedding quality
-        if embedding_result.get('confidence_score'):
-            quality_score += embedding_result['confidence_score'] * 0.4
-        
-        # Face detection quality
-        if face_analysis.get('confidence'):
-            quality_score += face_analysis['confidence'] * 0.3
-        
-        # Face quality metrics
-        if face_analysis.get('quality_metrics'):
-            face_quality = face_analysis['quality_metrics'].get('overall_score', 0)
-            quality_score += face_quality * 0.3
-        
-        return {
-            'overall_quality': min(1.0, quality_score),
-            'embedding_quality': embedding_result.get('confidence_score', 0),
-            'face_detection_quality': face_analysis.get('confidence', 0),
-            'recommendation': self._get_quality_recommendation(quality_score)
-        }
-    
-    def _get_quality_recommendation(self, quality_score: float) -> str:
-        """Get recommendation based on quality score"""
-        if quality_score >= 0.8:
-            return "Excellent quality - High confidence analysis"
-        elif quality_score >= 0.6:
-            return "Good quality - Reliable analysis"
-        elif quality_score >= 0.4:
-            return "Moderate quality - Consider retaking photo"
+def convert_numpy_types(obj):
+    """Convert numpy types to Python types for JSON serialization"""
+    try:
+        # Handle numpy arrays and scalars
+        if hasattr(obj, 'dtype'):  # numpy array or scalar
+            if obj.dtype.kind in 'i':  # integer types
+                return int(obj)
+            elif obj.dtype.kind in 'f':  # float types
+                return float(obj)
+            elif obj.dtype.kind in 'b':  # boolean types
+                return bool(obj)
+            elif obj.dtype.kind in 'U':  # unicode string types
+                return str(obj)
+            else:
+                return obj.tolist()
+        # Handle specific numpy scalar types
+        elif isinstance(obj, (np.integer, np.intc, np.intp, np.int8, np.int16, np.int32, np.int64, np.uint8, np.uint16, np.uint32, np.uint64)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, np.float16, np.float32, np.float64)):
+            return float(obj)
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        # Handle nested structures
+        elif isinstance(obj, dict):
+            return {key: convert_numpy_types(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_numpy_types(item) for item in obj]
+        elif isinstance(obj, tuple):
+            return tuple(convert_numpy_types(item) for item in obj)
         else:
-            return "Low quality - Please retake photo with better lighting"
-    
-    def _generate_enhanced_recommendations(self, skin_analysis: Dict, clinical_assessment: Dict, 
-                                         environmental_analysis: Dict, quality_assessment: Dict) -> Dict:
-        """Generate enhanced recommendations based on comprehensive analysis"""
+            return obj
+    except Exception as e:
+        # Fallback: try to convert to basic Python types
+        try:
+            if hasattr(obj, 'item'):
+                return obj.item()
+            elif hasattr(obj, 'tolist'):
+                return obj.tolist()
+            else:
+                return str(obj)
+        except:
+            return str(obj)
+
+# Initialize Flask app
+app = Flask(__name__)
+CORS(app)
+
+# Initialize the integrated analysis system
+try:
+    integrated_analyzer = IntegratedSkinAnalysis()
+    logger.info("✅ Integrated skin analysis system initialized")
+except Exception as e:
+    logger.error(f"❌ Failed to initialize integrated analysis system: {e}")
+    integrated_analyzer = None
+
+@app.route('/api/v3/skin/analyze-comprehensive', methods=['POST'])
+def analyze_skin_comprehensive():
+    """
+    Comprehensive skin analysis with healthy baseline comparison
+    """
+    try:
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
         
-        recommendations = {
-            'immediate_care': [],
-            'long_term_care': [],
-            'professional_consultation': False,
-            'product_recommendations': [],
-            'lifestyle_changes': []
-        }
+        # Extract image data
+        image_data = data.get('image_data') or data.get('image')
+        if not image_data:
+            return jsonify({'error': 'No image data provided'}), 400
         
-        # Immediate care recommendations
-        if skin_analysis.get('health_score', 0) < 0.6:
-            recommendations['immediate_care'].append("Consider gentle cleansing routine")
-            recommendations['immediate_care'].append("Avoid harsh exfoliants")
+        # Decode base64 image
+        try:
+            image_bytes = base64.b64decode(image_data)
+        except Exception as e:
+            return jsonify({'error': f'Invalid image data: {e}'}), 400
         
-        # Long-term care recommendations
-        recommendations['long_term_care'].append("Establish consistent skincare routine")
-        recommendations['long_term_care'].append("Use broad-spectrum sunscreen daily")
+        # Get user demographics (optional)
+        demographics = data.get('demographics', {})
         
-        # Professional consultation
-        if skin_analysis.get('health_score', 0) < 0.4:
-            recommendations['professional_consultation'] = True
-            recommendations['immediate_care'].append("Schedule dermatologist consultation")
+        # Perform comprehensive analysis
+        if integrated_analyzer:
+            results = integrated_analyzer.analyze_skin_comprehensive(image_bytes, demographics)
+        else:
+            return jsonify({'error': 'Analysis system not available'}), 500
         
-        # Product recommendations based on conditions
-        conditions = skin_analysis.get('conditions', {})
-        if conditions.get('acne', {}).get('detected'):
-            recommendations['product_recommendations'].append("Salicylic acid cleanser")
-            recommendations['product_recommendations'].append("Non-comedogenic moisturizer")
+        # Convert results for JSON serialization
+        serializable_results = convert_numpy_types(results)
+        return jsonify(serializable_results)
         
-        if conditions.get('redness', {}).get('detected'):
-            recommendations['product_recommendations'].append("Gentle, fragrance-free products")
-            recommendations['product_recommendations'].append("Anti-inflammatory ingredients")
+    except Exception as e:
+        logger.error(f"❌ Comprehensive analysis failed: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/v3/skin/analyze-basic', methods=['POST'])
+def analyze_skin_basic():
+    """
+    Basic skin analysis using integrated system (conditions + normalized baselines)
+    """
+    try:
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
         
-        # Lifestyle changes
-        if environmental_analysis.get('sun_exposure') == 'high':
-            recommendations['lifestyle_changes'].append("Limit sun exposure during peak hours")
-            recommendations['lifestyle_changes'].append("Wear protective clothing")
+        # Extract image data
+        image_data = data.get('image_data') or data.get('image')
+        if not image_data:
+            return jsonify({'error': 'No image data provided'}), 400
         
-        return recommendations
-    
-    def _generate_fallback_analysis(self) -> Dict:
-        """Generate fallback analysis when enhanced analysis fails"""
-        return {
-            'face_detection': {'face_detected': False, 'confidence': 0.0},
-            'skin_conditions': {'health_score': 0.5},
-            'demographics': {'age_group': 'unknown'},
-            'clinical_assessment': {'previous_treatments': []},
-            'environmental_factors': {'sun_exposure': 'unknown'},
-            'quality_assessment': {'overall_quality': 0.0},
-            'recommendations': {
-                'immediate_care': ['Please retake photo with better lighting'],
-                'long_term_care': ['Establish basic skincare routine'],
-                'professional_consultation': False,
-                'product_recommendations': [],
-                'lifestyle_changes': []
+        # Decode base64 image
+        try:
+            image_bytes = base64.b64decode(image_data)
+        except Exception as e:
+            return jsonify({'error': f'Invalid image data: {e}'}), 400
+        
+        # Get user demographics (optional)
+        demographics = data.get('demographics', {})
+        
+        # Perform integrated analysis (uses both conditions and normalized baselines)
+        if integrated_analyzer:
+            results = integrated_analyzer.analyze_skin_comprehensive(image_bytes, demographics)
+        else:
+            return jsonify({'error': 'Analysis system not available'}), 500
+        
+        # Convert results for JSON serialization
+        serializable_results = convert_numpy_types(results)
+        
+        return jsonify({
+            'timestamp': datetime.now().isoformat(),
+            'analysis_type': 'basic_integrated',
+            'results': serializable_results
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Basic integrated analysis failed: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/v3/skin/analyze-normalized', methods=['POST'])
+def analyze_skin_normalized():
+    """
+    Normalized skin analysis with demographic-specific healthy baselines
+    """
+    try:
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        # Extract image data
+        image_data = data.get('image_data') or data.get('image')
+        if not image_data:
+            return jsonify({'error': 'No image data provided'}), 400
+        
+        # Decode base64 image
+        try:
+            image_bytes = base64.b64decode(image_data)
+        except Exception as e:
+            return jsonify({'error': f'Invalid image data: {e}'}), 400
+        
+        # Get user demographics (required for normalized analysis)
+        demographics = data.get('demographics', {})
+        if not demographics:
+            return jsonify({'error': 'Demographics required for normalized analysis'}), 400
+        
+        # Perform normalized analysis
+        if integrated_analyzer:
+            results = integrated_analyzer.analyze_skin_comprehensive(image_bytes, demographics)
+        else:
+            return jsonify({'error': 'Analysis system not available'}), 500
+        
+        # Convert results for JSON serialization
+        serializable_results = convert_numpy_types(results)
+        
+        return jsonify({
+            'timestamp': datetime.now().isoformat(),
+            'analysis_type': 'normalized',
+            'demographics_used': demographics,
+            'results': serializable_results
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Normalized analysis failed: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/v3/face/detect', methods=['POST'])
+def face_detect():
+    """
+    Face detection endpoint for camera interface
+    """
+    try:
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        # Extract image data
+        image_data = data.get('image_data')
+        if not image_data:
+            return jsonify({'error': 'No image data provided'}), 400
+        
+        # Decode base64 image
+        try:
+            image_bytes = base64.b64decode(image_data)
+        except Exception as e:
+            return jsonify({'error': f'Invalid image data: {e}'}), 400
+        
+        # Convert to numpy array
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img_array = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img_array is None:
+            return jsonify({'error': 'Failed to decode image'}), 400
+        
+        # Perform face detection using OpenCV with multiple cascade files
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        profile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_profileface.xml')
+        
+        # Convert to grayscale
+        gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+        
+        # Try different detection parameters
+        faces = []
+        
+        # Method 1: Standard frontal face detection
+        faces1 = face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(30, 30))
+        if len(faces1) > 0:
+            faces.extend(faces1)
+        
+        # Method 2: More sensitive frontal face detection
+        faces2 = face_cascade.detectMultiScale(gray, 1.05, 6, minSize=(20, 20))
+        if len(faces2) > 0:
+            faces.extend(faces2)
+        
+        # Method 3: Very sensitive frontal face detection
+        faces3 = face_cascade.detectMultiScale(gray, 1.02, 8, minSize=(15, 15))
+        if len(faces3) > 0:
+            faces.extend(faces3)
+        
+        # Method 4: Profile face detection
+        faces4 = profile_cascade.detectMultiScale(gray, 1.1, 4, minSize=(30, 30))
+        if len(faces4) > 0:
+            faces.extend(faces4)
+        
+        # Method 5: Very sensitive profile face detection
+        faces5 = profile_cascade.detectMultiScale(gray, 1.05, 6, minSize=(20, 20))
+        if len(faces5) > 0:
+            faces.extend(faces5)
+        
+        # Remove duplicates and overlapping faces
+        if len(faces) > 0:
+            # Convert to list of tuples for easier processing
+            faces = [tuple(face) for face in faces]
+            
+            # Remove overlapping faces (keep the larger one)
+            filtered_faces = []
+            for face in faces:
+                x, y, w, h = face
+                is_overlapping = False
+                
+                for existing_face in filtered_faces:
+                    ex, ey, ew, eh = existing_face
+                    # Check if faces overlap significantly
+                    overlap_x = max(0, min(x + w, ex + ew) - max(x, ex))
+                    overlap_y = max(0, min(y + h, ey + eh) - max(y, ey))
+                    overlap_area = overlap_x * overlap_y
+                    face_area = w * h
+                    existing_area = ew * eh
+                    
+                    if overlap_area > 0.5 * min(face_area, existing_area):
+                        is_overlapping = True
+                        break
+                
+                if not is_overlapping:
+                    filtered_faces.append(face)
+            
+            faces = filtered_faces
+        
+        if len(faces) > 0:
+            # Get the largest face
+            largest_face = max(faces, key=lambda x: x[2] * x[3])
+            x, y, w, h = largest_face
+            
+            # Calculate confidence based on face size and position
+            img_height, img_width = img_array.shape[:2]
+            face_area = w * h
+            img_area = img_width * img_height
+            area_ratio = face_area / img_area
+            
+            # Calculate position score (center is better)
+            center_x = x + w/2
+            center_y = y + h/2
+            distance_from_center = np.sqrt((center_x - img_width/2)**2 + (center_y - img_height/2)**2)
+            max_distance = np.sqrt((img_width/2)**2 + (img_height/2)**2)
+            position_score = 1 - (distance_from_center / max_distance)
+            
+            # Calculate overall confidence
+            confidence = min(0.9, area_ratio * 10 + position_score * 0.1)
+            
+            # Determine quality metrics
+            lighting = 'good' if np.mean(gray) > 100 else 'poor'
+            sharpness = 'high' if confidence > 0.7 else 'low'
+            positioning = 'optimal' if position_score > 0.8 else 'suboptimal'
+            
+            return jsonify({
+                'status': 'success',
+                'face_detected': True,
+                'confidence': float(confidence),
+                'face_bounds': {
+                    'x': float(x),
+                    'y': float(y),
+                    'width': float(w),
+                    'height': float(h)
+                },
+                'quality_metrics': {
+                    'lighting': lighting,
+                    'sharpness': sharpness,
+                    'positioning': positioning
+                },
+                'guidance': {
+                    'message': 'Face detected successfully',
+                    'suggestions': [
+                        'Position your face in the center of the frame',
+                        'Ensure good lighting conditions',
+                        'Keep your face steady for better analysis'
+                    ]
+                }
+            })
+        else:
+            return jsonify({
+                'status': 'success',
+                'face_detected': False,
+                'confidence': 0.0,
+                'face_bounds': {
+                    'x': 0,
+                    'y': 0,
+                    'width': 0,
+                    'height': 0
+                },
+                'quality_metrics': {
+                    'lighting': 'unknown',
+                    'sharpness': 'unknown',
+                    'positioning': 'unknown'
+                },
+                'guidance': {
+                    'message': 'No face detected',
+                    'suggestions': [
+                        'Ensure your face is clearly visible in the frame',
+                        'Check lighting conditions',
+                        'Position your face in the center of the camera',
+                        'Try moving closer to the camera'
+                    ]
+                }
+            })
+            
+    except Exception as e:
+        logger.error(f"❌ Face detection failed: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'status': 'error',
+            'face_detected': False,
+            'confidence': 0.0,
+            'face_bounds': {
+                'x': 0,
+                'y': 0,
+                'width': 0,
+                'height': 0
             },
-            'confidence_score': 0.0,
-            'error': 'Enhanced analysis unavailable'
+            'quality_metrics': {
+                'lighting': 'unknown',
+                'sharpness': 'unknown',
+                'positioning': 'unknown'
+            },
+            'guidance': {
+                'message': 'Face detection failed',
+                'suggestions': [
+                    'Please try again',
+                    'Check your internet connection',
+                    'Ensure image data is valid'
+                ]
+            },
+            'error': str(e)
+        }), 500
+
+@app.route('/api/v3/skin/analyze-enhanced-embeddings', methods=['POST'])
+def analyze_skin_enhanced_embeddings():
+    """
+    Enhanced skin analysis with embeddings and cosine similarity search
+    Accepts pre-detected face information to avoid redundant detection
+    """
+    try:
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        # Extract image data
+        image_data = data.get('image_data') or data.get('image')
+        if not image_data:
+            return jsonify({'error': 'No image data provided'}), 400
+        
+        # Check if face detection result is provided
+        face_detection_result = data.get('face_detection_result')
+        
+        # Decode base64 image
+        try:
+            image_bytes = base64.b64decode(image_data)
+        except Exception as e:
+            return jsonify({'error': f'Invalid image data: {e}'}), 400
+        
+        # Convert to numpy array for face detection (if needed)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img_array = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img_array is None:
+            return jsonify({'error': 'Failed to decode image'}), 400
+        
+        # Use provided face detection result or perform detection
+        if face_detection_result and face_detection_result.get('face_detected'):
+            # Use the provided face detection result
+            logger.info("Using provided face detection result")
+            face_detection_result = {
+                'detected': face_detection_result.get('face_detected', False),
+                'confidence': face_detection_result.get('confidence', 0.0),
+                'face_bounds': face_detection_result.get('face_bounds', {'x': 0, 'y': 0, 'width': 0, 'height': 0}),
+                'method': 'frontend_provided',
+                'quality_metrics': {
+                    'overall_quality': 'good' if face_detection_result.get('confidence', 0.0) > 0.7 else 'poor',
+                    'quality_score': face_detection_result.get('confidence', 0.0)
+                }
+            }
+        else:
+            # Perform face detection on backend
+            logger.info("Performing face detection on backend")
+            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+            gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+            
+            face_detection_result = {
+                'detected': False,
+                'confidence': 0.0,
+                'face_bounds': {'x': 0, 'y': 0, 'width': 0, 'height': 0},
+                'method': 'opencv_haar',
+                'quality_metrics': {
+                    'overall_quality': 'unknown',
+                    'quality_score': 0.0
+                }
+            }
+            
+            if len(faces) > 0:
+                # Get the largest face
+                largest_face = max(faces, key=lambda x: x[2] * x[3])
+                x, y, w, h = largest_face
+                
+                # Calculate confidence based on face size and position
+                img_height, img_width = img_array.shape[:2]
+                face_area = w * h
+                img_area = img_width * img_height
+                area_ratio = face_area / img_area
+                
+                # Calculate position score (center is better)
+                center_x = x + w/2
+                center_y = y + h/2
+                distance_from_center = np.sqrt((center_x - img_width/2)**2 + (center_y - img_height/2)**2)
+                max_distance = np.sqrt((img_width/2)**2 + (img_height/2)**2)
+                position_score = 1 - (distance_from_center / max_distance)
+                
+                # Calculate overall confidence
+                confidence = min(0.9, area_ratio * 10 + position_score * 0.1)
+                
+                face_detection_result = {
+                    'detected': True,
+                    'confidence': float(confidence),
+                    'face_bounds': {
+                        'x': float(x),
+                        'y': float(y),
+                        'width': float(w),
+                        'height': float(h)
+                    },
+                    'method': 'opencv_haar',
+                    'quality_metrics': {
+                        'overall_quality': 'good' if confidence > 0.7 else 'poor',
+                        'quality_score': float(confidence)
+                    }
+                }
+        
+        # Get user demographics (optional)
+        demographics = data.get('demographics', {})
+        user_parameters = data.get('user_parameters', {})
+        
+        # Extract age and race categories from user parameters
+        age_category = user_parameters.get('age_category', demographics.get('age_category'))
+        race_category = user_parameters.get('race_category', demographics.get('race_category'))
+        
+        # Perform comprehensive analysis using integrated system
+        if integrated_analyzer:
+            results = integrated_analyzer.analyze_skin_comprehensive(image_bytes, demographics)
+        else:
+            return jsonify({'error': 'Analysis system not available'}), 500
+        
+        # Generate embeddings for cosine similarity search
+        try:
+            from enhanced_embeddings import EnhancedEmbeddingSystem
+            embedding_system = EnhancedEmbeddingSystem()
+            
+            # Generate embeddings for the user image
+            user_embedding_result = embedding_system.generate_enhanced_embeddings(image_bytes)
+            user_embedding = user_embedding_result.get('combined', [])
+            
+            # Perform cosine similarity search against condition embeddings
+            similarity_results = []
+            if hasattr(integrated_analyzer, 'condition_embeddings') and integrated_analyzer.condition_embeddings:
+                for condition, embeddings in integrated_analyzer.condition_embeddings.items():
+                    if embeddings and len(embeddings) > 0:
+                        # Calculate cosine similarity with each embedding
+                        similarities = []
+                        for embedding in embeddings[:5]:  # Use first 5 embeddings per condition
+                            if len(embedding) == len(user_embedding):
+                                similarity = np.dot(user_embedding, embedding) / (np.linalg.norm(user_embedding) * np.linalg.norm(embedding))
+                                similarities.append(similarity)
+                        
+                        if similarities:
+                            avg_similarity = np.mean(similarities)
+                            max_similarity = np.max(similarities)
+                            similarity_results.append({
+                                'condition': condition,
+                                'avg_similarity': float(avg_similarity),
+                                'max_similarity': float(max_similarity),
+                                'confidence': float(max_similarity * 100)
+                            })
+                
+                # Sort by max similarity
+                similarity_results.sort(key=lambda x: x['max_similarity'], reverse=True)
+            
+        except Exception as e:
+            logger.error(f"❌ Embedding generation failed: {e}")
+            similarity_results = []
+        
+        # Convert results for JSON serialization
+        serializable_results = convert_numpy_types(results)
+        
+        # Build enhanced response
+        enhanced_response = {
+            'status': 'success',
+            'timestamp': datetime.now().isoformat(),
+            'analysis_type': 'comprehensive',
+            'demographics': {
+                'age_category': age_category,
+                'race_category': race_category
+            },
+            'face_detection': face_detection_result,
+            'skin_analysis': {
+                'overall_health_score': serializable_results.get('analysis_summary', {}).get('overall_health_score', 0.0),
+                'texture': serializable_results.get('basic_analysis', {}).get('texture', 'unknown'),
+                'tone': serializable_results.get('basic_analysis', {}).get('tone', 'unknown'),
+                'conditions_detected': serializable_results.get('basic_analysis', {}).get('conditions_detected', []),
+                'analysis_confidence': serializable_results.get('analysis_summary', {}).get('confidence', 0.0)
+            },
+            'similarity_search': {
+                'dataset_used': 'integrated_embeddings',
+                'similar_cases': similarity_results[:5]  # Top 5 matches
+            },
+            'recommendations': {
+                'immediate_care': serializable_results.get('analysis_summary', {}).get('immediate_recommendations', []),
+                'long_term_care': serializable_results.get('analysis_summary', {}).get('long_term_recommendations', []),
+                'professional_consultation': serializable_results.get('analysis_summary', {}).get('professional_consultation', False)
+            },
+            'quality_assessment': {
+                'image_quality': 'good' if face_detection_result['detected'] else 'poor',
+                'confidence_reliability': 'high' if face_detection_result['confidence'] > 0.7 else 'low'
+            }
         }
+        
+        return jsonify(enhanced_response)
+        
+    except Exception as e:
+        logger.error(f"❌ Enhanced embeddings analysis failed: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
 
-def main():
-    """Test the enhanced analysis API"""
-    print("🧠 Testing Enhanced Analysis API")
-    
-    # Create test image
-    test_image = np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8)
-    test_image_bytes = cv2.imencode('.jpg', test_image)[1].tobytes()
-    
-    # Initialize API
-    api = EnhancedAnalysisAPI()
-    
-    # Test comprehensive analysis
-    result = api.analyze_skin_enhanced(test_image_bytes, 'comprehensive')
-    
-    print(f"✅ Enhanced analysis completed")
-    print(f"🎯 Confidence: {result['confidence_score']:.3f}")
-    print(f"📊 Health Score: {result['skin_conditions']['health_score']:.3f}")
-    print(f"🔍 Face Detected: {result['face_detection']['face_detected']}")
+@app.route('/api/v3/system/status', methods=['GET'])
+def get_system_status():
+    """
+    Get system status and capabilities
+    """
+    try:
+        if integrated_analyzer:
+            status = integrated_analyzer.get_system_status()
+        else:
+            status = {
+                'system_status': 'error',
+                'error': 'Analysis system not available'
+            }
+        
+        return jsonify(status)
+        
+    except Exception as e:
+        logger.error(f"❌ Status check failed: {e}")
+        return jsonify({'error': str(e)}), 500
 
-if __name__ == "__main__":
-    main() 
+@app.route('/api/v3/system/health', methods=['GET'])
+def health_check():
+    """
+    Health check endpoint
+    """
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'service': 'Enhanced Skin Analysis API',
+        'version': '3.0.0'
+    })
+
+@app.route('/api/v3/system/capabilities', methods=['GET'])
+def get_capabilities():
+    """
+    Get system capabilities and available analysis types
+    """
+    capabilities = {
+        'analysis_types': {
+            'basic': {
+                'description': 'Basic skin condition analysis',
+                'endpoint': '/api/v3/skin/analyze-basic',
+                'requires_demographics': False
+            },
+            'comprehensive': {
+                'description': 'Comprehensive analysis with condition matching',
+                'endpoint': '/api/v3/skin/analyze-comprehensive',
+                'requires_demographics': False
+            },
+            'normalized': {
+                'description': 'Normalized analysis with demographic-specific healthy baselines',
+                'endpoint': '/api/v3/skin/analyze-normalized',
+                'requires_demographics': True
+            }
+        },
+        'datasets': {
+            'condition_embeddings': '6 skin conditions with 2304-dimensional embeddings',
+            'demographic_baselines': '103 demographic groups with healthy skin baselines',
+            'utkface_dataset': '23,705 healthy face images with demographic metadata'
+        },
+        'features': {
+            'healthy_baseline_comparison': True,
+            'condition_similarity_analysis': True,
+            'demographic_normalization': True,
+            'multi_model_embeddings': True,
+            'quality_assessment': True
+        },
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    return jsonify(capabilities)
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000) 
