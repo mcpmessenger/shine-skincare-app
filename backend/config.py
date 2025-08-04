@@ -13,7 +13,7 @@ class Config:
     """Configuration class for the Operation Right Brain backend."""
     
     # Flask Configuration
-    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    SECRET_KEY = os.getenv('SECRET_KEY')
     DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
     
     # Google Cloud Configuration
@@ -115,6 +115,7 @@ class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
     LOG_LEVEL = 'DEBUG'
+    CORS_ORIGINS = ['http://localhost:3000']
 
 class ProductionConfig(Config):
     """Production configuration."""

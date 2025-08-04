@@ -174,6 +174,13 @@ class UTKFaceIntegration:
                     logger.warning(f"Skipping filename with insufficient parts: {filename.name}")
         
         df = pd.DataFrame(data)
+        
+        # Add age_group column for analysis
+        if not df.empty:
+            df['age_group'] = pd.cut(df['age'], 
+                                    bins=[0, 10, 20, 30, 40, 50, 60, 70, 80, 100], 
+                                    labels=['0-9', '10-19', '20-29', '30-39', '40-49', '50-59', '60-69', '70-79', '80+'])
+        
         logger.info(f"✅ Metadata extraction complete. Found {len(df)} valid images.")
         return df
     
