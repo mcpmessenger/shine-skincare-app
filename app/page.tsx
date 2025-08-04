@@ -115,7 +115,7 @@ export default function EnhancedSkinAnalysis() {
 
   // Upload face detection states
   const [uploadFaceDetected, setUploadFaceDetected] = useState(false)
-  const [uploadFaceBounds, setUploadFaceBounds] = useState({ x: 0, y: 0, width: 0, height: 0 })
+  const [uploadFaceBounds, setUploadFaceBounds] = useState<{ x: number; y: number; width: number; height: number }>({ x: 0, y: 0, width: 0, height: 0 })
   const [uploadFaceDetectionResult, setUploadFaceDetectionResult] = useState<RealTimeDetectionResult | null>(null)
   const [isDetectingFace, setIsDetectingFace] = useState(false)
 
@@ -158,7 +158,7 @@ export default function EnhancedSkinAnalysis() {
     let recommendedProducts = [...products]
     
     // Filter by detected conditions
-    const conditions = analysis.skin_analysis.conditions_detected.map(c => c.condition.toLowerCase())
+    const conditions = analysis?.skin_analysis?.conditions_detected?.map(c => c.condition.toLowerCase()) || []
     
     if (conditions.some(c => c.includes('acne') || c.includes('breakout'))) {
       recommendedProducts = recommendedProducts.filter(p => 
@@ -269,7 +269,7 @@ export default function EnhancedSkinAnalysis() {
       const imageData = canvas.toDataURL('image/jpeg', 0.8)
       
       // Call real-time detection API
-      const response = await fetch('http://localhost:5001/api/v3/face/detect', {
+      const response = await fetch('/api/v3/face/detect', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -367,7 +367,7 @@ export default function EnhancedSkinAnalysis() {
       setIsDetectingFace(true)
       
       // Call face detection API
-      const response = await fetch('http://localhost:5001/api/v3/face/detect', {
+      const response = await fetch('/api/v3/face/detect', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -381,7 +381,7 @@ export default function EnhancedSkinAnalysis() {
         const detectionResult: RealTimeDetectionResult = await response.json()
         setUploadFaceDetectionResult(detectionResult)
         
-        if (detectionResult.face_detected) {
+        if (detectionResult.face_detected && detectionResult.face_bounds) {
           setUploadFaceDetected(true)
           setUploadFaceBounds(detectionResult.face_bounds)
         } else {
@@ -405,17 +405,37 @@ export default function EnhancedSkinAnalysis() {
       setAnalysisResult(null)
       setAnalysisLoading(true)
       
-      const response = await fetch('http://localhost:5001/api/v3/skin/analyze-enhanced', {
+      // First try the enhanced embeddings system
+      let response = await fetch('/api/v3/skin/analyze-enhanced-embeddings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           image_data: imageData,
-          age_category: ageCategory,
-          race_category: raceCategory
+          analysis_type: 'comprehensive',
+          user_parameters: {
+            age_category: ageCategory,
+            race_category: raceCategory
+          }
         }),
       })
+
+      // If enhanced embeddings fails, fallback to original system
+      if (!response.ok) {
+        console.log('Enhanced embeddings system unavailable, trying fallback...')
+        response = await fetch('/api/v3/skin/analyze-enhanced', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            image_data: imageData,
+            age_category: ageCategory,
+            race_category: raceCategory
+          }),
+        })
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -877,7 +897,7 @@ export default function EnhancedSkinAnalysis() {
                         />
                         
                         {/* Face Detection Overlay */}
-                        {uploadFaceDetected && (
+                        {uploadFaceDetected && uploadFaceBounds && (
                           <div style={{
                             position: 'absolute',
                             top: '0',
@@ -897,10 +917,10 @@ export default function EnhancedSkinAnalysis() {
                               }}
                             >
                               <rect
-                                x={`${uploadFaceBounds.x}%`}
-                                y={`${uploadFaceBounds.y}%`}
-                                width={`${uploadFaceBounds.width}%`}
-                                height={`${uploadFaceBounds.height}%`}
+                                x={`${uploadFaceBounds?.x || 0}%`}
+                                y={`${uploadFaceBounds?.y || 0}%`}
+                                width={`${uploadFaceBounds?.width || 0}%`}
+                                height={`${uploadFaceBounds?.height || 0}%`}
                                 fill="none"
                                 stroke="#10b981"
                                 strokeWidth="2"
@@ -910,29 +930,29 @@ export default function EnhancedSkinAnalysis() {
                               
                               {/* Corner Indicators */}
                               <circle
-                                cx={`${uploadFaceBounds.x}%`}
-                                cy={`${uploadFaceBounds.y}%`}
+                                cx={`${uploadFaceBounds?.x || 0}%`}
+                                cy={`${uploadFaceBounds?.y || 0}%`}
                                 r="3"
                                 fill="#10b981"
                                 opacity="0.9"
                               />
                               <circle
-                                cx={`${uploadFaceBounds.x + uploadFaceBounds.width}%`}
-                                cy={`${uploadFaceBounds.y}%`}
+                                cx={`${(uploadFaceBounds?.x || 0) + (uploadFaceBounds?.width || 0)}%`}
+                                cy={`${uploadFaceBounds?.y || 0}%`}
                                 r="3"
                                 fill="#10b981"
                                 opacity="0.9"
                               />
                               <circle
-                                cx={`${uploadFaceBounds.x}%`}
-                                cy={`${uploadFaceBounds.y + uploadFaceBounds.height}%`}
+                                cx={`${uploadFaceBounds?.x || 0}%`}
+                                cy={`${(uploadFaceBounds?.y || 0) + (uploadFaceBounds?.height || 0)}%`}
                                 r="3"
                                 fill="#10b981"
                                 opacity="0.9"
                               />
                               <circle
-                                cx={`${uploadFaceBounds.x + uploadFaceBounds.width}%`}
-                                cy={`${uploadFaceBounds.y + uploadFaceBounds.height}%`}
+                                cx={`${(uploadFaceBounds?.x || 0) + (uploadFaceBounds?.width || 0)}%`}
+                                cy={`${(uploadFaceBounds?.y || 0) + (uploadFaceBounds?.height || 0)}%`}
                                 r="3"
                                 fill="#10b981"
                                 opacity="0.9"
@@ -942,8 +962,8 @@ export default function EnhancedSkinAnalysis() {
                             {/* Face Detection Label */}
                             <div style={{
                               position: 'absolute',
-                              top: `${Math.max(0, uploadFaceBounds.y - 5)}%`,
-                              left: `${uploadFaceBounds.x}%`,
+                              top: `${Math.max(0, (uploadFaceBounds?.y || 0) - 5)}%`,
+                              left: `${uploadFaceBounds?.x || 0}%`,
                               backgroundColor: 'rgba(16, 185, 129, 0.9)',
                               color: '#000000',
                               padding: '0.25rem 0.5rem',
@@ -1114,6 +1134,102 @@ export default function EnhancedSkinAnalysis() {
                 padding: '2rem',
                 border: `1px solid ${getBorderColor(0.1)}`
               }}>
+                {/* Phase 2: Demographic Input for Camera */}
+                <div style={{
+                  marginBottom: '2rem'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginBottom: '1rem'
+                  }}>
+                    <User width={20} height={20} style={{ opacity: 0.7 }} />
+                    <h3 style={{
+                      fontSize: '1.1rem',
+                      fontWeight: 400,
+                      color: getTextColor(1)
+                    }}>
+                      Demographic Information (Optional)
+                    </h3>
+                  </div>
+                  
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                    marginBottom: '1rem'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '0.9rem',
+                        color: getTextColor(0.7),
+                        marginBottom: '0.5rem'
+                      }}>
+                        Age
+                      </label>
+                      <select
+                        className="mobile-select"
+                        value={ageCategory}
+                        onChange={(e) => setAgeCategory(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          backgroundColor: getBgColor(0.1),
+                          border: `1px solid ${getBorderColor(0.2)}`,
+                          borderRadius: '8px',
+                          color: getTextColor(1),
+                          fontSize: '0.9rem'
+                        }}
+                      >
+                        <option value="">Select age category</option>
+                        {ageCategories.map(category => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div style={{ flex: 1 }}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '0.9rem',
+                        color: getTextColor(0.7),
+                        marginBottom: '0.5rem'
+                      }}>
+                        Ethnicity
+                      </label>
+                      <select
+                        className="mobile-select"
+                        value={raceCategory}
+                        onChange={(e) => setRaceCategory(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          backgroundColor: getBgColor(0.1),
+                          border: `1px solid ${getBorderColor(0.2)}`,
+                          borderRadius: '8px',
+                          color: getTextColor(1),
+                          fontSize: '0.9rem'
+                        }}
+                      >
+                        <option value="">Select race/ethnicity</option>
+                        {raceCategories.map(category => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <p style={{
+                    fontSize: '0.8rem',
+                    color: getTextColor(0.5),
+                    fontStyle: 'italic'
+                  }}>
+                    Providing demographic information helps improve analysis accuracy and provides more personalized recommendations.
+                  </p>
+                </div>
+
                 {/* Camera View */}
                 <div style={{
                   position: 'relative',
@@ -1425,13 +1541,13 @@ export default function EnhancedSkinAnalysis() {
                         }}
                       />
                       {/* Face detection overlay if available */}
-                      {analysisResult.face_detection.detected && (
+                      {analysisResult?.face_detection?.detected && (
                         <div style={{
                           position: 'absolute',
-                          top: analysisResult.face_detection.face_bounds.y,
-                          left: analysisResult.face_detection.face_bounds.x,
-                          width: analysisResult.face_detection.face_bounds.width,
-                          height: analysisResult.face_detection.face_bounds.height,
+                          top: analysisResult?.face_detection?.face_bounds?.y || 0,
+                          left: analysisResult?.face_detection?.face_bounds?.x || 0,
+                          width: analysisResult?.face_detection?.face_bounds?.width || 0,
+                          height: analysisResult?.face_detection?.face_bounds?.height || 0,
                           border: '2px solid #10b981',
                           borderRadius: '4px',
                           pointerEvents: 'none'
@@ -1444,7 +1560,7 @@ export default function EnhancedSkinAnalysis() {
                       marginTop: '0.5rem',
                       margin: 0
                     }}>
-                      Confidence: {Math.round(analysisResult.face_detection.confidence * 100)}%
+                      Confidence: {analysisResult?.face_detection?.confidence ? Math.round(analysisResult.face_detection.confidence * 100) : 0}%
                     </p>
                   </div>
                 )}
@@ -1483,7 +1599,7 @@ export default function EnhancedSkinAnalysis() {
                       fontWeight: 200,
                       color: '#10b981'
                     }}>
-                      {Math.round(analysisResult.skin_analysis.overall_health_score * 100)}%
+                      {analysisResult?.skin_analysis?.overall_health_score ? Math.round(analysisResult.skin_analysis.overall_health_score * 100) : 0}%
                     </div>
                     <div style={{
                       flex: 1,
@@ -1493,7 +1609,7 @@ export default function EnhancedSkinAnalysis() {
                       overflow: 'hidden'
                     }}>
                       <div style={{
-                        width: `${analysisResult.skin_analysis.overall_health_score * 100}%`,
+                        width: `${analysisResult?.skin_analysis?.overall_health_score ? analysisResult.skin_analysis.overall_health_score * 100 : 0}%`,
                         height: '100%',
                         backgroundColor: '#10b981',
                         transition: 'width 0.3s ease'
@@ -1503,7 +1619,7 @@ export default function EnhancedSkinAnalysis() {
                 </div>
 
                 {/* Detected Conditions */}
-                {analysisResult.skin_analysis.conditions_detected.length > 0 && (
+                {analysisResult?.skin_analysis?.conditions_detected?.length > 0 && (
                   <div style={{
                     marginBottom: '2rem'
                   }}>
@@ -1800,26 +1916,26 @@ export default function EnhancedSkinAnalysis() {
                   paddingTop: '1rem'
                 }}>
                   <p style={{ margin: '0.25rem 0' }}>
-                    Analysis Method: {analysisResult.face_detection.method}
+                    Analysis Method: {analysisResult?.face_detection?.method || 'Unknown'}
                   </p>
                   <p style={{ margin: '0.25rem 0' }}>
-                    Confidence: {Math.round(analysisResult.skin_analysis.analysis_confidence * 100)}%
+                    Confidence: {analysisResult?.skin_analysis?.analysis_confidence ? Math.round(analysisResult.skin_analysis.analysis_confidence * 100) : 0}%
                   </p>
                   <p style={{ margin: '0.25rem 0' }}>
-                    Dataset: {analysisResult.similarity_search.dataset_used}
+                    Dataset: {analysisResult?.similarity_search?.dataset_used || 'Unknown'}
                   </p>
-                  {analysisResult.demographics.age_category && (
+                  {analysisResult?.demographics?.age_category && (
                     <p style={{ margin: '0.25rem 0' }}>
                       Age Category: {analysisResult.demographics.age_category}
                     </p>
                   )}
-                  {analysisResult.demographics.race_category && (
+                  {analysisResult?.demographics?.race_category && (
                     <p style={{ margin: '0.25rem 0' }}>
                       Race Category: {analysisResult.demographics.race_category}
                     </p>
                   )}
+                                  </div>
                 </div>
-              </div>
             ) : (
               <div style={{
                 backgroundColor: getBgColor(0.05),

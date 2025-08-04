@@ -4,15 +4,19 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
+    // Get the request body as JSON
+    const requestBody = await request.json();
     
     // Get the backend URL from environment or use default
-    const backendUrl = process.env.BACKEND_URL || 'http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001';
     
     // Forward the request to the Flask backend
     const response = await fetch(`${backendUrl}/api/v3/skin/analyze-enhanced`, {
       method: 'POST',
-      body: formData,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
