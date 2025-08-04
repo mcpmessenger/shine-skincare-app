@@ -98,6 +98,27 @@ class EnhancedAnalysisAPI:
                 'total_parameters': embedding_result['metadata']['total_parameters']
             }
             
+            # Convert numpy types to Python types for JSON serialization
+            def convert_numpy_types(obj):
+                """Convert numpy types to Python types for JSON serialization"""
+                if isinstance(obj, np.integer):
+                    return int(obj)
+                elif isinstance(obj, np.floating):
+                    return float(obj)
+                elif isinstance(obj, np.ndarray):
+                    return obj.tolist()
+                elif isinstance(obj, np.bool_):
+                    return bool(obj)
+                elif isinstance(obj, dict):
+                    return {key: convert_numpy_types(value) for key, value in obj.items()}
+                elif isinstance(obj, list):
+                    return [convert_numpy_types(item) for item in obj]
+                else:
+                    return obj
+            
+            # Convert the result
+            analysis_result = convert_numpy_types(analysis_result)
+            
             logger.info(f"✅ Enhanced analysis completed: {analysis_type}")
             return analysis_result
             
@@ -119,7 +140,12 @@ class EnhancedAnalysisAPI:
         # Face detection and isolation
         logger.info("🔍 Starting face detection...")
         logger.info(f"Image array type: {type(image_array_bgr)}, shape: {image_array_bgr.shape}, dtype: {image_array_bgr.dtype}")
-        face_analysis = self.skin_analyzer.analyze_face_detection(image_array_bgr)
+        
+        # Convert numpy array back to bytes for the analyzer
+        _, buffer = cv2.imencode('.jpg', image_array_bgr)
+        image_bytes = buffer.tobytes()
+        
+        face_analysis = self.skin_analyzer.analyze_face_with_demographics(image_bytes)
         logger.info(f"✅ Face detection completed: {face_analysis.get('face_detected')}")
         
         # Extract face ROI if detected
@@ -134,7 +160,18 @@ class EnhancedAnalysisAPI:
         # Skin condition analysis
         logger.info("🔍 Starting skin conditions analysis...")
         logger.info(f"Analysis image type: {type(image_array_bgr)}, shape: {image_array_bgr.shape}")
-        skin_analysis = self.skin_analyzer.analyze_skin_conditions(image_array_bgr, face_roi)
+        
+        # Use the face analysis result for skin analysis
+        skin_analysis = face_analysis.get('skin_analysis', {})
+        if not skin_analysis:
+            # Fallback skin analysis
+            skin_analysis = {
+                'health_score': 0.5,
+                'conditions_detected': [],
+                'texture': 'unknown',
+                'tone': 'unknown',
+                'analysis_confidence': 0.0
+            }
         logger.info(f"✅ Skin analysis completed: health_score={skin_analysis.get('health_score', 0)}")
         
         # Demographic analysis
