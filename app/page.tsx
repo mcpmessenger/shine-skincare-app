@@ -405,8 +405,8 @@ export default function EnhancedSkinAnalysis() {
       setAnalysisResult(null)
       setAnalysisLoading(true)
       
-      // First try the enhanced embeddings system
-      let response = await fetch('/api/v3/skin/analyze-enhanced-embeddings', {
+      // First try the real database integration system
+      let response = await fetch('/api/v3/skin/analyze-real-database', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -420,6 +420,25 @@ export default function EnhancedSkinAnalysis() {
           }
         }),
       })
+
+      // If real database fails, try enhanced embeddings system
+      if (!response.ok) {
+        console.log('Real database system unavailable, trying enhanced embeddings...')
+        response = await fetch('/api/v3/skin/analyze-enhanced-embeddings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            image_data: imageData,
+            analysis_type: 'comprehensive',
+            user_parameters: {
+              age_category: ageCategory,
+              race_category: raceCategory
+            }
+          }),
+        })
+      }
 
       // If enhanced embeddings fails, fallback to original system
       if (!response.ok) {
@@ -1560,7 +1579,7 @@ export default function EnhancedSkinAnalysis() {
                       marginTop: '0.5rem',
                       margin: 0
                     }}>
-                      Confidence: {analysisResult?.face_detection?.confidence ? Math.round(analysisResult.face_detection.confidence * 100) : 0}%
+                      Confidence: {analysisResult?.face_detection?.confidence ? Math.round(analysisResult.face_detection?.confidence * 100) : 0}%
                     </p>
                   </div>
                 )}
@@ -1599,7 +1618,7 @@ export default function EnhancedSkinAnalysis() {
                       fontWeight: 200,
                       color: '#10b981'
                     }}>
-                      {analysisResult?.skin_analysis?.overall_health_score ? Math.round(analysisResult.skin_analysis.overall_health_score * 100) : 0}%
+                      {analysisResult?.skin_analysis?.overall_health_score ? Math.round(analysisResult.skin_analysis?.overall_health_score * 100) : 0}%
                     </div>
                     <div style={{
                       flex: 1,
@@ -1609,7 +1628,7 @@ export default function EnhancedSkinAnalysis() {
                       overflow: 'hidden'
                     }}>
                       <div style={{
-                        width: `${analysisResult?.skin_analysis?.overall_health_score ? analysisResult.skin_analysis.overall_health_score * 100 : 0}%`,
+                        width: `${analysisResult?.skin_analysis?.overall_health_score ? analysisResult.skin_analysis?.overall_health_score * 100 : 0}%`,
                         height: '100%',
                         backgroundColor: '#10b981',
                         transition: 'width 0.3s ease'
@@ -1631,7 +1650,7 @@ export default function EnhancedSkinAnalysis() {
                     }}>
                       Detected Conditions
                     </h3>
-                    {analysisResult.skin_analysis.conditions_detected.map((condition, index) => (
+                    {analysisResult?.skin_analysis?.conditions_detected?.map((condition, index) => (
                       <div key={index} style={{
                         padding: '1rem',
                         backgroundColor: getBgColor(0.05),
@@ -1724,7 +1743,7 @@ export default function EnhancedSkinAnalysis() {
                       padding: 0,
                       margin: 0
                     }}>
-                      {analysisResult.recommendations.immediate_care.map((rec, index) => (
+                      {analysisResult.recommendations?.immediate_care?.map((rec, index) => (
                         <li key={index} style={{
                           padding: '0.5rem 0',
                           borderBottom: `1px solid ${getBorderColor(0.1)}`,
@@ -1752,7 +1771,7 @@ export default function EnhancedSkinAnalysis() {
                       padding: 0,
                       margin: 0
                     }}>
-                      {analysisResult.recommendations.long_term_care.map((rec, index) => (
+                      {analysisResult.recommendations?.long_term_care?.map((rec, index) => (
                         <li key={index} style={{
                           padding: '0.5rem 0',
                           borderBottom: `1px solid ${getBorderColor(0.1)}`,
@@ -1767,7 +1786,7 @@ export default function EnhancedSkinAnalysis() {
                 </div>
 
                 {/* Professional Consultation Warning */}
-                {analysisResult.recommendations.professional_consultation && (
+                {analysisResult.recommendations?.professional_consultation && (
                   <div style={{
                     padding: '1rem',
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -1803,7 +1822,7 @@ export default function EnhancedSkinAnalysis() {
                     gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
                     gap: '1rem'
                   }}>
-                    {getProductRecommendations(analysisResult).map((product, index) => (
+                    {analysisResult && getProductRecommendations(analysisResult).map((product, index) => (
                       <div key={index} style={{
                         backgroundColor: getBgColor(0.05),
                         borderRadius: '12px',
@@ -1919,7 +1938,7 @@ export default function EnhancedSkinAnalysis() {
                     Analysis Method: {analysisResult?.face_detection?.method || 'Unknown'}
                   </p>
                   <p style={{ margin: '0.25rem 0' }}>
-                    Confidence: {analysisResult?.skin_analysis?.analysis_confidence ? Math.round(analysisResult.skin_analysis.analysis_confidence * 100) : 0}%
+                    Confidence: {analysisResult?.skin_analysis?.analysis_confidence ? Math.round(analysisResult.skin_analysis?.analysis_confidence * 100) : 0}%
                   </p>
                   <p style={{ margin: '0.25rem 0' }}>
                     Dataset: {analysisResult?.similarity_search?.dataset_used || 'Unknown'}
