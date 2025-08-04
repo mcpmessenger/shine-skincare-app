@@ -26,6 +26,16 @@ except ImportError as e:
     logger.warning(f"Enhanced Embeddings System not available: {e}")
     ENHANCED_EMBEDDINGS_AVAILABLE = False
 
+# Import the real database integration system
+try:
+    from real_database_integration import RealDatabaseIntegration
+    REAL_DATABASE_AVAILABLE = True
+    logger.info("✅ Real Database Integration System imported successfully")
+except ImportError as e:
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Real Database Integration System not available: {e}")
+    REAL_DATABASE_AVAILABLE = False
+
 # OpenCV import - moved to top level
 try:
     import cv2
@@ -62,6 +72,16 @@ if ENHANCED_EMBEDDINGS_AVAILABLE:
         logger.error(f"Failed to initialize Enhanced Analysis API: {e}")
         enhanced_api = None
 
+# Initialize Real Database Integration System
+real_db_integration = None
+if REAL_DATABASE_AVAILABLE:
+    try:
+        real_db_integration = RealDatabaseIntegration()
+        logger.info("✅ Real Database Integration System initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize Real Database Integration System: {e}")
+        real_db_integration = None
+
 # Configuration
 class Config:
     """Configuration for Operation Right Brain Backend"""
@@ -75,6 +95,7 @@ class Config:
     DEMOGRAPHIC_ANALYSIS_ENABLED = True
     MULTI_DATASET_ENABLED = True
     ENHANCED_EMBEDDINGS_ENABLED = ENHANCED_EMBEDDINGS_AVAILABLE and enhanced_api is not None
+    REAL_DATABASE_ENABLED = REAL_DATABASE_AVAILABLE and real_db_integration is not None
 
 app.config.from_object(Config)
 
@@ -230,14 +251,254 @@ def enhanced_embeddings_status():
         'capabilities': {
             'analysis_types': ['comprehensive', 'focused', 'research'] if enhanced_api else [],
             'datasets': ['ham10000', 'isic_2020', 'dermnet', 'fitzpatrick17k', 'skin_lesion_archive'] if enhanced_api else [],
-            'embedding_dimensions': 5127 if enhanced_api else 0,
-            'parameters': 7 if enhanced_api else 0
-        },
-        'performance': {
-            'average_analysis_time': '0.362s' if enhanced_api else 'N/A',
-            'error_rate': '0.0%' if enhanced_api else 'N/A'
+            'parameters': ['demographic', 'clinical', 'imaging', 'environmental'] if enhanced_api else []
         }
     })
+
+# Real Database Integration Status Endpoint
+@app.route('/api/v3/real-database/status', methods=['GET'])
+def real_database_status():
+    """Get status of the real database integration system"""
+    if real_db_integration:
+        stats = real_db_integration.get_database_stats()
+        return jsonify({
+            'status': 'available',
+            'system_info': {
+                'real_database_available': REAL_DATABASE_AVAILABLE,
+                'system_initialized': real_db_integration is not None,
+                'enabled': Config.REAL_DATABASE_ENABLED
+            },
+            'database_stats': stats,
+            'capabilities': {
+                'analysis_types': ['real_condition_matching', 'database_search', 'similarity_analysis'],
+                'datasets': list(stats['conditions'].keys()) if stats else [],
+                'total_images': stats.get('total_images', 0),
+                'total_conditions': stats.get('total_conditions', 0)
+            }
+        })
+    else:
+        return jsonify({
+            'status': 'unavailable',
+            'system_info': {
+                'real_database_available': REAL_DATABASE_AVAILABLE,
+                'system_initialized': False,
+                'enabled': False
+            },
+            'database_stats': {},
+            'capabilities': {
+                'analysis_types': [],
+                'datasets': [],
+                'total_images': 0,
+                'total_conditions': 0
+            }
+        })
+
+# Real Database Analysis Endpoint
+@app.route('/api/v3/skin/analyze-real-database', methods=['POST'])
+def analyze_skin_real_database():
+    """
+    🧠 Real Database Integration - Actual Skin Condition Matching
+    Uses real medical datasets for skin condition analysis
+    """
+    try:
+        # Get request data
+        if request.is_json:
+            data = request.get_json()
+            image_data = data.get('image_data')
+            analysis_type = data.get('analysis_type', 'comprehensive')
+            user_parameters = data.get('user_parameters', {})
+        else:
+            # Handle file upload
+            if 'image' not in request.files:
+                return jsonify({'error': 'No image provided'}), 400
+            
+            file = request.files['image']
+            image_data = file.read()
+            analysis_type = request.form.get('analysis_type', 'comprehensive')
+            user_parameters = json.loads(request.form.get('user_parameters', '{}'))
+        
+        if not image_data:
+            return jsonify({'error': 'No image data provided'}), 400
+        
+        # Check if real database system is available
+        if not REAL_DATABASE_AVAILABLE or real_db_integration is None:
+            return jsonify({
+                'error': 'Real database integration system not available',
+                'fallback': 'Use /api/v3/skin/analyze-enhanced instead'
+            }), 503
+        
+        # Convert image_data to bytes if it's a string
+        if isinstance(image_data, str):
+            if image_data.startswith('data:image'):
+                # Base64 data URL format
+                try:
+                    base64_data = image_data.split(',')[1]
+                    image_bytes = base64.b64decode(base64_data)
+                except Exception as e:
+                    logger.error(f"Base64 decode error: {e}")
+                    return jsonify({'error': 'Invalid image data format'}), 400
+            else:
+                # Assume it's raw base64 string
+                try:
+                    image_bytes = base64.b64decode(image_data)
+                except Exception as e:
+                    logger.error(f"Base64 decode error: {e}")
+                    return jsonify({'error': 'Invalid image data format'}), 400
+        elif isinstance(image_data, bytes):
+            image_bytes = image_data
+        else:
+            logger.error(f"Invalid image data type: {type(image_data)}")
+            return jsonify({'error': 'Invalid image data type'}), 400
+        
+        # Convert bytes to numpy array
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            logger.error("Failed to decode image")
+            return jsonify({'error': 'Failed to decode image'}), 400
+        
+        # Perform real database analysis
+        logger.info(f"🧠 Performing real database analysis (type: {analysis_type})")
+        real_analysis = real_db_integration.analyze_skin_conditions_real(img)
+        
+        # Get database stats
+        db_stats = real_db_integration.get_database_stats()
+        
+        # Face detection (using existing method)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        faces = face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(30, 30))
+        
+        face_detection = {
+            'detected': len(faces) > 0,
+            'confidence': min(0.85 + (len(faces) * 0.05), 0.95) if len(faces) > 0 else 0.0,
+            'face_bounds': {'x': 0, 'y': 0, 'width': 0, 'height': 0},
+            'method': 'real_database_opencv',
+            'quality_metrics': {
+                'overall_quality': 'real_analysis',
+                'quality_score': real_analysis.get('analysis_confidence', 0.0)
+            }
+        }
+        
+        if len(faces) > 0:
+            (x, y, w, h) = faces[0]
+            img_height, img_width = gray.shape[:2]
+            face_detection['face_bounds'] = {
+                'x': round((x / img_width) * 100, 1),
+                'y': round((y / img_height) * 100, 1),
+                'width': round((w / img_width) * 100, 1),
+                'height': round((h / img_height) * 100, 1)
+            }
+        
+        # Build comprehensive result
+        result = {
+            'status': 'success',
+            'timestamp': datetime.now().isoformat(),
+            'analysis_type': 'real_database',
+            'demographics': {
+                'age_category': user_parameters.get('age_category'),
+                'race_category': user_parameters.get('race_category')
+            },
+            'face_detection': face_detection,
+            'skin_analysis': {
+                'overall_health_score': real_analysis.get('health_score', 0.5),
+                'texture': 'analyzed_via_database',
+                'tone': 'analyzed_via_database',
+                'conditions_detected': real_analysis.get('conditions', []),
+                'analysis_confidence': real_analysis.get('analysis_confidence', 0.0)
+            },
+            'similarity_search': {
+                'dataset_used': 'real_medical_datasets',
+                'similar_cases': real_analysis.get('similar_cases', []),
+                'database_matches': real_analysis.get('database_matches', 0)
+            },
+            'recommendations': {
+                'immediate_care': [],
+                'long_term_care': [],
+                'professional_consultation': False
+            },
+            'quality_assessment': {
+                'image_quality': 'real_analysis',
+                'confidence_reliability': 'high' if real_analysis.get('analysis_confidence', 0) > 0.7 else 'moderate'
+            },
+            'metadata': {
+                'endpoint': '/api/v3/skin/analyze-real-database',
+                'analysis_type': analysis_type,
+                'system': 'real_database_integration',
+                'timestamp': datetime.now().isoformat(),
+                'real_features': {
+                    'database_matching': True,
+                    'medical_datasets': True,
+                    'similarity_analysis': True,
+                    'condition_detection': True
+                },
+                'database_stats': db_stats
+            }
+        }
+        
+        # Generate recommendations based on real analysis
+        conditions = real_analysis.get('conditions', [])
+        health_score = real_analysis.get('health_score', 0.5)
+        
+        immediate_care = []
+        long_term_care = []
+        professional_consultation = False
+        
+        if health_score < 0.6:
+            immediate_care.append('Consider consulting a dermatologist')
+            professional_consultation = True
+        
+        for condition in conditions:
+            condition_name = condition.get('condition', '').replace('_', ' ').title()
+            severity = condition.get('severity', 'mild')
+            
+            if 'acne' in condition_name.lower():
+                immediate_care.append('Use gentle, non-comedogenic cleanser')
+                immediate_care.append('Avoid harsh scrubs or exfoliants')
+                long_term_care.append('Establish consistent skincare routine')
+            
+            elif 'melanoma' in condition_name.lower() or 'carcinoma' in condition_name.lower():
+                immediate_care.append('URGENT: Consult dermatologist immediately')
+                professional_consultation = True
+            
+            elif 'rosacea' in condition_name.lower():
+                immediate_care.append('Use gentle, fragrance-free products')
+                immediate_care.append('Avoid triggers (spicy foods, alcohol, extreme temperatures)')
+                long_term_care.append('Consider prescription treatments')
+            
+            elif 'eczema' in condition_name.lower():
+                immediate_care.append('Use fragrance-free moisturizer')
+                immediate_care.append('Avoid hot showers and harsh soaps')
+                long_term_care.append('Identify and avoid triggers')
+        
+        if not immediate_care:
+            immediate_care.append('Maintain current skincare routine')
+        
+        if not long_term_care:
+            long_term_care.append('Continue preventive care')
+        
+        result['recommendations'] = {
+            'immediate_care': immediate_care,
+            'long_term_care': long_term_care,
+            'professional_consultation': professional_consultation
+        }
+        
+        logger.info(f"✅ Real database analysis completed successfully")
+        logger.info(f"📊 Health Score: {real_analysis.get('health_score', 0):.3f}")
+        logger.info(f"🔍 Detected Conditions: {len(real_analysis.get('conditions', []))}")
+        logger.info(f"📚 Database Matches: {real_analysis.get('database_matches', 0)}")
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Real database analysis error: {e}")
+        return jsonify({
+            'error': 'Real database analysis failed',
+            'message': str(e),
+            'status': 'error',
+            'fallback_available': True
+        }), 500
 
 # Enhanced skin analysis endpoint
 @app.route('/api/v3/skin/analyze-enhanced', methods=['POST'])
