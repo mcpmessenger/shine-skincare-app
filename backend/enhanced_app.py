@@ -36,6 +36,26 @@ except ImportError as e:
     logger.warning(f"Real Database Integration System not available: {e}")
     REAL_DATABASE_AVAILABLE = False
 
+# Import the UTKFace integration system
+try:
+    from utkface_integration import UTKFaceIntegration
+    UTKFACE_AVAILABLE = True
+    logger.info("✅ UTKFace Integration System imported successfully")
+except ImportError as e:
+    logger = logging.getLogger(__name__)
+    logger.warning(f"UTKFace Integration System not available: {e}")
+    UTKFACE_AVAILABLE = False
+
+# Import the Facial Skin Diseases integration system
+try:
+    from embed_facial_skin_diseases import FacialSkinDiseasesEmbedder
+    FACIAL_SKIN_DISEASES_AVAILABLE = True
+    logger.info("✅ Facial Skin Diseases Integration System imported successfully")
+except ImportError as e:
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Facial Skin Diseases Integration System not available: {e}")
+    FACIAL_SKIN_DISEASES_AVAILABLE = False
+
 # OpenCV import - moved to top level
 try:
     import cv2
@@ -82,6 +102,26 @@ if REAL_DATABASE_AVAILABLE:
         logger.error(f"Failed to initialize Real Database Integration System: {e}")
         real_db_integration = None
 
+# Initialize UTKFace Integration System
+utkface_integration = None
+if UTKFACE_AVAILABLE:
+    try:
+        utkface_integration = UTKFaceIntegration()
+        logger.info("✅ UTKFace Integration System initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize UTKFace Integration System: {e}")
+        utkface_integration = None
+
+# Initialize Facial Skin Diseases Integration System
+facial_skin_diseases_embedder = None
+if FACIAL_SKIN_DISEASES_AVAILABLE:
+    try:
+        facial_skin_diseases_embedder = FacialSkinDiseasesEmbedder()
+        logger.info("✅ Facial Skin Diseases Integration System initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize Facial Skin Diseases Integration System: {e}")
+        facial_skin_diseases_embedder = None
+
 # Configuration
 class Config:
     """Configuration for Operation Right Brain Backend"""
@@ -96,6 +136,8 @@ class Config:
     MULTI_DATASET_ENABLED = True
     ENHANCED_EMBEDDINGS_ENABLED = ENHANCED_EMBEDDINGS_AVAILABLE and enhanced_api is not None
     REAL_DATABASE_ENABLED = REAL_DATABASE_AVAILABLE and real_db_integration is not None
+    UTKFACE_ENABLED = UTKFACE_AVAILABLE and utkface_integration is not None
+    FACIAL_SKIN_DISEASES_ENABLED = FACIAL_SKIN_DISEASES_AVAILABLE and facial_skin_diseases_embedder is not None
 
 app.config.from_object(Config)
 
@@ -142,11 +184,23 @@ def health_check():
             'similarity_search': True,
             'vertex_ai': Config.VERTEX_AI_ENABLED,
             'enhanced_embeddings': Config.ENHANCED_EMBEDDINGS_ENABLED,
+            'utkface': Config.UTKFACE_ENABLED,
+            'facial_skin_diseases': Config.FACIAL_SKIN_DISEASES_ENABLED
         },
         'enhanced_embeddings_status': {
             'available': ENHANCED_EMBEDDINGS_AVAILABLE,
             'initialized': enhanced_api is not None,
             'enabled': Config.ENHANCED_EMBEDDINGS_ENABLED
+        },
+        'utkface_status': {
+            'available': UTKFACE_AVAILABLE,
+            'initialized': utkface_integration is not None,
+            'enabled': Config.UTKFACE_ENABLED
+        },
+        'facial_skin_diseases_status': {
+            'available': FACIAL_SKIN_DISEASES_AVAILABLE,
+            'initialized': facial_skin_diseases_embedder is not None,
+            'enabled': Config.FACIAL_SKIN_DISEASES_ENABLED
         }
     })
 
@@ -499,6 +553,351 @@ def analyze_skin_real_database():
             'status': 'error',
             'fallback_available': True
         }), 500
+
+# UTKFace Demographic Analysis Endpoint
+@app.route('/api/v3/skin/analyze-demographic', methods=['POST'])
+def analyze_skin_demographic():
+    """
+    🧠 UTKFace Integration - Demographically-Normalized Skin Analysis
+    Uses UTKFace dataset for demographic-aware healthy skin baseline comparison
+    """
+    try:
+        # Get request data
+        if request.is_json:
+            data = request.get_json()
+            image_data = data.get('image_data')
+            age = data.get('age')
+            gender = data.get('gender')  # 0=male, 1=female
+            ethnicity = data.get('ethnicity')  # 0-4 as per UTKFace mapping
+        else:
+            # Handle file upload
+            if 'image' not in request.files:
+                return jsonify({'error': 'No image provided'}), 400
+            
+            file = request.files['image']
+            image_data = file.read()
+            age = int(request.form.get('age', 25))
+            gender = int(request.form.get('gender', 0))
+            ethnicity = int(request.form.get('ethnicity', 0))
+        
+        if not image_data:
+            return jsonify({'error': 'No image data provided'}), 400
+        
+        if age is None or gender is None or ethnicity is None:
+            return jsonify({'error': 'Age, gender, and ethnicity are required'}), 400
+        
+        # Check if UTKFace system is available
+        if not UTKFACE_AVAILABLE or utkface_integration is None:
+            return jsonify({
+                'error': 'UTKFace integration system not available',
+                'fallback': 'Use /api/v3/skin/analyze-enhanced instead'
+            }), 503
+        
+        # Convert image_data to bytes if it's a string
+        if isinstance(image_data, str):
+            if image_data.startswith('data:image'):
+                # Base64 data URL format
+                try:
+                    base64_data = image_data.split(',')[1]
+                    image_bytes = base64.b64decode(base64_data)
+                except Exception as e:
+                    logger.error(f"Base64 decode error: {e}")
+                    return jsonify({'error': 'Invalid image data format'}), 400
+            else:
+                # Assume it's raw base64 string
+                try:
+                    image_bytes = base64.b64decode(image_data)
+                except Exception as e:
+                    logger.error(f"Base64 decode error: {e}")
+                    return jsonify({'error': 'Invalid image data format'}), 400
+        elif isinstance(image_data, bytes):
+            image_bytes = image_data
+        else:
+            logger.error(f"Invalid image data type: {type(image_data)}")
+            return jsonify({'error': 'Invalid image data type'}), 400
+        
+        # Perform demographic analysis
+        logger.info(f"🧠 Performing UTKFace demographic analysis (age: {age}, gender: {gender}, ethnicity: {ethnicity})")
+        demographic_analysis = utkface_integration.analyze_skin_demographic(
+            image_bytes, age, gender, ethnicity
+        )
+        
+        if demographic_analysis['status'] == 'error':
+            return jsonify(demographic_analysis), 400
+        
+        # Get demographic baseline info
+        demographic_key = utkface_integration.get_demographic_key(age, gender, ethnicity)
+        baseline_available = demographic_key in utkface_integration.demographic_baselines
+        
+        # Generate recommendations based on health score
+        health_score = demographic_analysis['health_score']
+        recommendations = []
+        
+        if health_score >= 85:
+            recommendations.append("Maintain your current skincare routine")
+            recommendations.append("Continue with regular skin monitoring")
+        elif health_score >= 70:
+            recommendations.append("Consider gentle exfoliation")
+            recommendations.append("Increase hydration with moisturizers")
+        elif health_score >= 50:
+            recommendations.append("Consult with a dermatologist")
+            recommendations.append("Consider professional skin assessment")
+        else:
+            recommendations.append("Seek immediate professional consultation")
+            recommendations.append("Document any changes in skin condition")
+        
+        return jsonify({
+            'status': 'success',
+            'analysis_type': 'demographic_utkface',
+            'timestamp': datetime.now().isoformat(),
+            'demographic_analysis': demographic_analysis,
+            'recommendations': recommendations,
+            'demographic_info': {
+                'age': age,
+                'gender': utkface_integration.gender_mapping.get(gender, "Unknown"),
+                'ethnicity': utkface_integration.ethnicity_mapping.get(ethnicity, "Unknown"),
+                'demographic_key': demographic_key,
+                'baseline_available': baseline_available
+            },
+            'system_info': {
+                'utkface_available': UTKFACE_AVAILABLE,
+                'system_initialized': utkface_integration is not None,
+                'enabled': Config.UTKFACE_ENABLED,
+                'total_baselines': len(utkface_integration.demographic_baselines) if utkface_integration else 0
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"UTKFace demographic analysis error: {e}")
+        return jsonify({
+            'error': f'Analysis failed: {str(e)}',
+            'status': 'error',
+            'fallback': 'Use /api/v3/skin/analyze-enhanced instead'
+        }), 500
+
+# UTKFace Status Endpoint
+@app.route('/api/v3/utkface/status', methods=['GET'])
+def utkface_status():
+    """Get UTKFace integration system status"""
+    if UTKFACE_AVAILABLE and utkface_integration is not None:
+        # Get system stats
+        total_baselines = len(utkface_integration.demographic_baselines)
+        available_demographics = list(utkface_integration.demographic_baselines.keys())
+        
+        return jsonify({
+            'status': 'available',
+            'system_info': {
+                'utkface_available': UTKFACE_AVAILABLE,
+                'system_initialized': True,
+                'enabled': Config.UTKFACE_ENABLED
+            },
+            'demographic_stats': {
+                'total_baselines': total_baselines,
+                'available_demographics': available_demographics[:10],  # Show first 10
+                'age_bins': utkface_integration.age_labels,
+                'ethnicity_mapping': utkface_integration.ethnicity_mapping,
+                'gender_mapping': utkface_integration.gender_mapping
+            },
+            'capabilities': {
+                'analysis_types': ['demographic_normalization', 'healthy_baseline_comparison'],
+                'embedding_model': 'ResNet50' if utkface_integration.embedding_model else 'None',
+                'demographic_awareness': True
+            }
+        })
+    else:
+        return jsonify({
+            'status': 'unavailable',
+            'system_info': {
+                'utkface_available': UTKFACE_AVAILABLE,
+                'system_initialized': False,
+                'enabled': False
+            },
+            'demographic_stats': {},
+            'capabilities': {
+                'analysis_types': [],
+                'embedding_model': 'None',
+                'demographic_awareness': False
+            }
+        })
+
+# Facial Skin Diseases Status Endpoint
+@app.route('/api/v3/facial-skin-diseases/status', methods=['GET'])
+def facial_skin_diseases_status():
+    """Get Facial Skin Diseases integration system status"""
+    if FACIAL_SKIN_DISEASES_AVAILABLE and facial_skin_diseases_embedder is not None:
+        # Get system stats
+        total_conditions = len(facial_skin_diseases_embedder.condition_embeddings)
+        available_conditions = list(facial_skin_diseases_embedder.condition_embeddings.keys())
+        
+        return jsonify({
+            'status': 'available',
+            'system_info': {
+                'facial_skin_diseases_available': FACIAL_SKIN_DISEASES_AVAILABLE,
+                'system_initialized': True,
+                'enabled': Config.FACIAL_SKIN_DISEASES_ENABLED
+            },
+            'condition_stats': {
+                'total_conditions': total_conditions,
+                'available_conditions': available_conditions[:10],  # Show first 10
+                'embedding_model': 'ResNet50' if facial_skin_diseases_embedder.embedding_model else 'None',
+                'condition_awareness': True
+            }
+        })
+    else:
+        return jsonify({
+            'status': 'unavailable',
+            'system_info': {
+                'facial_skin_diseases_available': FACIAL_SKIN_DISEASES_AVAILABLE,
+                'system_initialized': False,
+                'enabled': False
+            },
+            'condition_stats': {},
+            'capabilities': {
+                'analysis_types': [],
+                'embedding_model': 'None',
+                'condition_awareness': False
+            }
+        })
+
+# Condition Analysis Endpoint
+@app.route('/api/v3/skin/analyze-conditions', methods=['POST'])
+def analyze_skin_conditions():
+    """Analyze skin image for specific conditions using facial skin diseases dataset"""
+    if not FACIAL_SKIN_DISEASES_AVAILABLE or facial_skin_diseases_embedder is None:
+        return jsonify({
+            'status': 'error',
+            'message': 'Facial Skin Diseases integration not available'
+        }), 503
+    
+    try:
+        # Get request data
+        data = request.get_json()
+        if not data or 'image_data' not in data:
+            return jsonify({
+                'status': 'error',
+                'message': 'Image data required'
+            }), 400
+        
+        # Decode image data
+        image_data = base64.b64decode(data['image_data'])
+        
+        # Preprocess image
+        nparr = np.frombuffer(image_data, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'Could not decode image data'
+            }), 400
+        
+        # Preprocess for embedding
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img_resized = cv2.resize(img_rgb, (224, 224))
+        img_normalized = img_resized.astype(np.float32) / 255.0
+        
+        # Generate user embedding
+        if facial_skin_diseases_embedder.embedding_model is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'Embedding model not available'
+            }), 503
+        
+        user_embedding = facial_skin_diseases_embedder.embedding_model.predict(
+            np.expand_dims(img_normalized, axis=0), 
+            verbose=0
+        )[0]
+        
+        # Analyze against conditions
+        analysis_result = facial_skin_diseases_embedder.get_condition_analysis(user_embedding)
+        
+        if analysis_result['status'] == 'success':
+            # Add additional context
+            analysis_result['analysis_type'] = 'condition_specific'
+            analysis_result['dataset_used'] = 'facial_skin_diseases'
+            analysis_result['model_used'] = 'ResNet50'
+            
+            # Generate recommendations based on condition
+            recommendations = generate_condition_recommendations(analysis_result)
+            analysis_result['recommendations'] = recommendations
+            
+            return jsonify(analysis_result)
+        else:
+            return jsonify(analysis_result), 500
+            
+    except Exception as e:
+        logger.error(f"Error in condition analysis: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Analysis failed: {str(e)}'
+        }), 500
+
+def generate_condition_recommendations(analysis_result: Dict) -> List[str]:
+    """Generate recommendations based on condition analysis"""
+    recommendations = []
+    
+    best_condition = analysis_result.get('best_match', '')
+    best_similarity = analysis_result.get('best_similarity', 0)
+    
+    if best_similarity >= 0.8:
+        if best_condition == 'acne':
+            recommendations = [
+                "Consider gentle, non-comedogenic skincare products",
+                "Avoid harsh scrubs and abrasive treatments",
+                "Consult a dermatologist for prescription treatments if needed",
+                "Maintain consistent cleansing routine"
+            ]
+        elif best_condition == 'rosacea':
+            recommendations = [
+                "Use gentle, fragrance-free skincare products",
+                "Avoid triggers like spicy foods, alcohol, and extreme temperatures",
+                "Consider products with niacinamide or azelaic acid",
+                "Protect skin from sun exposure with broad-spectrum sunscreen"
+            ]
+        elif best_condition == 'eczema':
+            recommendations = [
+                "Use fragrance-free, hypoallergenic moisturizers",
+                "Avoid hot showers and harsh soaps",
+                "Consider products with ceramides or colloidal oatmeal",
+                "Keep skin well-moisturized, especially after bathing"
+            ]
+        elif best_condition == 'actinic_keratosis':
+            recommendations = [
+                "Consult a dermatologist immediately",
+                "Use broad-spectrum sunscreen daily",
+                "Avoid excessive sun exposure",
+                "Consider regular skin cancer screenings"
+            ]
+        elif best_condition == 'basal_cell_carcinoma':
+            recommendations = [
+                "Seek immediate medical attention",
+                "Consult a dermatologist for proper diagnosis",
+                "Avoid sun exposure until evaluated",
+                "Consider regular skin cancer screenings"
+            ]
+        elif best_condition == 'healthy':
+            recommendations = [
+                "Maintain current skincare routine",
+                "Continue using broad-spectrum sunscreen",
+                "Stay hydrated and maintain healthy lifestyle",
+                "Schedule regular skin check-ups"
+            ]
+        else:
+            recommendations = [
+                "Consult a dermatologist for proper diagnosis",
+                "Maintain gentle skincare routine",
+                "Protect skin from sun exposure",
+                "Monitor for any changes in skin condition"
+            ]
+    else:
+        recommendations = [
+            "Image quality may be insufficient for accurate analysis",
+            "Consider taking a clearer, well-lit photo",
+            "Consult a dermatologist for professional evaluation",
+            "Maintain general skin health practices"
+        ]
+    
+    return recommendations
 
 # Enhanced skin analysis endpoint
 @app.route('/api/v3/skin/analyze-enhanced', methods=['POST'])
@@ -1077,16 +1476,57 @@ def detect_face_realtime():
             # Convert to grayscale for face detection
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             
+            # Log image dimensions for debugging
+            logger.info(f"Image dimensions: {img.shape}")
+            logger.info(f"Grayscale image dimensions: {gray.shape}")
+            
             # Load face cascade classifier
             face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
             
-            # Detect faces
+            # Check if cascade loaded successfully
+            if face_cascade.empty():
+                logger.error("Failed to load face cascade classifier")
+                return jsonify({"error": "Face detection model failed to load"}), 500
+            
+            logger.info("Face cascade classifier loaded successfully")
+            
+            # Detect faces with initial parameters
             faces = face_cascade.detectMultiScale(
                 gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
+                scaleFactor=1.05,  # More sensitive scaling
+                minNeighbors=3,     # Reduced from 5 to 3 for better detection
+                minSize=(20, 20)    # Smaller minimum face size
             )
+            
+            logger.info(f"Initial face detection result: {len(faces)} faces found")
+            if len(faces) > 0:
+                logger.info(f"Face coordinates: {faces[0]}")
+            
+            # If no faces found with initial parameters, try more lenient ones
+            if len(faces) == 0:
+                logger.info("Trying more lenient face detection parameters")
+                faces = face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.02,  # Even more sensitive
+                    minNeighbors=2,     # Very lenient
+                    minSize=(15, 15)    # Very small minimum
+                )
+                logger.info(f"Lenient detection result: {len(faces)} faces found")
+                if len(faces) > 0:
+                    logger.info(f"Face coordinates (lenient): {faces[0]}")
+            
+            # If still no faces, try even more aggressive parameters
+            if len(faces) == 0:
+                logger.info("Trying very aggressive face detection parameters")
+                faces = face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.01,  # Very sensitive
+                    minNeighbors=1,     # Most lenient
+                    minSize=(10, 10)    # Very small minimum
+                )
+                logger.info(f"Aggressive detection result: {len(faces)} faces found")
+                if len(faces) > 0:
+                    logger.info(f"Face coordinates (aggressive): {faces[0]}")
             
             if len(faces) > 0:
                 # Face detected - use the first face
@@ -1243,4 +1683,4 @@ def root():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
-    app.run(host='0.0.0.0', port=port, debug=app.config['DEBUG']) 
+    app.run(host='0.0.0.0', port=port, debug=Config.DEBUG) 

@@ -13,6 +13,15 @@ google-auth==2.23.4
 # Data processing and analysis
 numpy==1.24.3
 requests==2.31.0
+pandas==2.0.3
+scipy==1.11.1
+
+# Image processing and computer vision
+opencv-python==4.8.1.78
+Pillow==10.0.1
+
+# Machine learning and deep learning
+tensorflow==2.13.0
 
 # Environment and configuration
 python-dotenv==1.0.0

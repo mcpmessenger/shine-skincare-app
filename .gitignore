@@ -311,7 +311,7 @@ desktop.ini
 # Google Service Account Credentials
 shine-466907-994eb9c6926a.json
 shine-466907-b0b2eb862330.json
-*.json
+shine-466907-*.json
 
 # Operation Right Brain - Sensitive Data
 scin_dataset/raw/
@@ -320,6 +320,18 @@ kaggle.json
 ~/.kaggle/
 *.credentials
 *.auth
+
+# Kaggle API Credentials
+kaggle.json
+.kaggle/
+backend/kaggle.json
+backend/.kaggle/
+
+# Additional Security Files
+*.env.local
+.env.local
+backend/.env.local
+backend/.env.local.example
 
 # Google Cloud Configuration
 google-cloud-credentials.json
@@ -331,6 +343,23 @@ scin_dataset/
 *.parquet
 *.h5
 *.hdf5
+
+# UTKFace Dataset Files (Large - should not be in git)
+backend/data/utkface/
+backend/data/facial_skin_diseases/
+backend/datasets/
+backend/ham10000_local/
+backend/ham10000_local_scaled/
+*.jpg.chip.jpg
+*.csv
+utkface_metadata.csv
+
+# Dataset JSON files (can be large)
+condition_data.json
+dataset_info.json
+metadata.json
+performance_results_*.json
+enhanced_config.json
 
 # Local Development Files
 local_*.py

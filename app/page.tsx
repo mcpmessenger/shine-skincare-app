@@ -68,6 +68,56 @@ interface EnhancedAnalysisResult {
   }
 }
 
+interface DemographicAnalysisResult {
+  status: string
+  timestamp: string
+  analysis_type: string
+  dataset_used: string
+  model_used: string
+  demographic_info: {
+    age_category: string
+    gender: string
+    ethnicity: string
+  }
+  health_score: number
+  demographic_baseline: {
+    age_group: string
+    gender: string
+    ethnicity: string
+    baseline_health_score: number
+    sample_count: number
+  }
+  comparison_metrics: {
+    similarity_to_baseline: number
+    percentile_rank: number
+    confidence_level: string
+  }
+  recommendations: {
+    demographic_specific: string[]
+    general_health: string[]
+    professional_consultation: boolean
+  }
+}
+
+interface ConditionAnalysisResult {
+  status: string
+  timestamp: string
+  analysis_type: string
+  dataset_used: string
+  model_used: string
+  best_match: string
+  best_similarity: number
+  assessment: string
+  condition_results: {
+    [condition: string]: {
+      similarity: number
+      confidence: number
+      sample_count: number
+    }
+  }
+  recommendations: string[]
+}
+
 interface RealTimeDetectionResult {
   status: string
   face_detected: boolean
@@ -96,15 +146,42 @@ export default function EnhancedSkinAnalysis() {
   const [showSignInModal, setShowSignInModal] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<EnhancedAnalysisResult | null>(null)
+  const [demographicResult, setDemographicResult] = useState<DemographicAnalysisResult | null>(null)
+  const [conditionResult, setConditionResult] = useState<ConditionAnalysisResult | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [cameraMode, setCameraMode] = useState<'upload' | 'camera'>('camera')
-  const [isCameraActive, setIsCameraActive] = useState(false)
-  const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  const [analysisType, setAnalysisType] = useState<'enhanced' | 'demographic' | 'condition'>('enhanced')
+  const [demographicInfo, setDemographicInfo] = useState({
+    age: '',
+    gender: '',
+    ethnicity: ''
+  })
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analysisError, setAnalysisError] = useState<string | null>(null)
+  const [cameraActive, setCameraActive] = useState(false)
   const [faceDetected, setFaceDetected] = useState(false)
-  const [faceBounds, setFaceBounds] = useState({ x: 0, y: 0, width: 0, height: 0 })
-  const [realTimeDetection, setRealTimeDetection] = useState<RealTimeDetectionResult | null>(null)
-  
+  const [detectionResult, setDetectionResult] = useState<RealTimeDetectionResult | null>(null)
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  const [showCamera, setShowCamera] = useState(false)
+  const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt')
+  const [uploadMethod, setUploadMethod] = useState<'camera' | 'file' | null>(null)
+  const [analysisProgress, setAnalysisProgress] = useState(0)
+  const [recommendations, setRecommendations] = useState<string[]>([])
+  const [productRecommendations, setProductRecommendations] = useState<any[]>([])
+  const [showResults, setShowResults] = useState(false)
+  const [currentStep, setCurrentStep] = useState<'upload' | 'analysis' | 'results'>('upload')
+  const [analysisHistory, setAnalysisHistory] = useState<Array<{
+    timestamp: string
+    type: string
+    result: any
+  }>>([])
+  const [systemStatus, setSystemStatus] = useState({
+    utkface: false,
+    facial_skin_diseases: false,
+    enhanced_embeddings: false
+  })
+
   // Phase 2: Demographic inputs
   const [ageCategory, setAgeCategory] = useState<string>('')
   const [raceCategory, setRaceCategory] = useState<string>('')
@@ -199,23 +276,22 @@ export default function EnhancedSkinAnalysis() {
 
   // Camera setup
   useEffect(() => {
-    if (cameraMode === 'camera' && !isCameraActive) {
+    if (uploadMethod === 'camera' && !cameraActive) {
       startCamera()
-    } else if (cameraMode === 'upload' && isCameraActive) {
+    } else if (uploadMethod === 'file' && cameraActive) {
       stopCamera()
     }
     
     // Reset face detection state when not in camera mode
-    if (cameraMode === 'upload') {
+    if (uploadMethod === 'file') {
       setFaceDetected(false)
-      setFaceBounds({ x: 0, y: 0, width: 0, height: 0 })
-      setRealTimeDetection(null)
+      setDetectionResult(null)
       if (faceDetectionInterval.current) {
         clearInterval(faceDetectionInterval.current)
         faceDetectionInterval.current = null
       }
     }
-  }, [cameraMode])
+  }, [uploadMethod])
 
   const startCamera = async () => {
     try {
@@ -231,7 +307,7 @@ export default function EnhancedSkinAnalysis() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         streamRef.current = stream
-        setIsCameraActive(true)
+        setCameraActive(true)
         startFaceDetection()
       }
     } catch (error) {
@@ -281,14 +357,12 @@ export default function EnhancedSkinAnalysis() {
       
       if (response.ok) {
         const detectionResult: RealTimeDetectionResult = await response.json()
-        setRealTimeDetection(detectionResult)
+        setDetectionResult(detectionResult)
         
         if (detectionResult.face_detected) {
           setFaceDetected(true)
-          setFaceBounds(detectionResult.face_bounds)
         } else {
           setFaceDetected(false)
-          setFaceBounds({ x: 0, y: 0, width: 0, height: 0 })
         }
       }
     } catch (error) {
@@ -307,10 +381,9 @@ export default function EnhancedSkinAnalysis() {
       faceDetectionInterval.current = null
     }
     
-    setIsCameraActive(false)
+    setCameraActive(false)
     setFaceDetected(false)
-    setFaceBounds({ x: 0, y: 0, width: 0, height: 0 })
-    setRealTimeDetection(null)
+    setDetectionResult(null)
   }
 
   const capturePhoto = () => {
@@ -401,111 +474,156 @@ export default function EnhancedSkinAnalysis() {
   }
 
   const handleAnalysis = async (imageData: string) => {
+    if (!imageData) {
+      setAnalysisError('No image data provided')
+      return
+    }
+
+    setIsAnalyzing(true)
+    setAnalysisError(null)
+    setAnalysisProgress(0)
+
     try {
-      setAnalysisResult(null)
-      setAnalysisLoading(true)
-      
-      // First try the real database integration system
-      let response = await fetch('/api/v3/skin/analyze-real-database', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image_data: imageData,
-          analysis_type: 'comprehensive',
-          user_parameters: {
-            age_category: ageCategory,
-            race_category: raceCategory
-          }
-        }),
-      })
+      let response
+      let result
 
-      // If real database fails, try enhanced embeddings system
-      if (!response.ok) {
-        console.log('Real database system unavailable, trying enhanced embeddings...')
-        response = await fetch('/api/v3/skin/analyze-enhanced-embeddings', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            image_data: imageData,
-            analysis_type: 'comprehensive',
-            user_parameters: {
-              age_category: ageCategory,
-              race_category: raceCategory
+      // Choose analysis type based on user selection
+      switch (analysisType) {
+        case 'demographic':
+          // Demographic analysis with UTKFace
+          response = await fetch('/api/v3/skin/analyze-demographic', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              image_data: imageData,
+              age: demographicInfo.age,
+              gender: demographicInfo.gender,
+              ethnicity: demographicInfo.ethnicity
+            })
+          })
+          
+          if (response.ok) {
+            result = await response.json()
+            setDemographicResult(result)
+            setAnalysisResult(null)
+            setConditionResult(null)
+          } else {
+            throw new Error(`Demographic analysis failed: ${response.statusText}`)
+          }
+          break
+
+        case 'condition':
+          // Condition analysis with Facial Skin Diseases
+          response = await fetch('/api/v3/skin/analyze-conditions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              image_data: imageData
+            })
+          })
+          
+          if (response.ok) {
+            result = await response.json()
+            setConditionResult(result)
+            setAnalysisResult(null)
+            setDemographicResult(null)
+          } else {
+            throw new Error(`Condition analysis failed: ${response.statusText}`)
+          }
+          break
+
+        case 'enhanced':
+        default:
+          // Enhanced analysis (existing functionality)
+          response = await fetch('/api/v3/skin/analyze-enhanced-embeddings', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              image_data: imageData,
+              analysis_type: 'comprehensive',
+              user_parameters: {
+                age_category: ageCategory,
+                race_category: raceCategory
+              }
+            })
+          })
+          
+          if (response.ok) {
+            result = await response.json()
+            setAnalysisResult(result)
+            setDemographicResult(null)
+            setConditionResult(null)
+          } else {
+            // Fallback to enhanced analysis
+            response = await fetch('/api/v3/skin/analyze-enhanced', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                image_data: imageData,
+                age_category: ageCategory,
+                race_category: raceCategory
+              })
+            })
+            
+            if (response.ok) {
+              result = await response.json()
+              setAnalysisResult(result)
+              setDemographicResult(null)
+              setConditionResult(null)
+            } else {
+              throw new Error(`Enhanced analysis failed: ${response.statusText}`)
             }
-          }),
-        })
-      }
-
-      // If enhanced embeddings fails, fallback to original system
-      if (!response.ok) {
-        console.log('Enhanced embeddings system unavailable, trying fallback...')
-        response = await fetch('/api/v3/skin/analyze-enhanced', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            image_data: imageData,
-            age_category: ageCategory,
-            race_category: raceCategory
-          }),
-        })
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const result = await response.json()
-      setAnalysisResult(result)
-    } catch (error) {
-      console.error('Analysis failed:', error)
-      // Fallback analysis result
-      setAnalysisResult({
-        status: 'success',
-        timestamp: new Date().toISOString(),
-        analysis_type: 'enhanced',
-        demographics: {
-          age_category: ageCategory,
-          race_category: raceCategory
-        },
-        face_detection: {
-          detected: true,
-          confidence: 0.85,
-          face_bounds: { x: 150, y: 100, width: 200, height: 250 },
-          method: 'fallback',
-          quality_metrics: {
-            overall_quality: 'unknown',
-            quality_score: 0.6
           }
-        },
-        skin_analysis: {
-          overall_health_score: 0.75,
-          texture: 'smooth',
-          tone: 'even',
-          conditions_detected: [],
-          analysis_confidence: 0.6
-        },
-        similarity_search: {
-          dataset_used: 'facial_skin_diseases',
-          similar_cases: []
-        },
-        recommendations: {
-          immediate_care: ['Maintain current skincare routine'],
-          long_term_care: ['Continue with preventive care'],
-          professional_consultation: false
-        },
-        quality_assessment: {
-          image_quality: 'unknown',
-          confidence_reliability: 'low'
+          break
+      }
+
+      // Update analysis history
+      setAnalysisHistory(prev => [...prev, {
+        timestamp: new Date().toISOString(),
+        type: analysisType,
+        result: result
+      }])
+
+      // Generate recommendations based on analysis type
+      if (result) {
+        if (analysisType === 'demographic' && result.recommendations) {
+          setRecommendations([
+            ...result.recommendations.demographic_specific || [],
+            ...result.recommendations.general_health || []
+          ])
+        } else if (analysisType === 'condition' && result.recommendations) {
+          setRecommendations(result.recommendations)
+        } else if (analysisType === 'enhanced' && result.recommendations) {
+          setRecommendations([
+            ...result.recommendations.immediate_care || [],
+            ...result.recommendations.long_term_care || []
+          ])
         }
-      })
+
+        // Generate product recommendations for enhanced analysis
+        if (analysisType === 'enhanced' && result) {
+          const products = getProductRecommendations(result)
+          setProductRecommendations(products)
+        }
+      }
+
+      setCurrentStep('results')
+      setShowResults(true)
+
+    } catch (error) {
+      console.error('Analysis error:', error)
+      setAnalysisError(error instanceof Error ? error.message : 'Analysis failed')
     } finally {
-      setAnalysisLoading(false)
+      setIsAnalyzing(false)
+      setAnalysisProgress(0)
     }
   }
 
@@ -674,14 +792,14 @@ export default function EnhancedSkinAnalysis() {
               <button
                 className="mobile-button"
                 onClick={() => {
-                  setCameraMode('camera')
+                  setUploadMethod('camera')
                   resetUploadStates()
                 }}
                 style={{
                   flex: 1,
                   padding: '1rem',
-                  backgroundColor: cameraMode === 'camera' ? getBgColor(0.1) : 'transparent',
-                  border: `1px solid ${getBorderColor(0.2)}`,
+                  backgroundColor: uploadMethod === 'camera' ? getBgColor(0.15) : getBgColor(0.05),
+                  border: `1px solid ${uploadMethod === 'camera' ? getBorderColor(0.4) : getBorderColor(0.2)}`,
                   borderRadius: '12px',
                   color: getTextColor(1),
                   cursor: 'pointer',
@@ -689,7 +807,8 @@ export default function EnhancedSkinAnalysis() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '0.5rem'
+                  gap: '0.5rem',
+                  fontWeight: '500'
                 }}
               >
                 <Camera width={20} height={20} />
@@ -699,14 +818,14 @@ export default function EnhancedSkinAnalysis() {
               <button
                 className="mobile-button"
                 onClick={() => {
-                  setCameraMode('upload')
+                  setUploadMethod('file')
                   resetUploadStates()
                 }}
                 style={{
                   flex: 1,
                   padding: '1rem',
-                  backgroundColor: cameraMode === 'upload' ? getBgColor(0.1) : 'transparent',
-                  border: `1px solid ${getBorderColor(0.2)}`,
+                  backgroundColor: uploadMethod === 'file' ? getBgColor(0.15) : getBgColor(0.05),
+                  border: `1px solid ${uploadMethod === 'file' ? getBorderColor(0.4) : getBorderColor(0.2)}`,
                   borderRadius: '12px',
                   color: getTextColor(1),
                   cursor: 'pointer',
@@ -714,7 +833,8 @@ export default function EnhancedSkinAnalysis() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '0.5rem'
+                  gap: '0.5rem',
+                  fontWeight: '500'
                 }}
               >
                 <Upload width={20} height={20} />
@@ -722,8 +842,77 @@ export default function EnhancedSkinAnalysis() {
               </button>
             </div>
 
+            {/* Fallback Upload Area - Always Visible */}
+            {!uploadMethod && (
+              <div style={{
+                backgroundColor: getBgColor(0.05),
+                borderRadius: '16px',
+                padding: '2rem',
+                border: `1px solid ${getBorderColor(0.1)}`,
+                marginBottom: '2rem'
+              }}>
+                <h3 style={{
+                  fontSize: '1.2rem',
+                  fontWeight: 500,
+                  color: getTextColor(1),
+                  marginBottom: '1rem',
+                  textAlign: 'center'
+                }}>
+                  Ready for Analysis
+                </h3>
+                <p style={{
+                  fontSize: '0.9rem',
+                  color: getTextColor(0.7),
+                  textAlign: 'center',
+                  marginBottom: '1.5rem'
+                }}>
+                  Upload an image or use the camera to begin your enhanced skin analysis
+                </p>
+                
+                {/* Quick Upload Button */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  style={{ display: 'none' }}
+                  id="quick-file-upload"
+                />
+                <label
+                  htmlFor="quick-file-upload"
+                  style={{
+                    display: 'block',
+                    padding: '1rem',
+                    border: `2px dashed ${getBorderColor(0.3)}`,
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    backgroundColor: getBgColor(0.05),
+                    marginBottom: '1rem'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = getBorderColor(0.5)
+                    e.currentTarget.style.backgroundColor = getBgColor(0.1)
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = getBorderColor(0.3)
+                    e.currentTarget.style.backgroundColor = getBgColor(0.05)
+                  }}
+                >
+                  <Upload width={24} height={24} style={{ marginBottom: '0.5rem', opacity: 0.7 }} />
+                  <p style={{
+                    margin: 0,
+                    fontSize: '0.9rem',
+                    color: getTextColor(0.8)
+                  }}>
+                    Click to select an image or drag and drop
+                  </p>
+                </label>
+              </div>
+            )}
+
             {/* Upload Mode */}
-            {cameraMode === 'upload' && (
+            {uploadMethod === 'file' && (
               <div style={{
                 backgroundColor: getBgColor(0.05),
                 borderRadius: '16px',
@@ -824,6 +1013,213 @@ export default function EnhancedSkinAnalysis() {
                   }}>
                     Providing demographic information helps improve analysis accuracy and provides more personalized recommendations.
                   </p>
+                </div>
+
+                {/* Analysis Type Selection */}
+                <div style={{
+                  marginBottom: '2rem'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginBottom: '1rem'
+                  }}>
+                    <Sparkles width={20} height={20} style={{ opacity: 0.7 }} />
+                    <h3 style={{
+                      fontSize: '1.1rem',
+                      fontWeight: 400,
+                      color: getTextColor(1)
+                    }}>
+                      Analysis Type
+                    </h3>
+                  </div>
+                  
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                    gap: '1rem'
+                  }}>
+                    <button
+                      onClick={() => setAnalysisType('enhanced')}
+                      style={{
+                        padding: '1rem',
+                        backgroundColor: analysisType === 'enhanced' ? getBgColor(0.15) : getBgColor(0.05),
+                        border: `1px solid ${analysisType === 'enhanced' ? getBorderColor(0.4) : getBorderColor(0.2)}`,
+                        borderRadius: '8px',
+                        color: getTextColor(1),
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <Sparkles width={20} height={20} />
+                      <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Enhanced</span>
+                      <span style={{ fontSize: '0.7rem', color: getTextColor(0.6), textAlign: 'center' }}>
+                        Comprehensive skin analysis with multiple datasets
+                      </span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setAnalysisType('demographic')}
+                      style={{
+                        padding: '1rem',
+                        backgroundColor: analysisType === 'demographic' ? getBgColor(0.15) : getBgColor(0.05),
+                        border: `1px solid ${analysisType === 'demographic' ? getBorderColor(0.4) : getBorderColor(0.2)}`,
+                        borderRadius: '8px',
+                        color: getTextColor(1),
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <User width={20} height={20} />
+                      <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Demographic</span>
+                      <span style={{ fontSize: '0.7rem', color: getTextColor(0.6), textAlign: 'center' }}>
+                        Age, gender, and ethnicity-specific analysis
+                      </span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setAnalysisType('condition')}
+                      style={{
+                        padding: '1rem',
+                        backgroundColor: analysisType === 'condition' ? getBgColor(0.15) : getBgColor(0.05),
+                        border: `1px solid ${analysisType === 'condition' ? getBorderColor(0.4) : getBorderColor(0.2)}`,
+                        borderRadius: '8px',
+                        color: getTextColor(1),
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <Eye width={20} height={20} />
+                      <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Condition</span>
+                      <span style={{ fontSize: '0.7rem', color: getTextColor(0.6), textAlign: 'center' }}>
+                        Specific skin condition identification
+                      </span>
+                    </button>
+                  </div>
+                  
+                  {/* Demographic Info for Demographic Analysis */}
+                  {analysisType === 'demographic' && (
+                    <div style={{
+                      marginTop: '1rem',
+                      padding: '1rem',
+                      backgroundColor: getBgColor(0.1),
+                      borderRadius: '8px',
+                      border: `1px solid ${getBorderColor(0.2)}`
+                    }}>
+                      <h4 style={{
+                        fontSize: '1rem',
+                        fontWeight: 500,
+                        color: getTextColor(1),
+                        marginBottom: '1rem'
+                      }}>
+                        Required Demographic Information
+                      </h4>
+                      
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                        gap: '1rem'
+                      }}>
+                        <div>
+                          <label style={{
+                            display: 'block',
+                            fontSize: '0.9rem',
+                            color: getTextColor(0.7),
+                            marginBottom: '0.5rem'
+                          }}>
+                            Age
+                          </label>
+                          <input
+                            type="text"
+                            value={demographicInfo.age}
+                            onChange={(e) => setDemographicInfo(prev => ({ ...prev, age: e.target.value }))}
+                            placeholder="e.g., 25"
+                            style={{
+                              width: '100%',
+                              padding: '0.75rem',
+                              backgroundColor: getBgColor(0.1),
+                              border: `1px solid ${getBorderColor(0.2)}`,
+                              borderRadius: '8px',
+                              color: getTextColor(1),
+                              fontSize: '0.9rem'
+                            }}
+                          />
+                        </div>
+                        
+                        <div>
+                          <label style={{
+                            display: 'block',
+                            fontSize: '0.9rem',
+                            color: getTextColor(0.7),
+                            marginBottom: '0.5rem'
+                          }}>
+                            Gender
+                          </label>
+                          <select
+                            value={demographicInfo.gender}
+                            onChange={(e) => setDemographicInfo(prev => ({ ...prev, gender: e.target.value }))}
+                            style={{
+                              width: '100%',
+                              padding: '0.75rem',
+                              backgroundColor: getBgColor(0.1),
+                              border: `1px solid ${getBorderColor(0.2)}`,
+                              borderRadius: '8px',
+                              color: getTextColor(1),
+                              fontSize: '0.9rem'
+                            }}
+                          >
+                            <option value="">Select gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label style={{
+                            display: 'block',
+                            fontSize: '0.9rem',
+                            color: getTextColor(0.7),
+                            marginBottom: '0.5rem'
+                          }}>
+                            Ethnicity
+                          </label>
+                          <select
+                            value={demographicInfo.ethnicity}
+                            onChange={(e) => setDemographicInfo(prev => ({ ...prev, ethnicity: e.target.value }))}
+                            style={{
+                              width: '100%',
+                              padding: '0.75rem',
+                              backgroundColor: getBgColor(0.1),
+                              border: `1px solid ${getBorderColor(0.2)}`,
+                              borderRadius: '8px',
+                              color: getTextColor(1),
+                              fontSize: '0.9rem'
+                            }}
+                          >
+                            <option value="">Select ethnicity</option>
+                            <option value="white">White</option>
+                            <option value="black">Black</option>
+                            <option value="asian">Asian</option>
+                            <option value="hispanic">Hispanic</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* File Upload Section */}
@@ -1146,7 +1542,7 @@ export default function EnhancedSkinAnalysis() {
             )}
 
             {/* Camera Mode */}
-            {cameraMode === 'camera' && (
+            {uploadMethod === 'camera' && (
               <div style={{
                 backgroundColor: getBgColor(0.05),
                 borderRadius: '16px',
@@ -1328,10 +1724,10 @@ export default function EnhancedSkinAnalysis() {
                         
                         {/* Face Detection Zone */}
                         <rect
-                          x={`${faceBounds.x}%`}
-                          y={`${faceBounds.y}%`}
-                          width={`${faceBounds.width}%`}
-                          height={`${faceBounds.height}%`}
+                          x={`${detectionResult?.face_bounds?.x || 0}%`}
+                          y={`${detectionResult?.face_bounds?.y || 0}%`}
+                          width={`${detectionResult?.face_bounds?.width || 0}%`}
+                          height={`${detectionResult?.face_bounds?.height || 0}%`}
                           fill="none"
                           stroke="#00ff41"
                           strokeWidth="3"
@@ -1341,29 +1737,29 @@ export default function EnhancedSkinAnalysis() {
                         
                         {/* Corner Indicators */}
                         <circle
-                          cx={`${faceBounds.x}%`}
-                          cy={`${faceBounds.y}%`}
+                          cx={`${detectionResult?.face_bounds?.x || 0}%`}
+                          cy={`${detectionResult?.face_bounds?.y || 0}%`}
                           r="4"
                           fill="#00ff41"
                           opacity="0.9"
                         />
                         <circle
-                          cx={`${faceBounds.x + faceBounds.width}%`}
-                          cy={`${faceBounds.y}%`}
+                          cx={`${(detectionResult?.face_bounds?.x || 0) + (detectionResult?.face_bounds?.width || 0)}%`}
+                          cy={`${detectionResult?.face_bounds?.y || 0}%`}
                           r="4"
                           fill="#00ff41"
                           opacity="0.9"
                         />
                         <circle
-                          cx={`${faceBounds.x}%`}
-                          cy={`${faceBounds.y + faceBounds.height}%`}
+                          cx={`${uploadFaceBounds.x}%`}
+                          cy={`${uploadFaceBounds.y + uploadFaceBounds.height}%`}
                           r="4"
                           fill="#00ff41"
                           opacity="0.9"
                         />
                         <circle
-                          cx={`${faceBounds.x + faceBounds.width}%`}
-                          cy={`${faceBounds.y + faceBounds.height}%`}
+                          cx={`${uploadFaceBounds.x + uploadFaceBounds.width}%`}
+                          cy={`${uploadFaceBounds.y + uploadFaceBounds.height}%`}
                           r="4"
                           fill="#00ff41"
                           opacity="0.9"
@@ -1373,8 +1769,8 @@ export default function EnhancedSkinAnalysis() {
                       {/* Face Detection Label */}
                       <div style={{
                         position: 'absolute',
-                        top: `${Math.max(0, faceBounds.y - 5)}%`,
-                        left: `${faceBounds.x}%`,
+                        top: `${Math.max(0, uploadFaceBounds.y - 5)}%`,
+                        left: `${uploadFaceBounds.x}%`,
                         backgroundColor: 'rgba(0, 255, 65, 0.9)',
                         color: '#000000',
                         padding: '0.25rem 0.5rem',
@@ -1389,7 +1785,7 @@ export default function EnhancedSkinAnalysis() {
                   )}
                   
                   {/* Real-time Detection Feedback */}
-                  {realTimeDetection && (
+                  {uploadFaceDetectionResult && (
                     <div style={{
                       position: 'absolute',
                       top: '1rem',
@@ -1400,16 +1796,16 @@ export default function EnhancedSkinAnalysis() {
                       fontSize: '0.8rem'
                     }}>
                       <div style={{
-                        color: realTimeDetection.face_detected ? '#10b981' : '#ef4444',
+                        color: uploadFaceDetectionResult.face_detected ? '#10b981' : '#ef4444',
                         marginBottom: '0.25rem'
                       }}>
-                        {realTimeDetection.face_detected ? '✓ Face Detected' : '✗ No Face'}
+                        {uploadFaceDetectionResult.face_detected ? '✓ Face Detected' : '✗ No Face'}
                       </div>
                       <div style={{
                         color: getTextColor(0.7),
                         fontSize: '0.7rem'
                       }}>
-                        Quality: {realTimeDetection.quality_metrics.lighting}
+                        Quality: {uploadFaceDetectionResult.quality_metrics.lighting}
                       </div>
                     </div>
                   )}
@@ -1462,7 +1858,7 @@ export default function EnhancedSkinAnalysis() {
                 </div>
 
                 {/* Camera Guidance */}
-                {!faceDetected && isCameraActive && (
+                {!faceDetected && cameraActive && (
                   <div style={{
                     marginTop: '1rem',
                     padding: '1rem',
