@@ -12,42 +12,7 @@ import { useTheme } from '@/hooks/useTheme'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { directBackendClient, isDirectBackendAvailable } from '@/lib/direct-backend'
 
-interface AnalysisResult {
-  status: string
-  timestamp: string
-  demographics: {
-    age_category: string | null
-    race_category: string | null
-  }
-  face_detection: {
-    detected: boolean
-    confidence: number
-    face_bounds: {
-      x: number
-      y: number
-      width: number
-      height: number
-    }
-  }
-  skin_analysis: {
-    overall_health_score: number
-    texture: string
-    tone: string
-    conditions_detected: Array<{
-      condition: string
-      severity: string
-      confidence: number
-      location: string
-      description: string
-    }>
-    analysis_confidence: number
-  }
-  recommendations: {
-    immediate_care: string[]
-    long_term_care: string[]
-    professional_consultation: boolean
-  }
-}
+
 
 export default function SimplifiedSkinAnalysis() {
   const { dispatch, isAuthenticated } = useCart()
@@ -57,7 +22,6 @@ export default function SimplifiedSkinAnalysis() {
   
   // Core states
   const [userImage, setUserImage] = useState<string | null>(null)
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisError, setAnalysisError] = useState<string | null>(null)
   
@@ -101,7 +65,6 @@ export default function SimplifiedSkinAnalysis() {
   const [ethnicity, setEthnicity] = useState<string>('')
   
   // UI states
-  const [showResults, setShowResults] = useState(false)
   const [showDemographics, setShowDemographics] = useState(false)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -126,11 +89,11 @@ export default function SimplifiedSkinAnalysis() {
       : `rgba(0, 0, 0, ${opacity})`
   }
 
+
+
   const resetStates = () => {
     setUserImage(null)
-    setAnalysisResult(null)
     setAnalysisError(null)
-    setShowResults(false)
     setSelectedFile(null)
     setFaceDetection(null)
     setLiveFaceDetection(null)
@@ -314,10 +277,16 @@ export default function SimplifiedSkinAnalysis() {
         if (response.ok) {
           const result = await response.json()
           if (result.status === 'success') {
+            // Convert pixel coordinates to percentages
             setLiveFaceDetection({
               detected: result.face_detected,
               confidence: result.confidence,
-              face_bounds: result.face_bounds
+              face_bounds: {
+                x: result.face_bounds.x,
+                y: result.face_bounds.y,
+                width: result.face_bounds.width,
+                height: result.face_bounds.height
+              }
             })
           } else {
             setLiveFaceDetection({
@@ -376,24 +345,87 @@ export default function SimplifiedSkinAnalysis() {
       console.log('🔍 Original userImage type:', typeof userImage)
       console.log('🔍 Original userImage starts with:', userImage.substring(0, 50))
 
-      const response = await directBackendClient.enhancedAnalysis({
+      // Perform face detection first for upload mode
+      if (uploadMethod === 'upload') {
+        console.log('🔍 Performing face detection for upload mode...')
+        const faceDetectionResponse = await directBackendClient.faceDetection({
+          image_data: imageData
+        })
+        
+        if (faceDetectionResponse.success && faceDetectionResponse.data) {
+          console.log('🔍 Face detection result:', faceDetectionResponse.data)
+          
+          // Handle the face detection response structure
+          const isDetected = faceDetectionResponse.data.face_detected || false
+          const faceBounds = faceDetectionResponse.data.face_bounds || { x: 0, y: 0, width: 0, height: 0 }
+          
+          console.log('🔍 Frontend Face Detection Debug (Upload Mode):')
+          console.log('  Received face_bounds:', faceBounds)
+          console.log('  Is detected:', isDetected)
+          
+          setFaceDetection({
+            detected: isDetected,
+            confidence: faceDetectionResponse.data.confidence || 0,
+            face_bounds: {
+              x: faceBounds.x,
+              y: faceBounds.y,
+              width: faceBounds.width,
+              height: faceBounds.height
+            }
+          })
+        } else {
+          console.log('⚠️ Face detection failed for upload mode:', faceDetectionResponse.error)
+          setFaceDetection({
+            detected: false,
+            confidence: 0,
+            face_bounds: { x: 0, y: 0, width: 0, height: 0 }
+          })
+        }
+      }
+
+      const response = await directBackendClient.realSkinAnalysis({
         image_data: imageData,
-        analysis_type: 'comprehensive',
-        user_parameters: {
+        user_demographics: {
           age_category: ageCategory,
           race_category: ethnicity
         }
       })
 
       console.log('🔍 Analysis response:', response)
+      console.log('🔍 Response success:', response.success)
+      console.log('🔍 Response data:', response.data)
+      console.log('🔍 Response data type:', typeof response.data)
+      console.log('🔍 Top recommendations in response:', response.data?.top_recommendations)
+      console.log('🔍 Top recommendations length:', response.data?.top_recommendations?.length)
 
       if (response.success && response.data) {
-        setAnalysisResult(response.data)
-        // Extract face detection results
-        if (response.data.face_detection) {
-          setFaceDetection(response.data.face_detection)
+        console.log('🔍 Analysis successful, redirecting to suggestions page')
+        
+        // Extract face detection results from analysis response (for camera mode)
+        if (response.data.face_detection && uploadMethod === 'camera') {
+          // Handle both 'detected' and 'face_detected' field names
+          const isDetected = response.data.face_detection.detected || response.data.face_detection.face_detected || false
+          const faceBounds = response.data.face_detection.face_bounds || { x: 0, y: 0, width: 0, height: 0 }
+          
+          console.log('🔍 Frontend Face Detection Debug (Camera Mode):')
+          console.log('  Received face_bounds:', faceBounds)
+          console.log('  Is detected:', isDetected)
+          
+          setFaceDetection({
+            detected: isDetected,
+            confidence: response.data.face_detection.confidence || 0,
+            face_bounds: {
+              x: faceBounds.x,
+              y: faceBounds.y,
+              width: faceBounds.width,
+              height: faceBounds.height
+            }
+          })
         }
-        setShowResults(true)
+        
+        // Redirect to suggestions page with analysis data
+        const analysisData = encodeURIComponent(JSON.stringify(response.data))
+        window.location.href = `/suggestions?analysis=${analysisData}`
       } else {
         console.error('❌ Analysis failed:', response.error)
         setAnalysisError(response.error || 'Analysis failed. Please try again.')
@@ -987,7 +1019,7 @@ export default function SimplifiedSkinAnalysis() {
         />
 
         {/* Demographic Inputs */}
-        {userImage && !showResults && (
+        {userImage && (
           <div style={{
             backgroundColor: getBgColor(0.05),
             borderRadius: '6px',
@@ -1081,7 +1113,7 @@ export default function SimplifiedSkinAnalysis() {
         )}
         
         {/* Analysis Button */}
-        {userImage && !showResults && (
+        {userImage && (
           <div style={{
             display: 'flex',
             justifyContent: 'center',
@@ -1147,196 +1179,35 @@ export default function SimplifiedSkinAnalysis() {
           </div>
         )}
         
-        {/* Results */}
-        {showResults && analysisResult && (
+        {/* Analysis Status */}
+        {isAnalyzing && (
           <div style={{
             backgroundColor: getBgColor(0.05),
             borderRadius: '6px',
-            padding: '0.25rem',
-            border: `1px solid ${getBorderColor(0.1)}`,
+            padding: '0.5rem',
             marginBottom: '0.25rem',
             maxWidth: '400px',
-            margin: '0 auto 0.25rem auto'
+            margin: '0 auto 0.25rem auto',
+            textAlign: 'center'
           }}>
-            <h3 style={{
-              fontSize: '0.9rem',
-              fontWeight: 500,
-              color: getTextColor(1),
-              marginBottom: '0.25rem',
-              textAlign: 'center'
-            }}>
-              Analysis Complete
-            </h3>
-            
-            {/* Health Score */}
             <div style={{
-              backgroundColor: getBgColor(0.1),
-              borderRadius: '6px',
-              padding: '0.5rem',
-              marginBottom: '0.5rem',
-              textAlign: 'center'
+              fontSize: '0.9rem',
+              color: getTextColor(0.8),
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem'
             }}>
               <div style={{
-                fontSize: '1.5rem',
-                fontWeight: '600',
-                color: '#3b82f6',
-                marginBottom: '0.25rem'
-              }}>
-                {Math.round(analysisResult.skin_analysis.overall_health_score)}%
-              </div>
-              <div style={{
-                fontSize: '0.8rem',
-                color: getTextColor(0.7)
-              }}>
-                Health Score
-              </div>
+                width: '12px',
+                height: '12px',
+                border: '2px solid #3b82f6',
+                borderTop: '2px solid transparent',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }} />
+              Analyzing your skin...
             </div>
-
-            {/* Face Detection Status */}
-            {analysisResult.face_detection && (
-              <div style={{
-                backgroundColor: getBgColor(0.1),
-                borderRadius: '6px',
-                padding: '0.5rem',
-                marginBottom: '0.5rem',
-                border: `1px solid ${getBorderColor(0.2)}`
-              }}>
-                <div style={{
-                  fontSize: '0.8rem',
-                  color: getTextColor(0.8),
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.25rem'
-                }}>
-                  <div style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    backgroundColor: analysisResult.face_detection.detected ? '#10b981' : '#ef4444'
-                  }} />
-                  {analysisResult.face_detection.detected ? 
-                    `Face detected (${Math.round(analysisResult.face_detection.confidence * 100)}%)` : 
-                    'No face detected'}
-                </div>
-              </div>
-            )}
-
-            {/* Conditions Summary */}
-            {analysisResult.skin_analysis.conditions_detected.length > 0 && (
-              <div style={{ marginBottom: '0.5rem' }}>
-                <div style={{
-                  fontSize: '0.8rem',
-                  fontWeight: 500,
-                  color: getTextColor(1),
-                  marginBottom: '0.25rem'
-                }}>
-                  Conditions Found:
-                </div>
-                <div style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  gap: '0.25rem',
-                  fontSize: '0.7rem',
-                  maxHeight: '120px',
-                  overflowY: 'auto'
-                }}>
-                  {analysisResult.skin_analysis.conditions_detected.map((condition, index) => (
-                    <div key={index} style={{
-                      backgroundColor: getBgColor(0.1),
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '8px',
-                      color: getTextColor(0.8),
-                      border: `1px solid ${getBorderColor(0.2)}`,
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <span style={{ flex: 1 }}>
-                        {condition.condition.replace('_', ' ')}
-                      </span>
-                      <span style={{
-                        fontSize: '0.6rem',
-                        color: getTextColor(0.6),
-                        marginLeft: '0.5rem'
-                      }}>
-                        {condition.severity}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Top Recommendation */}
-            {analysisResult.recommendations.immediate_care.length > 0 && (
-              <div style={{ marginBottom: '0.5rem' }}>
-                <div style={{
-                  fontSize: '0.8rem',
-                  fontWeight: 500,
-                  color: getTextColor(1),
-                  marginBottom: '0.25rem'
-                }}>
-                  Top Recommendation:
-                </div>
-                <div style={{
-                  fontSize: '0.7rem',
-                  color: getTextColor(0.8),
-                  backgroundColor: getBgColor(0.05),
-                  padding: '0.25rem',
-                  borderRadius: '4px',
-                  border: `1px solid ${getBorderColor(0.1)}`
-                }}>
-                  {analysisResult.recommendations.immediate_care[0]}
-                </div>
-              </div>
-            )}
-
-                         {/* Products Button */}
-             <div style={{
-               display: 'flex',
-               justifyContent: 'center',
-               marginTop: '0.5rem',
-               padding: '0.5rem',
-               backgroundColor: getBgColor(0.05),
-               borderRadius: '8px',
-               border: `1px solid ${getBorderColor(0.1)}`
-             }}>
-               <Link 
-                 href={`/catalog?analysis=${encodeURIComponent(JSON.stringify({
-                   health_score: analysisResult.skin_analysis.overall_health_score,
-                   conditions: analysisResult.skin_analysis.conditions_detected.map(c => c.condition),
-                   recommendations: analysisResult.recommendations.immediate_care,
-                   face_detected: analysisResult.face_detection.detected
-                 }))}`}
-                 style={{
-                   display: 'flex',
-                   alignItems: 'center',
-                   justifyContent: 'center',
-                   gap: '0.5rem',
-                   padding: '0.75rem 1.5rem',
-                   backgroundColor: '#10b981',
-                   color: 'white',
-                   textDecoration: 'none',
-                   borderRadius: '8px',
-                   fontSize: '0.9rem',
-                   fontWeight: '600',
-                   boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
-                   transition: 'all 0.3s ease'
-                 }}
-                 onMouseEnter={(e) => {
-                   e.currentTarget.style.transform = 'translateY(-2px)'
-                   e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)'
-                 }}
-                 onMouseLeave={(e) => {
-                   e.currentTarget.style.transform = 'translateY(0)'
-                   e.currentTarget.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.3)'
-                 }}
-               >
-                 <Sparkles style={{ width: '16px', height: '16px' }} />
-                 View Recommended Products
-                 <ArrowRight style={{ width: '16px', height: '16px' }} />
-               </Link>
-             </div>
           </div>
         )}
 

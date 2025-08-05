@@ -84,6 +84,87 @@ export class DirectBackendClient {
     }
   }
 
+  async enhancedComprehensiveAnalysis(payload: {
+    image_data: string;
+    demographics?: any;
+    user_parameters?: any;
+    user_preferences?: any;
+    face_detection_result?: any;
+  }): Promise<BackendResponse> {
+    try {
+      console.log('🔍 Direct Backend: Enhanced Comprehensive Analysis Request');
+      console.log('Backend URL:', `${this.baseUrl}/api/v3/skin/analyze-enhanced-comprehensive`);
+      console.log('Payload keys:', Object.keys(payload));
+      console.log('Payload size:', JSON.stringify(payload).length);
+
+      const response = await fetch(`${this.baseUrl}/api/v3/skin/analyze-enhanced-comprehensive`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      console.log('Direct Backend Response Status:', response.status);
+      console.log('Direct Backend Response Headers:', Object.fromEntries(response.headers.entries()));
+
+      const data = await response.json();
+      
+      return {
+        success: response.ok,
+        data: response.ok ? data : undefined,
+        error: response.ok ? undefined : data.error || 'Enhanced comprehensive analysis failed',
+        status: response.status,
+      };
+    } catch (error) {
+      console.error('❌ Direct Backend Enhanced Comprehensive Analysis Error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Network error',
+        status: 0,
+      };
+    }
+  }
+
+  async realSkinAnalysis(payload: {
+    image_data: string;
+    user_demographics?: any;
+  }): Promise<BackendResponse> {
+    try {
+      console.log('🔍 Direct Backend: Real Skin Analysis Request');
+      console.log('Backend URL:', `${this.baseUrl}/api/v3/skin/analyze-real`);
+      console.log('Payload keys:', Object.keys(payload));
+      console.log('Payload size:', JSON.stringify(payload).length);
+
+      const response = await fetch(`${this.baseUrl}/api/v3/skin/analyze-real`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      console.log('Direct Backend Response Status:', response.status);
+      console.log('Direct Backend Response Headers:', Object.fromEntries(response.headers.entries()));
+
+      const data = await response.json();
+      
+      return {
+        success: response.ok,
+        data: response.ok ? data : undefined,
+        error: response.ok ? undefined : data.error || 'Real skin analysis failed',
+        status: response.status,
+      };
+    } catch (error) {
+      console.error('❌ Direct Backend Real Skin Analysis Error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Network error',
+        status: 0,
+      };
+    }
+  }
+
   async basicAnalysis(payload: {
     image_data: string;
     analysis_type?: string;
