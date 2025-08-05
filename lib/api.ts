@@ -9,6 +9,7 @@ interface ApiResponse<T> {
   version?: string;
   timestamp?: string;
   analysis_id?: string; // Add analysis_id at top level for backward compatibility
+  error?: string; // Add error property for error handling
 }
 
 interface ApiError {
@@ -774,7 +775,7 @@ export const analyzeMedical = async (file: File, ethnicity?: string, age?: strin
       formData.append('age', age);
     }
 
-    const response = await fetch(`${this.baseUrl}/api/v2/medical/analyze`, {
+    const response = await fetch(`http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/medical/analyze`, {
       method: 'POST',
       body: formData,
     });
@@ -782,13 +783,29 @@ export const analyzeMedical = async (file: File, ethnicity?: string, age?: strin
     const data = await response.json();
     return { 
       success: response.ok, 
-      data: response.ok ? data : null, 
-      error: response.ok ? null : data.error || 'Request failed' 
+      data: response.ok ? data : {
+        medical_analysis: null,
+        message: 'Request failed',
+        has_medical_analysis: false,
+        google_vision_api: false,
+        scin_dataset: false,
+        cosine_similarity: false,
+        proven_stable: false
+      }, 
+      error: response.ok ? undefined : data.error || 'Request failed' 
     };
   } catch (error) {
     return { 
       success: false, 
-      data: null, 
+      data: {
+        medical_analysis: null,
+        message: 'Network error',
+        has_medical_analysis: false,
+        google_vision_api: false,
+        scin_dataset: false,
+        cosine_similarity: false,
+        proven_stable: false
+      }, 
       error: 'Network error' 
     };
   }
@@ -804,18 +821,26 @@ export const getMedicalHistory = async (user_id?: string, limit?: number): Promi
     if (user_id) params.append('user_id', user_id);
     if (limit) params.append('limit', limit.toString());
 
-    const response = await fetch(`${this.baseUrl}/api/v2/medical/history?${params}`);
+    const response = await fetch(`http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/medical/history?${params}`);
     const data = await response.json();
     
     return { 
       success: response.ok, 
-      data: response.ok ? data : null, 
-      error: response.ok ? null : data.error || 'Request failed' 
+      data: response.ok ? data : {
+        medical_history: [],
+        total_analyses: 0,
+        user_id: user_id || 'unknown'
+      }, 
+      error: response.ok ? undefined : data.error || 'Request failed' 
     };
   } catch (error) {
     return { 
       success: false, 
-      data: null, 
+      data: {
+        medical_history: [],
+        total_analyses: 0,
+        user_id: user_id || 'unknown'
+      }, 
       error: 'Network error' 
     };
   }
@@ -825,18 +850,22 @@ export const getMedicalAnalysisDetails = async (analysis_id: string): Promise<Ap
   analysis_details: any;
 }>> => {
   try {
-    const response = await fetch(`${this.baseUrl}/api/v2/medical/analysis/${analysis_id}`);
+    const response = await fetch(`http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/medical/analysis/${analysis_id}`);
     const data = await response.json();
     
     return { 
       success: response.ok, 
-      data: response.ok ? data : null, 
-      error: response.ok ? null : data.error || 'Request failed' 
+      data: response.ok ? data : {
+        analysis_details: null
+      }, 
+      error: response.ok ? undefined : data.error || 'Request failed' 
     };
   } catch (error) {
     return { 
       success: false, 
-      data: null, 
+      data: {
+        analysis_details: null
+      }, 
       error: 'Network error' 
     };
   }
@@ -1101,4 +1130,18 @@ export async function processImageWithRetry(imageFile: File, maxRetries: number 
       console.log(`🔄 Image processing attempt ${attempt}/${maxRetries}...`);
       
       const result = await analyzeSelfieWithErrorHandling(imageFile);
-      console.log(`
+      console.log(`✅ Image processing successful on attempt ${attempt}`);
+      return result;
+    } catch (error) {
+      console.log(`❌ Attempt ${attempt} failed:`, error);
+      lastError = error;
+      
+      if (attempt < maxRetries) {
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+  }
+  
+  throw new Error(`Image processing failed after ${maxRetries} attempts. Last error: ${lastError?.message || 'Unknown error'}`);
+}
