@@ -628,7 +628,7 @@ class EnhancedSkinAnalyzer:
             return {'brightness': 0, 'contrast': 0, 'sharpness': 0, 'noise': 0, 'overall_score': 0}
     
     def _calculate_overall_health_score(self, conditions: Dict) -> float:
-        """Calculate overall skin health score"""
+        """Calculate overall skin health score (0-100)"""
         try:
             scores = []
             
@@ -670,11 +670,18 @@ class EnhancedSkinAnalyzer:
                 wrinkle_score = max(0.0, 1.0 - (wrinkle_count / 20))
                 scores.append(wrinkle_score)
             
-            return np.mean(scores) if scores else 0.5
+            # Calculate average and convert to percentage (0-100)
+            if scores:
+                avg_score = np.mean(scores)
+                # Ensure the score is between 0 and 100
+                health_score = max(0.0, min(100.0, avg_score * 100))
+                return health_score
+            else:
+                return 50.0  # Default neutral score
             
         except Exception as e:
             logger.error(f"❌ Health score calculation failed: {e}")
-            return 0.5
+            return 50.0  # Safe fallback
     
     def _identify_primary_concerns(self, conditions: Dict) -> List[str]:
         """Identify primary skin concerns"""

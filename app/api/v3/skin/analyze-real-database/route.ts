@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the backend URL from environment or use default
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
     
     try {
       // Forward the request to the Flask backend

@@ -19,13 +19,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the backend URL from environment or use default
-    // Force use port 5000 since backend is running there
-    const backendUrl = 'http://localhost:5000';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+    
+    console.log(`🔍 Direct connection to backend at: ${backendUrl}/api/v3/face/detect`);
     
     try {
-      // First try to forward the request to the Flask backend
-      console.log(`🔍 Attempting to connect to Flask backend at: ${backendUrl}/api/v3/face/detect`);
-      
+      // Direct connection to backend
       const response = await fetch(`${backendUrl}/api/v3/face/detect`, {
         method: 'POST',
         headers: {
@@ -33,28 +32,33 @@ export async function POST(request: NextRequest) {
           'Accept': 'application/json',
         },
         body: JSON.stringify(requestBody),
-        // Add timeout and better error handling
-        signal: AbortSignal.timeout(10000) // 10 second timeout
+        signal: AbortSignal.timeout(15000) // 15 second timeout
       });
 
+      console.log(`🔍 Backend response status: ${response.status}`);
+
       if (response.ok) {
-        console.log(`✅ Flask backend responded successfully`);
         const result = await response.json();
+        console.log(`✅ Backend response:`, result);
         
         // Add frontend metadata
         result.frontend_metadata = {
-          endpoint: '/api/v3/face/detect',
+          endpoint: '/api/v3/face/detect-direct',
           timestamp: new Date().toISOString(),
-          proxy_to_backend: true
+          proxy_to_backend: true,
+          method: 'direct'
         };
         
         return NextResponse.json(result);
       } else {
-        // If Flask backend fails, provide a fallback response
-        console.log(`Flask backend returned ${response.status}, using fallback`);
+        console.log(`❌ Backend returned error status: ${response.status}`);
+        const errorText = await response.text();
+        console.log(`❌ Backend error response:`, errorText);
+        
         return NextResponse.json(
           { 
-            error: 'Backend service unavailable',
+            error: `Backend returned ${response.status}`,
+            backend_error: errorText,
             fallback_available: true,
             face_detected: false,
             face_bounds: { x: 0, y: 0, width: 0, height: 0 },
@@ -65,31 +69,34 @@ export async function POST(request: NextRequest) {
               positioning: 'unknown'
             },
             guidance: {
-              message: 'Face detection service temporarily unavailable',
+              message: 'Backend connection failed',
               suggestions: [
-                'Please try again later',
-                'Ensure your face is clearly visible',
-                'Check lighting conditions'
+                'Check if backend server is running',
+                'Verify network connectivity',
+                'Check backend logs for errors'
               ]
             },
             frontend_metadata: {
-              endpoint: '/api/v3/face/detect',
+              endpoint: '/api/v3/face/detect-direct',
               timestamp: new Date().toISOString(),
               proxy_to_backend: false,
-              fallback_used: true
+              fallback_used: true,
+              method: 'direct'
             }
           },
-          { status: 200 } // Return 200 with fallback data instead of 500
+          { status: 200 }
         );
       }
     } catch (fetchError) {
-      // If fetch fails (backend not running), provide fallback
-      console.log(`❌ Flask backend connection failed: ${fetchError.message}, using fallback`);
+      console.log(`❌ Direct backend connection failed: ${fetchError.message}`);
       console.log(`❌ Error details:`, fetchError);
       console.log(`❌ Backend URL: ${backendUrl}`);
+      
       return NextResponse.json(
         { 
-          error: 'Backend service unavailable',
+          error: 'Direct backend connection failed',
+          error_details: fetchError.message,
+          backend_url: backendUrl,
           fallback_available: true,
           face_detected: false,
           face_bounds: { x: 0, y: 0, width: 0, height: 0 },
@@ -100,29 +107,31 @@ export async function POST(request: NextRequest) {
             positioning: 'unknown'
           },
           guidance: {
-            message: 'Face detection service temporarily unavailable',
+            message: 'Direct backend connection failed',
             suggestions: [
-              'Please try again later',
-              'Ensure your face is clearly visible',
-              'Check lighting conditions'
+              'Backend server may not be running',
+              'Check network connectivity',
+              'Verify backend URL configuration'
             ]
           },
           frontend_metadata: {
-            endpoint: '/api/v3/face/detect',
+            endpoint: '/api/v3/face/detect-direct',
             timestamp: new Date().toISOString(),
             proxy_to_backend: false,
-            fallback_used: true
+            fallback_used: true,
+            method: 'direct'
           }
         },
-        { status: 200 } // Return 200 with fallback data instead of 500
+        { status: 200 }
       );
     }
 
   } catch (error) {
-    console.error('Face detection error:', error);
+    console.error('Direct face detection error:', error);
     return NextResponse.json(
       { 
         error: 'Internal server error',
+        error_details: error instanceof Error ? error.message : 'Unknown error',
         fallback_available: true,
         face_detected: false,
         face_bounds: { x: 0, y: 0, width: 0, height: 0 },
@@ -133,21 +142,22 @@ export async function POST(request: NextRequest) {
           positioning: 'unknown'
         },
         guidance: {
-          message: 'Face detection failed',
+          message: 'Internal server error',
           suggestions: [
             'Please try again',
-            'Check your internet connection',
-            'Ensure image data is valid'
+            'Check server logs',
+            'Contact support if issue persists'
           ]
         },
         frontend_metadata: {
-          endpoint: '/api/v3/face/detect',
+          endpoint: '/api/v3/face/detect-direct',
           timestamp: new Date().toISOString(),
           proxy_to_backend: false,
-          fallback_used: true
+          fallback_used: true,
+          method: 'direct'
         }
       },
-      { status: 200 } // Return 200 with fallback data instead of 500
+      { status: 200 }
     );
   }
 }

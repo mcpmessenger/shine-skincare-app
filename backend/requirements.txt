@@ -19,6 +19,7 @@ scipy==1.11.1
 # Image processing and computer vision
 opencv-python==4.8.1.78
 Pillow==11.3.0
+mediapipe==0.10.8
 
 # Machine learning and deep learning
 tensorflow==2.19.0
