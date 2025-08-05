@@ -140,7 +140,6 @@ export default function SimplifiedSkinAnalysis() {
 
   // Start camera with live preview
   const startCamera = async () => {
-    console.log('🔍 startCamera function called')
     try {
       setCameraError(null)
       setCameraLoading(true)
@@ -342,27 +341,22 @@ export default function SimplifiedSkinAnalysis() {
   }
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('🔍 handleFileSelect function called')
     const file = event.target.files?.[0]
     if (file) {
-      console.log('📁 File selected:', file.name)
       setSelectedFile(file)
       setUploadMethod('upload')
       
       const reader = new FileReader()
-      reader.onload = (e) => {
-        const result = e.target?.result as string
-        console.log('📁 File loaded as data URL')
-        setUserImage(result)
-      }
+              reader.onload = (e) => {
+          const result = e.target?.result as string
+          setUserImage(result)
+        }
       reader.readAsDataURL(file)
     }
   }
 
   const handleAnalysis = async () => {
-    console.log('🔍 handleAnalysis function called')
     if (!userImage) {
-      console.log('❌ No user image available')
       return
     }
 
@@ -935,10 +929,7 @@ export default function SimplifiedSkinAnalysis() {
             margin: '0 auto 0.25rem auto'
           }}>
             <button
-              onClick={() => {
-                console.log('🔍 Use Camera button clicked')
-                startCamera()
-              }}
+              onClick={startCamera}
               disabled={cameraLoading}
               style={{
                 flex: 1,
@@ -962,10 +953,7 @@ export default function SimplifiedSkinAnalysis() {
               {cameraLoading ? 'Starting...' : 'Use Camera'}
             </button>
             <button
-              onClick={() => {
-                console.log('🔍 Upload button clicked')
-                fileInputRef.current?.click()
-              }}
+              onClick={() => fileInputRef.current?.click()}
               style={{
                 flex: 1,
                 maxWidth: '120px',
@@ -1100,10 +1088,7 @@ export default function SimplifiedSkinAnalysis() {
             marginBottom: '0.25rem'
           }}>
             <button
-              onClick={() => {
-                console.log('🔍 Analyze My Skin button clicked')
-                handleAnalysis()
-              }}
+              onClick={handleAnalysis}
               disabled={isAnalyzing}
               style={{
                 width: '100%',
