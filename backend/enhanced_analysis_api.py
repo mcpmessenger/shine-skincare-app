@@ -399,7 +399,14 @@ def analyze_skin_enhanced_embeddings():
                 'texture': serializable_results.get('basic_analysis', {}).get('conditions', {}).get('texture', {}).get('type', 'normal'),
                 'tone': serializable_results.get('basic_analysis', {}).get('conditions', {}).get('pigmentation', {}).get('type', 'normal'),
                 'conditions_detected': [
-                    condition for condition, data in serializable_results.get('basic_analysis', {}).get('conditions', {}).items()
+                    {
+                        'condition': condition,
+                        'severity': 'moderate',
+                        'confidence': 0.7,
+                        'location': 'face',
+                        'description': f'Detected {condition.replace("_", " ")} condition'
+                    }
+                    for condition, data in serializable_results.get('basic_analysis', {}).get('conditions', {}).items()
                     if isinstance(data, dict) and data.get('detected', False)
                 ],
                 'analysis_confidence': serializable_results.get('analysis_summary', {}).get('confidence', 0.7)

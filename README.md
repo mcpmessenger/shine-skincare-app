@@ -14,6 +14,7 @@ A comprehensive AI-powered skincare analysis application that provides **real** 
 - **✅ Enhanced Embedding System**: 2304-dimensional vectors for condition matching
 - **✅ Real Database Integration**: UTKFace healthy baselines + facial skin diseases dataset
 - **✅ E-commerce Integration**: Shopping cart and checkout functionality
+- **✅ Camera Integration**: Live camera preview with photo capture functionality
 
 ### Technical Features
 - **✅ Hybrid Architecture**: Flask backend + Next.js frontend
@@ -22,6 +23,7 @@ A comprehensive AI-powered skincare analysis application that provides **real** 
 - **✅ Machine Learning**: Cosine similarity search, demographic normalization
 - **✅ Error Handling**: Graceful degradation without fake data
 - **✅ JSON Serialization**: Robust handling of NumPy data types
+- **✅ Camera API**: getUserMedia integration with live preview
 
 ## 🏗️ Architecture
 
@@ -31,6 +33,7 @@ A comprehensive AI-powered skincare analysis application that provides **real** 
 - **State Management**: React hooks (useAuth, useCart, useTheme)
 - **API Communication**: Direct backend client with proxy fallback
 - **Authentication**: Google OAuth with Supabase integration
+- **Camera Integration**: Live video preview with canvas capture
 
 ### Backend (Flask)
 - **Framework**: Flask with CORS support
@@ -45,7 +48,7 @@ A comprehensive AI-powered skincare analysis application that provides **real** 
 shine-skincare-app/
 ├── app/                    # Next.js frontend
 │   ├── api/v3/           # API routes (proxies to backend)
-│   ├── page.tsx          # Main application page
+│   ├── page.tsx          # Main application page (with camera)
 │   └── globals.css       # Global styles
 ├── backend/               # Flask backend
 │   ├── enhanced_analysis_api.py  # Main API endpoints
@@ -114,8 +117,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
 
 3. **Access Application**:
    - Open `http://localhost:3000` in your browser
-   - Upload an image for **real** analysis
-   - Choose between Basic, Enhanced, or Comprehensive analysis
+   - Use camera or upload an image for **real** analysis
    - Get **actual** skin condition detection and recommendations
 
 ## 📊 API Endpoints
@@ -145,6 +147,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
 - **Real Database Integration**: UTKFace + facial skin diseases
 - **Real Embedding System**: 2304-dimensional vectors
 - **Real Error Handling**: No mock data fallbacks
+- **Real Camera Integration**: Live preview with photo capture
 
 ### 🎯 Analysis Capabilities
 - **Acne Detection**: HSV color space analysis with severity assessment
@@ -166,6 +169,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
 - ~~**Health Score Bug**: 5000% scores~~ ✅ **FIXED**
 - ~~**Empty Recommendations**: No mock data~~ ✅ **FIXED**
 - ~~**Empty Demographics**: Now shows "unknown" instead of empty~~ ✅ **FIXED**
+- ~~**Camera Issues**: Video element not found~~ ✅ **FIXED**
 
 ### 🚧 In Progress
 - Enhanced face detection with multiple methods
@@ -180,7 +184,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
 - `backend/integrated_skin_analysis.py` - Core analysis logic
 - `backend/enhanced_analysis_algorithms.py` - Computer vision algorithms
 - `backend/real_database_integration.py` - Real dataset integration
-- `app/page.tsx` - Main frontend page
+- `app/page.tsx` - Main frontend page (with camera integration)
 - `lib/direct-backend.ts` - Direct backend communication
 - `components/enhanced-analysis.tsx` - Analysis component
 
@@ -212,7 +216,7 @@ npm start
 
 ### Real Analysis Testing
 1. Start both backend and frontend
-2. Upload a clear face photo
+2. Use camera or upload a clear face photo
 3. Verify health score is between 0-100 (not 5000%)
 4. Check that recommendations are specific to detected conditions
 5. Confirm similarity search returns real matches
@@ -251,5 +255,5 @@ For issues and questions:
 ---
 
 **Last Updated**: August 2024  
-**Version**: 3.0 - **Real Analysis Edition**  
-**Status**: Production Ready with Real Datasets
+**Version**: 3.1 - **Real Analysis Edition with Camera**  
+**Status**: Production Ready with Real Datasets and Camera Integration
