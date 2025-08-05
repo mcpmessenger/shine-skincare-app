@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     const requestBody = await request.json();
     
     // Get the backend URL from environment or use default
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
     
     // Forward the request to the Flask backend
     const response = await fetch(`${backendUrl}/api/v3/skin/analyze-enhanced`, {

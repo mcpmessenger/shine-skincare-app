@@ -28,6 +28,11 @@ export async function POST(request: NextRequest) {
       console.log('Request payload size:', JSON.stringify(requestBody).length);
       console.log('Request payload keys:', Object.keys(requestBody));
       
+      // Log face detection result if provided
+      if (requestBody.face_detection_result) {
+        console.log('Frontend sending face_detection_result:', requestBody.face_detection_result);
+      }
+      
       // First try to forward the request to the Flask backend
       const response = await fetch(`${backendUrl}/api/v3/skin/analyze-enhanced-embeddings`, {
         method: 'POST',
@@ -35,6 +40,8 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody),
+        // Add timeout to prevent hanging requests
+        signal: AbortSignal.timeout(30000) // 30 second timeout
       });
 
       console.log('Backend response status:', response.status);
@@ -51,11 +58,13 @@ export async function POST(request: NextRequest) {
           proxy_to_backend: true
         };
         
+        console.log('✅ Successfully proxied to backend');
         return NextResponse.json(result);
       } else {
         // If Flask backend fails, provide a fallback response
         console.log('❌ Flask backend failed with status:', response.status);
-        console.log('Backend error response:', await response.text());
+        const errorText = await response.text();
+        console.log('Backend error response:', errorText);
         console.log('Flask backend unavailable, using fallback for skin analysis');
         return NextResponse.json(
           { 

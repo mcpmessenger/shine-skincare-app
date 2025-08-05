@@ -240,43 +240,79 @@ class IntegratedSkinAnalysis:
         """Generate comprehensive analysis summary"""
         try:
             summary = {
-                'overall_health_score': 0,
+                'overall_health_score': 50,  # Default neutral score
                 'primary_concerns': [],
-                'recommendations': [],
-                'confidence_level': 'medium'
+                'immediate_recommendations': [],
+                'long_term_recommendations': [],
+                'professional_consultation': False,
+                'confidence': 0.7  # Default confidence
             }
             
-            # Calculate overall health score
-            health_score = baseline_comparison.get('health_score', 50)
-            summary['overall_health_score'] = health_score
+            # Calculate overall health score from baseline comparison
+            if baseline_comparison.get('status') == 'baseline_comparison':
+                health_score = baseline_comparison.get('health_score', 50)
+                summary['overall_health_score'] = health_score
+                summary['confidence'] = min(0.9, max(0.5, baseline_comparison.get('similarity_to_healthy', 0.5)))
             
-            # Identify primary concerns
+            # Identify primary concerns from condition analysis
             if condition_analysis.get('primary_concern'):
                 primary_condition = condition_analysis['primary_concern'][0]
                 if primary_condition != 'healthy':
                     summary['primary_concerns'].append(primary_condition)
             
             # Add basic analysis concerns
-            if basic_analysis.get('acne_severity', 0) > 0.1:
-                summary['primary_concerns'].append('acne')
-            if basic_analysis.get('redness_severity', 0) > 0.1:
-                summary['primary_concerns'].append('redness')
-            if basic_analysis.get('dark_spots_severity', 0) > 0.1:
-                summary['primary_concerns'].append('dark_spots')
+            conditions = basic_analysis.get('conditions', {})
+            for condition, data in conditions.items():
+                if isinstance(data, dict) and data.get('detected', False):
+                    severity = data.get('severity', 'none')
+                    if severity in ['moderate', 'severe']:
+                        summary['primary_concerns'].append(f"{condition}_{severity}")
             
-            # Generate recommendations
-            if health_score < 50:
-                summary['recommendations'].append('Consider consulting a dermatologist')
-            if 'acne' in summary['primary_concerns']:
-                summary['recommendations'].append('Use gentle, non-comedogenic skincare products')
-            if 'redness' in summary['primary_concerns']:
-                summary['recommendations'].append('Avoid harsh skincare products and protect from sun')
+            # Generate recommendations based on health score and concerns
+            health_score = summary['overall_health_score']
+            
+            if health_score < 40:
+                summary['professional_consultation'] = True
+                summary['immediate_recommendations'].append('Schedule a consultation with a dermatologist')
+                summary['long_term_recommendations'].append('Establish a consistent skincare routine')
+            elif health_score < 60:
+                summary['immediate_recommendations'].append('Consider improving your skincare routine')
+                summary['long_term_recommendations'].append('Focus on gentle, hydrating products')
+            else:
+                summary['immediate_recommendations'].append('Maintain your current skincare routine')
+                summary['long_term_recommendations'].append('Continue with preventive care')
+            
+            # Add condition-specific recommendations
+            for concern in summary['primary_concerns']:
+                if 'acne' in concern:
+                    summary['immediate_recommendations'].append('Use non-comedogenic, gentle cleansers')
+                    summary['long_term_recommendations'].append('Consider products with salicylic acid or benzoyl peroxide')
+                elif 'redness' in concern:
+                    summary['immediate_recommendations'].append('Avoid harsh skincare products')
+                    summary['long_term_recommendations'].append('Use products with soothing ingredients like aloe or chamomile')
+                elif 'dark_spots' in concern:
+                    summary['immediate_recommendations'].append('Use broad-spectrum sunscreen daily')
+                    summary['long_term_recommendations'].append('Consider products with vitamin C or niacinamide')
+                elif 'dry' in concern:
+                    summary['immediate_recommendations'].append('Use hydrating moisturizers')
+                    summary['long_term_recommendations'].append('Consider products with hyaluronic acid or ceramides')
+            
+            # Remove duplicates
+            summary['immediate_recommendations'] = list(set(summary['immediate_recommendations']))
+            summary['long_term_recommendations'] = list(set(summary['long_term_recommendations']))
             
             return summary
             
         except Exception as e:
             logger.error(f"❌ Failed to generate analysis summary: {e}")
-            return {'error': str(e)}
+            return {
+                'overall_health_score': 50,
+                'primary_concerns': [],
+                'immediate_recommendations': ['Analysis incomplete - please try again'],
+                'long_term_recommendations': [],
+                'professional_consultation': False,
+                'confidence': 0.3
+            }
     
     def get_system_status(self) -> Dict:
         """Get system status and component information"""

@@ -18,6 +18,9 @@ import traceback
 # Import our integrated analysis system
 from integrated_skin_analysis import IntegratedSkinAnalysis
 
+# Import enhanced face detection
+from enhanced_face_detection_fixed import enhanced_face_detector as robust_face_detector
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -69,7 +72,7 @@ def convert_numpy_types(obj):
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=['http://localhost:3000', 'http://127.0.0.1:3000'], supports_credentials=True)
 
 # Initialize the integrated analysis system
 try:
@@ -241,117 +244,23 @@ def face_detect():
         if img_array is None:
             return jsonify({'error': 'Failed to decode image'}), 400
         
-        # Perform face detection using OpenCV with multiple cascade files
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        profile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_profileface.xml')
+        # Use enhanced face detection
+        face_detection_result = robust_face_detector.detect_faces(img_array)
         
-        # Convert to grayscale
-        gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
-        
-        # Try different detection parameters
-        faces = []
-        
-        # Method 1: Standard frontal face detection
-        faces1 = face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(30, 30))
-        if len(faces1) > 0:
-            faces.extend(faces1)
-        
-        # Method 2: More sensitive frontal face detection
-        faces2 = face_cascade.detectMultiScale(gray, 1.05, 6, minSize=(20, 20))
-        if len(faces2) > 0:
-            faces.extend(faces2)
-        
-        # Method 3: Very sensitive frontal face detection
-        faces3 = face_cascade.detectMultiScale(gray, 1.02, 8, minSize=(15, 15))
-        if len(faces3) > 0:
-            faces.extend(faces3)
-        
-        # Method 4: Profile face detection
-        faces4 = profile_cascade.detectMultiScale(gray, 1.1, 4, minSize=(30, 30))
-        if len(faces4) > 0:
-            faces.extend(faces4)
-        
-        # Method 5: Very sensitive profile face detection
-        faces5 = profile_cascade.detectMultiScale(gray, 1.05, 6, minSize=(20, 20))
-        if len(faces5) > 0:
-            faces.extend(faces5)
-        
-        # Remove duplicates and overlapping faces
-        if len(faces) > 0:
-            # Convert to list of tuples for easier processing
-            faces = [tuple(face) for face in faces]
-            
-            # Remove overlapping faces (keep the larger one)
-            filtered_faces = []
-            for face in faces:
-                x, y, w, h = face
-                is_overlapping = False
-                
-                for existing_face in filtered_faces:
-                    ex, ey, ew, eh = existing_face
-                    # Check if faces overlap significantly
-                    overlap_x = max(0, min(x + w, ex + ew) - max(x, ex))
-                    overlap_y = max(0, min(y + h, ey + eh) - max(y, ey))
-                    overlap_area = overlap_x * overlap_y
-                    face_area = w * h
-                    existing_area = ew * eh
-                    
-                    if overlap_area > 0.5 * min(face_area, existing_area):
-                        is_overlapping = True
-                        break
-                
-                if not is_overlapping:
-                    filtered_faces.append(face)
-            
-            faces = filtered_faces
-        
-        if len(faces) > 0:
-            # Get the largest face
-            largest_face = max(faces, key=lambda x: x[2] * x[3])
-            x, y, w, h = largest_face
-            
-            # Calculate confidence based on face size and position
-            img_height, img_width = img_array.shape[:2]
-            face_area = w * h
-            img_area = img_width * img_height
-            area_ratio = face_area / img_area
-            
-            # Calculate position score (center is better)
-            center_x = x + w/2
-            center_y = y + h/2
-            distance_from_center = np.sqrt((center_x - img_width/2)**2 + (center_y - img_height/2)**2)
-            max_distance = np.sqrt((img_width/2)**2 + (img_height/2)**2)
-            position_score = 1 - (distance_from_center / max_distance)
-            
-            # Calculate overall confidence
-            confidence = min(0.9, area_ratio * 10 + position_score * 0.1)
-            
-            # Determine quality metrics
-            lighting = 'good' if np.mean(gray) > 100 else 'poor'
-            sharpness = 'high' if confidence > 0.7 else 'low'
-            positioning = 'optimal' if position_score > 0.8 else 'suboptimal'
-            
+        if face_detection_result['detected']:
             return jsonify({
                 'status': 'success',
                 'face_detected': True,
-                'confidence': float(confidence),
-                'face_bounds': {
-                    'x': float(x),
-                    'y': float(y),
-                    'width': float(w),
-                    'height': float(h)
-                },
-                'quality_metrics': {
-                    'lighting': lighting,
-                    'sharpness': sharpness,
-                    'positioning': positioning
-                },
+                'confidence': face_detection_result['confidence'],
+                'face_bounds': face_detection_result['face_bounds'],
+                'quality_metrics': face_detection_result['quality_metrics'],
                 'guidance': {
                     'message': 'Face detected successfully',
+                    'method': face_detection_result['method'],
                     'suggestions': [
-                        'Position your face in the center of the frame',
-                        'Ensure good lighting conditions',
-                        'Keep your face steady for better analysis'
+                        'Ensure good lighting for better analysis',
+                        'Keep face centered in the frame',
+                        'Avoid shadows and reflections'
                     ]
                 }
             })
@@ -360,12 +269,7 @@ def face_detect():
                 'status': 'success',
                 'face_detected': False,
                 'confidence': 0.0,
-                'face_bounds': {
-                    'x': 0,
-                    'y': 0,
-                    'width': 0,
-                    'height': 0
-                },
+                'face_bounds': {'x': 0, 'y': 0, 'width': 0, 'height': 0},
                 'quality_metrics': {
                     'lighting': 'unknown',
                     'sharpness': 'unknown',
@@ -373,49 +277,29 @@ def face_detect():
                 },
                 'guidance': {
                     'message': 'No face detected',
+                    'method': face_detection_result['method'],
                     'suggestions': [
-                        'Ensure your face is clearly visible in the frame',
-                        'Check lighting conditions',
-                        'Position your face in the center of the camera',
-                        'Try moving closer to the camera'
+                        'Ensure a face is clearly visible in the image',
+                        'Try adjusting lighting conditions',
+                        'Make sure the face is not too small or too large',
+                        'Avoid extreme angles or partial occlusion'
                     ]
                 }
             })
             
     except Exception as e:
-        logger.error(f"❌ Face detection failed: {e}")
+        logger.error(f"Face detection error: {e}")
         logger.error(traceback.format_exc())
         return jsonify({
-            'status': 'error',
-            'face_detected': False,
-            'confidence': 0.0,
-            'face_bounds': {
-                'x': 0,
-                'y': 0,
-                'width': 0,
-                'height': 0
-            },
-            'quality_metrics': {
-                'lighting': 'unknown',
-                'sharpness': 'unknown',
-                'positioning': 'unknown'
-            },
-            'guidance': {
-                'message': 'Face detection failed',
-                'suggestions': [
-                    'Please try again',
-                    'Check your internet connection',
-                    'Ensure image data is valid'
-                ]
-            },
-            'error': str(e)
+            'error': f'Face detection failed: {str(e)}',
+            'status': 'error'
         }), 500
 
 @app.route('/api/v3/skin/analyze-enhanced-embeddings', methods=['POST'])
 def analyze_skin_enhanced_embeddings():
     """
     Enhanced skin analysis with embeddings and cosine similarity search
-    Accepts pre-detected face information to avoid redundant detection
+    Performs face detection and analysis in a single step
     """
     try:
         # Get request data
@@ -428,90 +312,22 @@ def analyze_skin_enhanced_embeddings():
         if not image_data:
             return jsonify({'error': 'No image data provided'}), 400
         
-        # Check if face detection result is provided
-        face_detection_result = data.get('face_detection_result')
-        
         # Decode base64 image
         try:
             image_bytes = base64.b64decode(image_data)
         except Exception as e:
             return jsonify({'error': f'Invalid image data: {e}'}), 400
         
-        # Convert to numpy array for face detection (if needed)
+        # Convert to numpy array for face detection
         nparr = np.frombuffer(image_bytes, np.uint8)
         img_array = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
         if img_array is None:
             return jsonify({'error': 'Failed to decode image'}), 400
         
-        # Use provided face detection result or perform detection
-        if face_detection_result and face_detection_result.get('face_detected'):
-            # Use the provided face detection result
-            logger.info("Using provided face detection result")
-            face_detection_result = {
-                'detected': face_detection_result.get('face_detected', False),
-                'confidence': face_detection_result.get('confidence', 0.0),
-                'face_bounds': face_detection_result.get('face_bounds', {'x': 0, 'y': 0, 'width': 0, 'height': 0}),
-                'method': 'frontend_provided',
-                'quality_metrics': {
-                    'overall_quality': 'good' if face_detection_result.get('confidence', 0.0) > 0.7 else 'poor',
-                    'quality_score': face_detection_result.get('confidence', 0.0)
-                }
-            }
-        else:
-            # Perform face detection on backend
-            logger.info("Performing face detection on backend")
-            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-            gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-            
-            face_detection_result = {
-                'detected': False,
-                'confidence': 0.0,
-                'face_bounds': {'x': 0, 'y': 0, 'width': 0, 'height': 0},
-                'method': 'opencv_haar',
-                'quality_metrics': {
-                    'overall_quality': 'unknown',
-                    'quality_score': 0.0
-                }
-            }
-            
-            if len(faces) > 0:
-                # Get the largest face
-                largest_face = max(faces, key=lambda x: x[2] * x[3])
-                x, y, w, h = largest_face
-                
-                # Calculate confidence based on face size and position
-                img_height, img_width = img_array.shape[:2]
-                face_area = w * h
-                img_area = img_width * img_height
-                area_ratio = face_area / img_area
-                
-                # Calculate position score (center is better)
-                center_x = x + w/2
-                center_y = y + h/2
-                distance_from_center = np.sqrt((center_x - img_width/2)**2 + (center_y - img_height/2)**2)
-                max_distance = np.sqrt((img_width/2)**2 + (img_height/2)**2)
-                position_score = 1 - (distance_from_center / max_distance)
-                
-                # Calculate overall confidence
-                confidence = min(0.9, area_ratio * 10 + position_score * 0.1)
-                
-                face_detection_result = {
-                    'detected': True,
-                    'confidence': float(confidence),
-                    'face_bounds': {
-                        'x': float(x),
-                        'y': float(y),
-                        'width': float(w),
-                        'height': float(h)
-                    },
-                    'method': 'opencv_haar',
-                    'quality_metrics': {
-                        'overall_quality': 'good' if confidence > 0.7 else 'poor',
-                        'quality_score': float(confidence)
-                    }
-                }
+        # Perform face detection
+        logger.info("Performing face detection for enhanced analysis")
+        face_detection_result = robust_face_detector.detect_faces(img_array)
         
         # Get user demographics (optional)
         demographics = data.get('demographics', {})
@@ -574,16 +390,19 @@ def analyze_skin_enhanced_embeddings():
             'timestamp': datetime.now().isoformat(),
             'analysis_type': 'comprehensive',
             'demographics': {
-                'age_category': age_category,
-                'race_category': race_category
+                'age_category': age_category or 'unknown',
+                'race_category': race_category or 'unknown'
             },
             'face_detection': face_detection_result,
             'skin_analysis': {
-                'overall_health_score': serializable_results.get('analysis_summary', {}).get('overall_health_score', 0.0),
-                'texture': serializable_results.get('basic_analysis', {}).get('texture', 'unknown'),
-                'tone': serializable_results.get('basic_analysis', {}).get('tone', 'unknown'),
-                'conditions_detected': serializable_results.get('basic_analysis', {}).get('conditions_detected', []),
-                'analysis_confidence': serializable_results.get('analysis_summary', {}).get('confidence', 0.0)
+                'overall_health_score': serializable_results.get('analysis_summary', {}).get('overall_health_score', 50.0),
+                'texture': serializable_results.get('basic_analysis', {}).get('conditions', {}).get('texture', {}).get('type', 'normal'),
+                'tone': serializable_results.get('basic_analysis', {}).get('conditions', {}).get('pigmentation', {}).get('type', 'normal'),
+                'conditions_detected': [
+                    condition for condition, data in serializable_results.get('basic_analysis', {}).get('conditions', {}).items()
+                    if isinstance(data, dict) and data.get('detected', False)
+                ],
+                'analysis_confidence': serializable_results.get('analysis_summary', {}).get('confidence', 0.7)
             },
             'similarity_search': {
                 'dataset_used': 'integrated_embeddings',
@@ -597,6 +416,10 @@ def analyze_skin_enhanced_embeddings():
             'quality_assessment': {
                 'image_quality': 'good' if face_detection_result['detected'] else 'poor',
                 'confidence_reliability': 'high' if face_detection_result['confidence'] > 0.7 else 'low'
+            },
+            'frontend_metadata': {
+                'endpoint': '/api/v3/skin/analyze-enhanced-embeddings',
+                'timestamp': datetime.now().isoformat()
             }
         }
         

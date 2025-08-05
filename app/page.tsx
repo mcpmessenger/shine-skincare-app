@@ -2235,7 +2235,7 @@ export default function EnhancedSkinAnalysis() {
                       fontWeight: 200,
                       color: '#10b981'
                     }}>
-                      {analysisResult?.skin_analysis?.overall_health_score ? Math.round(analysisResult.skin_analysis?.overall_health_score * 100) : 0}%
+                      {analysisResult?.skin_analysis?.overall_health_score ? Math.round(analysisResult.skin_analysis?.overall_health_score) : 0}%
                     </div>
                     <div style={{
                       flex: 1,
@@ -2245,7 +2245,7 @@ export default function EnhancedSkinAnalysis() {
                       overflow: 'hidden'
                     }}>
                       <div style={{
-                        width: `${analysisResult?.skin_analysis?.overall_health_score ? analysisResult.skin_analysis?.overall_health_score * 100 : 0}%`,
+                        width: `${analysisResult?.skin_analysis?.overall_health_score ? analysisResult.skin_analysis?.overall_health_score : 0}%`,
                         height: '100%',
                         backgroundColor: '#10b981',
                         transition: 'width 0.3s ease'
@@ -2555,7 +2555,7 @@ export default function EnhancedSkinAnalysis() {
                     Analysis Method: {analysisResult?.face_detection?.method || 'Unknown'}
                   </p>
                   <p style={{ margin: '0.25rem 0' }}>
-                    Confidence: {analysisResult?.skin_analysis?.analysis_confidence ? Math.round(analysisResult.skin_analysis?.analysis_confidence * 100) : 0}%
+                    Confidence: {analysisResult?.face_detection?.confidence ? Math.round(analysisResult.face_detection?.confidence * 100) : 0}%
                   </p>
                   <p style={{ margin: '0.25rem 0' }}>
                     Dataset: {analysisResult?.similarity_search?.dataset_used || 'Unknown'}

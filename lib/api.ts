@@ -91,12 +91,7 @@ class ApiClient {
     this.baseUrl = 'http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
     
     // Debug: Log the actual URL being used
-    console.log('🔧 API Client initialized with backend URL:', this.baseUrl);
-    console.log('🔧 Environment variables:', {
-      NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
-      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-      NODE_ENV: process.env.NODE_ENV
-    });
+    // API Client initialized
     
     // Log a clear message about the URL being used
     console.log('🔒 Using working Elastic Beanstalk backend (HTTP) - FORCE REBUILD');
@@ -1018,42 +1013,10 @@ export async function analyzeSelfieWithErrorHandling(imageFile: File): Promise<a
           fallback_used: false
         };
       } catch (advancedError) {
-        console.log('❌ Advanced analysis failed, using mock data...', advancedError);
+        console.log('❌ Advanced analysis failed:', advancedError);
         
-        // Final fallback - mock analysis
-        return {
-          success: true,
-          message: 'Analysis completed (fallback mode)',
-          data: {
-            image_info: {
-              width: 1920,
-              height: 1080,
-              aspect_ratio: 1.78,
-              file_size_mb: Math.round(imageFile.size / (1024 * 1024) * 100) / 100,
-              format: imageFile.type.split('/')[1]?.toUpperCase() || 'JPEG'
-            },
-            analysis: {
-              brightness: 127.5,
-              contrast: 45.2,
-              texture_score: 38.7,
-              mean_color_rgb: [128, 125, 130],
-              color_variance: [25, 22, 28]
-            },
-            recommendations: [
-              {
-                type: 'general',
-                priority: 'medium',
-                message: 'Analysis completed successfully',
-                suggestion: 'Your image has been processed'
-              }
-            ],
-            processing_time_ms: 150,
-            analysis_quality: 'fallback_stable'
-          },
-          analysis_type: 'fallback_mock',
-          fallback_used: true,
-          fallback_reason: 'All analysis methods failed, using mock data'
-        };
+        // Don't use mock data - throw error instead
+        throw new Error('Advanced analysis failed. Please try again with a different image.');
       }
     }
     
@@ -1077,33 +1040,8 @@ export async function searchSCINWithErrorHandling(file: File, k: number = 5, con
     } catch (scinError) {
       console.log('⚠️ SCIN search failed, using fallback...', scinError);
       
-      // Fallback to mock SCIN results
-      return {
-        success: true,
-        message: 'SCIN search completed (fallback mode)',
-        data: {
-          similar_cases: [
-            {
-              id: 'fallback_1',
-              similarity_score: 0.85,
-              condition: 'Acne',
-              treatment: 'Gentle cleanser and spot treatment',
-              confidence: 0.8
-            },
-            {
-              id: 'fallback_2', 
-              similarity_score: 0.78,
-              condition: 'Dry skin',
-              treatment: 'Hydrating moisturizer',
-              confidence: 0.75
-            }
-          ],
-          total_results: 2,
-          search_quality: 'fallback_mock'
-        },
-        fallback_used: true,
-        fallback_reason: 'SCIN search service unavailable'
-      };
+      // Don't use mock data - throw error instead
+      throw new Error('SCIN search failed. Please try again with a different image.');
     }
     
   } catch (error) {
@@ -1163,177 +1101,4 @@ export async function processImageWithRetry(imageFile: File, maxRetries: number 
       console.log(`🔄 Image processing attempt ${attempt}/${maxRetries}...`);
       
       const result = await analyzeSelfieWithErrorHandling(imageFile);
-      console.log(`✅ Image processing successful on attempt ${attempt}`);
-      return result;
-      
-    } catch (error) {
-      console.log(`❌ Attempt ${attempt} failed:`, error);
-      lastError = error;
-      
-      if (attempt < maxRetries) {
-        // Wait before retry (exponential backoff)
-        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-        console.log(`⏳ Waiting ${waitTime}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-      }
-    }
-  }
-  
-  console.error('❌ All retry attempts failed');
-  throw lastError || new Error('Image processing failed after all retries');
-}
-
-// Fast embedding search (<5 minutes)
-export async function searchEmbeddingsFast(imageFile: File, topK: number = 5, conditions?: string[], skinTypes?: string[]): Promise<any> {
-  try {
-    console.log('🚀 Starting fast embedding search...');
-    
-    const formData = new FormData();
-    formData.append('image', imageFile);
-    formData.append('top_k', topK.toString());
-    
-    if (conditions && conditions.length > 0) {
-      conditions.forEach(condition => formData.append('conditions', condition));
-    }
-    
-    if (skinTypes && skinTypes.length > 0) {
-      skinTypes.forEach(skinType => formData.append('skin_types', skinType));
-    }
-    
-    const response = await fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/embedding/search-fast', {
-      method: 'POST',
-      body: formData,
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    console.log('✅ Fast embedding search completed:', result);
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Fast embedding search error:', error);
-    throw error;
-  }
-}
-
-// Enhanced embedding search with fallback
-export async function searchEmbeddingsWithFallback(imageFile: File, topK: number = 5, conditions?: string[], skinTypes?: string[]): Promise<any> {
-  try {
-    console.log('🔍 Starting enhanced embedding search with fallback...');
-    
-    // Try fast embedding search first
-    try {
-      console.log('⚡ Attempting fast embedding search...');
-      const fastResult = await searchEmbeddingsFast(imageFile, topK, conditions, skinTypes);
-      console.log('✅ Fast embedding search successful');
-      return {
-        ...fastResult,
-        search_type: 'fast_embedding',
-        fallback_used: false
-      };
-    } catch (fastError) {
-      console.log('⚠️ Fast embedding search failed, trying SCIN search...', fastError);
-      
-      // Fallback to SCIN search
-      try {
-        console.log('📊 Attempting SCIN search fallback...');
-        const scinResult = await searchSCINWithErrorHandling(imageFile, topK, conditions, skinTypes);
-        console.log('✅ SCIN search fallback successful');
-        return {
-          ...scinResult,
-          search_type: 'scin_fallback',
-          fallback_used: true,
-          fallback_reason: 'Fast embedding search failed'
-        };
-      } catch (scinError) {
-        console.log('❌ SCIN search failed, using mock data...', scinError);
-        
-        // Final fallback - mock results
-        return {
-          success: true,
-          message: 'Embedding search completed (mock fallback)',
-          data: {
-            similar_cases: [
-              {
-                id: 'mock_embedding_1',
-                similarity_score: 0.85,
-                condition: 'Acne',
-                treatment: 'Gentle cleanser and spot treatment',
-                confidence: 0.8
-              },
-              {
-                id: 'mock_embedding_2',
-                similarity_score: 0.78,
-                condition: 'Dry skin',
-                treatment: 'Hydrating moisturizer',
-                confidence: 0.75
-              },
-              {
-                id: 'mock_embedding_3',
-                similarity_score: 0.72,
-                condition: 'Sensitive skin',
-                treatment: 'Fragrance-free products',
-                confidence: 0.7
-              }
-            ],
-            total_results: 3,
-            search_time_seconds: 0.5,
-            search_quality: 'mock_fallback'
-          },
-          search_type: 'mock_fallback',
-          fallback_used: true,
-          fallback_reason: 'All embedding search methods failed'
-        };
-      }
-    }
-    
-  } catch (error) {
-    console.error('❌ All embedding search methods failed:', error);
-    throw new Error('Embedding search failed. Please try again.');
-  }
-}
-
-// Performance monitoring for embedding searches
-export async function monitorEmbeddingPerformance(): Promise<any> {
-  try {
-    console.log('📊 Monitoring embedding search performance...');
-    
-    const performanceChecks = await Promise.allSettled([
-          fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/embedding/search-fast'),
-fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/ai/health'),
-fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/scin/search')
-    ]);
-    
-    const results = performanceChecks.map((result, index) => {
-      if (result.status === 'fulfilled') {
-        return { endpoint: index, status: 'ok', response: result.value };
-      } else {
-        return { endpoint: index, status: 'error', error: result.reason };
-      }
-    });
-    
-    console.log('📈 Embedding performance results:', results);
-    
-    const workingEndpoints = results.filter(r => r.status === 'ok').length;
-    const totalEndpoints = results.length;
-    
-    return {
-      success: workingEndpoints > 0,
-      working_endpoints: workingEndpoints,
-      total_endpoints: totalEndpoints,
-      performance_score: Math.round((workingEndpoints / totalEndpoints) * 100),
-      details: results
-    };
-    
-  } catch (error) {
-    console.error('❌ Performance monitoring failed:', error);
-    return {
-      success: false,
-      error: 'Performance monitoring failed',
-      details: error
-    };
-  }
-}
+      console.log(`
