@@ -236,7 +236,7 @@ export default function EnhancedSkinAnalysis() {
     let recommendedProducts = [...products]
     
     // Filter by detected conditions
-    const conditions = analysis?.skin_analysis?.conditions_detected?.map(c => c.condition.toLowerCase()) || []
+    const conditions = analysis?.skin_analysis?.conditions_detected?.map(c => c?.condition?.toLowerCase()).filter(Boolean) || []
     
     if (conditions.some(c => c.includes('acne') || c.includes('breakout'))) {
       recommendedProducts = recommendedProducts.filter(p => 
