@@ -32,8 +32,6 @@ export default function RootLayout({
         margin: 0,
         padding: 0,
         fontFamily: `Inter, ${GeistSans.variable}, ${GeistMono.variable}, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`,
-        backgroundColor: '#000000',
-        color: '#ffffff',
         minHeight: '100vh',
         fontWeight: 300
       }}>
