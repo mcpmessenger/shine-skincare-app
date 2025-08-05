@@ -2285,13 +2285,13 @@ export default function EnhancedSkinAnalysis() {
                             fontWeight: 500,
                             color: getTextColor(1)
                           }}>
-                            {condition.condition.replace('_', ' ').toUpperCase()}
+                            {condition?.condition?.replace('_', ' ').toUpperCase() || 'Unknown Condition'}
                           </span>
                           <span style={{
                             fontSize: '0.9rem',
                             color: getTextColor(0.7)
                           }}>
-                            {Math.round(condition.confidence * 100)}% confidence
+                            {Math.round((condition?.confidence || 0) * 100)}% confidence
                           </span>
                         </div>
                         <p style={{
@@ -2299,7 +2299,7 @@ export default function EnhancedSkinAnalysis() {
                           color: getTextColor(0.7),
                           margin: '0.5rem 0'
                         }}>
-                          {condition.description}
+                          {condition?.description || 'No description available'}
                         </p>
                         <div style={{
                           display: 'flex',
@@ -2313,7 +2313,7 @@ export default function EnhancedSkinAnalysis() {
                             borderRadius: '4px',
                             fontSize: '0.8rem'
                           }}>
-                            {condition.severity}
+                            {condition?.severity || 'Unknown'}
                           </span>
                           <span style={{
                             padding: '0.25rem 0.5rem',
@@ -2322,7 +2322,7 @@ export default function EnhancedSkinAnalysis() {
                             borderRadius: '4px',
                             fontSize: '0.8rem'
                           }}>
-                            {condition.location}
+                            {condition?.location || 'Unknown'}
                           </span>
                         </div>
                       </div>
