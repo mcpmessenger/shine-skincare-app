@@ -72,7 +72,7 @@ def convert_numpy_types(obj):
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app, origins=['http://localhost:3000', 'http://127.0.0.1:3000'], supports_credentials=True)
+CORS(app, origins=['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:3000', 'http://localhost:3001'], supports_credentials=True)
 
 # Initialize the integrated analysis system
 try:

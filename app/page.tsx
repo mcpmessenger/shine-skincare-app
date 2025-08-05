@@ -73,6 +73,18 @@ export default function SimplifiedSkinAnalysis() {
     }
   } | null>(null)
   
+  // Live camera face detection
+  const [liveFaceDetection, setLiveFaceDetection] = useState<{
+    detected: boolean
+    confidence: number
+    face_bounds: {
+      x: number
+      y: number
+      width: number
+      height: number
+    }
+  } | null>(null)
+  
   // Camera states
   const [cameraLoading, setCameraLoading] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
@@ -121,12 +133,14 @@ export default function SimplifiedSkinAnalysis() {
     setShowResults(false)
     setSelectedFile(null)
     setFaceDetection(null)
+    setLiveFaceDetection(null)
     stopCamera()
     setShowCameraPreview(false)
   }
 
   // Start camera with live preview
   const startCamera = async () => {
+    console.log('🔍 startCamera function called')
     try {
       setCameraError(null)
       setCameraLoading(true)
@@ -267,15 +281,78 @@ export default function SimplifiedSkinAnalysis() {
     }
   }
 
+  // Live face detection for camera preview
+  const performLiveFaceDetection = async () => {
+    if (!videoRef.current || !cameraActive) return
+    
+    try {
+      // Create a canvas to capture the current video frame
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+      
+      if (context && videoRef.current) {
+        // Set canvas size to match video
+        canvas.width = videoRef.current.videoWidth
+        canvas.height = videoRef.current.videoHeight
+        
+        // Draw current video frame to canvas
+        context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
+        
+        // Convert canvas to base64 for analysis
+        const imageData = canvas.toDataURL('image/jpeg', 0.8).split(',')[1]
+        
+        // Use dedicated face detection endpoint for faster response
+        const response = await fetch('http://localhost:5000/api/v3/face/detect', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            image_data: imageData
+          })
+        })
+        
+        if (response.ok) {
+          const result = await response.json()
+          if (result.status === 'success') {
+            setLiveFaceDetection({
+              detected: result.face_detected,
+              confidence: result.confidence,
+              face_bounds: result.face_bounds
+            })
+          } else {
+            setLiveFaceDetection({
+              detected: false,
+              confidence: 0,
+              face_bounds: { x: 0, y: 0, width: 0, height: 0 }
+            })
+          }
+        } else {
+          setLiveFaceDetection({
+            detected: false,
+            confidence: 0,
+            face_bounds: { x: 0, y: 0, width: 0, height: 0 }
+          })
+        }
+      }
+    } catch (error) {
+      console.log('Live face detection error:', error)
+      // Don't show error to user for live detection
+    }
+  }
+
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('🔍 handleFileSelect function called')
     const file = event.target.files?.[0]
     if (file) {
+      console.log('📁 File selected:', file.name)
       setSelectedFile(file)
       setUploadMethod('upload')
       
       const reader = new FileReader()
       reader.onload = (e) => {
         const result = e.target?.result as string
+        console.log('📁 File loaded as data URL')
         setUserImage(result)
       }
       reader.readAsDataURL(file)
@@ -283,7 +360,11 @@ export default function SimplifiedSkinAnalysis() {
   }
 
   const handleAnalysis = async () => {
-    if (!userImage) return
+    console.log('🔍 handleAnalysis function called')
+    if (!userImage) {
+      console.log('❌ No user image available')
+      return
+    }
 
     setIsAnalyzing(true)
     setAnalysisError(null)
@@ -348,7 +429,7 @@ export default function SimplifiedSkinAnalysis() {
         pointerEvents: 'none',
         zIndex: 5
       }}>
-        {/* Face Detection Box */}
+        {/* Face Detection Circle/Oval */}
         <div style={{
           position: 'absolute',
           left: `${face_bounds.x}%`,
@@ -356,7 +437,7 @@ export default function SimplifiedSkinAnalysis() {
           width: `${face_bounds.width}%`,
           height: `${face_bounds.height}%`,
           border: '3px solid #3b82f6',
-          borderRadius: '8px',
+          borderRadius: '50%', // Changed from '8px' to '50%' for circle/oval
           boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.3)',
           animation: 'pulse 2s infinite'
         }} />
@@ -376,6 +457,76 @@ export default function SimplifiedSkinAnalysis() {
         }}>
           Face Detected: {confidencePercent}%
         </div>
+      </div>
+    )
+  }
+
+  // Live Face Detection Overlay Component for Camera
+  const LiveFaceDetectionOverlay = ({ faceDetection }: { faceDetection: any }) => {
+    if (!faceDetection) return null
+
+    const { face_bounds, confidence, detected } = faceDetection
+    const confidencePercent = Math.round(confidence * 100)
+
+    return (
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        zIndex: 5
+      }}>
+        {/* Face Detection Circle/Oval */}
+        {detected && (
+          <div style={{
+            position: 'absolute',
+            left: `${face_bounds.x}%`,
+            top: `${face_bounds.y}%`,
+            width: `${face_bounds.width}%`,
+            height: `${face_bounds.height}%`,
+            border: '3px solid #10b981',
+            borderRadius: '50%', // Changed from '8px' to '50%' for circle/oval
+            boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.3)',
+            animation: 'pulse 2s infinite'
+          }} />
+        )}
+        
+        {/* Live Detection Status */}
+        <div style={{
+          position: 'absolute',
+          top: '0.5rem',
+          right: '0.5rem',
+          backgroundColor: detected ? '#10b981' : '#f59e0b',
+          color: 'white',
+          padding: '0.25rem 0.5rem',
+          borderRadius: '12px',
+          fontSize: '0.7rem',
+          fontWeight: '500',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+        }}>
+          {detected ? `Face: ${confidencePercent}%` : 'No Face Detected'}
+        </div>
+        
+        {/* Capture Hint */}
+        {detected && confidence > 0.7 && (
+          <div style={{
+            position: 'absolute',
+            bottom: '4rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(16, 185, 129, 0.9)',
+            color: 'white',
+            padding: '0.25rem 0.5rem',
+            borderRadius: '8px',
+            fontSize: '0.7rem',
+            fontWeight: '500',
+            textAlign: 'center'
+          }}>
+            ✅ Ready to capture
+          </div>
+        )}
       </div>
     )
   }
@@ -410,171 +561,267 @@ export default function SimplifiedSkinAnalysis() {
     }
   }, [showCameraPreview])
 
+  // Live face detection interval
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+    
+    if (cameraActive && showCameraPreview) {
+      // Perform initial face detection after a short delay
+      const initialDetection = setTimeout(() => {
+        performLiveFaceDetection()
+      }, 1000)
+      
+      // Set up periodic face detection
+      interval = setInterval(() => {
+        performLiveFaceDetection()
+      }, 2000) // Check every 2 seconds
+      
+      return () => {
+        clearTimeout(initialDetection)
+        if (interval) clearInterval(interval)
+      }
+    } else {
+      // Clear live face detection when camera stops
+      setLiveFaceDetection(null)
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [cameraActive, showCameraPreview])
+
   return (
     <div style={{
-      minHeight: '100vh',
+      height: '100vh',
       backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
       color: theme === 'dark' ? '#ffffff' : '#000000',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontWeight: 300
+      fontWeight: 300,
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
     }}>
-      {/* Header */}
-      <header style={{
-        backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(20px)',
-        borderBottom: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 1000
-      }}>
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '1rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          {/* Logo */}
-          <Link href="/" style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1rem',
-            textDecoration: 'none'
-          }}>
-            <img 
-              src="https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png"
-              alt="Shine Skin Collective"
-              style={{
-                height: '48px',
-                width: 'auto',
-                objectFit: 'contain',
-                cursor: 'pointer',
-                transition: 'opacity 0.3s ease'
-              }}
-              onError={(e) => {
-                console.error('Logo failed to load');
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          </Link>
+             {/* Header */}
+       <header style={{
+         backgroundColor: theme === 'dark' ? getBgColor(0.1) : '#ffffff',
+         borderBottom: `1px solid ${getBorderColor(0.2)}`,
+         padding: '0.75rem 1rem',
+         display: 'flex',
+         alignItems: 'center',
+         justifyContent: 'space-between',
+         gap: '1rem',
+         flexShrink: 0
+       }}>
+                 {/* Logo */}
+         <div style={{
+           display: 'flex',
+           alignItems: 'center'
+         }}>
+           <Link href="/" style={{
+             display: 'flex',
+             alignItems: 'center',
+             textDecoration: 'none',
+             cursor: 'pointer'
+           }}>
+             <img 
+               src="https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png"
+               alt="SHINE SKIN COLLECTIVE"
+               style={{
+                 height: '48px',
+                 width: 'auto',
+                 objectFit: 'contain'
+               }}
+             />
+           </Link>
+         </div>
 
-          {/* Navigation */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1rem'
+        {/* Navigation */}
+        <nav style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem'
+        }}>
+          <Link href="/catalog" style={{
+            color: getTextColor(0.8),
+            textDecoration: 'none',
+            fontSize: '0.9rem',
+            fontWeight: '500',
+            padding: '0.5rem',
+            borderRadius: '6px',
+            transition: 'all 0.2s ease',
+            backgroundColor: getBgColor(0.05)
           }}>
-            <Link href="/catalog" style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: getBgColor(0.1),
-              border: `1px solid ${getBorderColor(0.2)}`,
-              borderRadius: '8px',
+            Products
+          </Link>
+        </nav>
+
+        {/* Right Side Controls */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem'
+        }}>
+          {/* Theme Toggle */}
+          <ThemeToggle />
+
+          {/* Cart */}
+          <button
+            onClick={() => setShowSignInModal(true)}
+            style={{
+              backgroundColor: getBgColor(0.05),
+              border: 'none',
               color: getTextColor(1),
-              textDecoration: 'none',
-              fontSize: '0.9rem',
-              transition: 'all 0.3s ease',
+              cursor: 'pointer',
+              padding: '0.5rem',
+              borderRadius: '6px',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              <ShoppingCart />
-              Products
-            </Link>
-            <ThemeToggle />
-            <CartDrawer />
-          </div>
+              justifyContent: 'center',
+              width: '32px',
+              height: '32px'
+            }}
+          >
+            <ShoppingCart style={{ width: '16px', height: '16px' }} />
+          </button>
+
+          {/* Auth Avatar / Sign In */}
+          {isAuthenticated ? (
+            <button
+              onClick={() => setShowSignInModal(true)}
+              style={{
+                backgroundColor: getBgColor(0.1),
+                border: 'none',
+                cursor: 'pointer',
+                padding: '0.25rem',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '32px',
+                height: '32px'
+              }}
+            >
+              <User style={{ width: '16px', height: '16px', color: getTextColor(1) }} />
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowSignInModal(true)}
+              style={{
+                backgroundColor: getBgColor(0.1),
+                border: `1px solid ${getBorderColor(0.2)}`,
+                color: getTextColor(1),
+                cursor: 'pointer',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '6px',
+                fontSize: '0.8rem',
+                fontWeight: '500',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Sign In
+            </button>
+          )}
         </div>
       </header>
 
       {/* Main Content */}
       <div style={{
-        maxWidth: '600px',
+        flex: 1,
+        maxWidth: '1200px',
         margin: '0 auto',
-        padding: '1rem',
-        minHeight: 'calc(100vh - 80px)',
+        padding: '0.25rem',
         display: 'flex',
         flexDirection: 'column',
-        gap: '1rem'
+        gap: '0.25rem',
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden'
       }}>
         
         {/* Photo Display Area */}
         <div style={{
           backgroundColor: getBgColor(0.05),
-          borderRadius: '16px',
-          padding: '1rem',
+          borderRadius: '8px',
+          padding: '0.25rem',
           border: `1px solid ${getBorderColor(0.1)}`,
-          minHeight: '400px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          position: 'relative'
+          position: 'relative',
+          aspectRatio: '3/4',
+          maxHeight: '65vh',
+          minHeight: '300px',
+          flex: 1
         }}>
-          {/* Camera Preview */}
-          {showCameraPreview && (
-            <div style={{ width: '100%', position: 'relative' }}>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                onLoadedMetadata={() => console.log('🎥 Video metadata loaded in JSX')}
-                onCanPlay={() => console.log('🎥 Video can play')}
-                onPlaying={() => console.log('🎥 Video is playing')}
-                onError={(e) => console.error('🎥 Video error in JSX:', e)}
-                style={{
-                  width: '100%',
-                  borderRadius: '12px',
-                  maxHeight: '400px',
-                  objectFit: 'cover',
-                  aspectRatio: '9/16',
-                  backgroundColor: '#000000',
-                  display: 'block'
-                }}
-              />
-              {/* Camera Controls */}
-              <div style={{
-                position: 'absolute',
-                bottom: '1rem',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                display: 'flex',
-                gap: '1rem',
-                zIndex: 10
-              }}>
-                <button
-                  onClick={capturePhoto}
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '0.9rem',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}
-                >
-                  <Camera />
-                  Capture Photo
-                </button>
+                     {/* Camera Preview */}
+           {showCameraPreview && (
+             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+               <video
+                 ref={videoRef}
+                 autoPlay
+                 playsInline
+                 muted
+                 onLoadedMetadata={() => console.log('🎥 Video metadata loaded in JSX')}
+                 onCanPlay={() => console.log('🎥 Video can play')}
+                 onPlaying={() => console.log('🎥 Video is playing')}
+                 onError={(e) => console.error('🎥 Video error in JSX:', e)}
+                 style={{
+                   width: '100%',
+                   height: '100%',
+                   borderRadius: '6px',
+                   objectFit: 'cover',
+                   aspectRatio: '3/4',
+                   backgroundColor: '#000000',
+                   display: 'block'
+                 }}
+               />
+               {/* Live Face Detection Overlay */}
+               {liveFaceDetection && <LiveFaceDetectionOverlay faceDetection={liveFaceDetection} />}
+               {/* Camera Controls */}
+               <div style={{
+                 position: 'absolute',
+                 bottom: '0.5rem',
+                 left: '50%',
+                 transform: 'translateX(-50%)',
+                 display: 'flex',
+                 gap: '0.5rem',
+                 zIndex: 10
+               }}>
+                                 <button
+                   onClick={capturePhoto}
+                   disabled={!liveFaceDetection?.detected || (liveFaceDetection?.confidence || 0) < 0.5}
+                   style={{
+                     padding: '0.5rem 1rem',
+                     backgroundColor: liveFaceDetection?.detected && (liveFaceDetection?.confidence || 0) >= 0.5 ? '#3b82f6' : '#6b7280',
+                     color: 'white',
+                     border: 'none',
+                     borderRadius: '6px',
+                     cursor: liveFaceDetection?.detected && (liveFaceDetection?.confidence || 0) >= 0.5 ? 'pointer' : 'not-allowed',
+                     fontSize: '0.8rem',
+                     fontWeight: '500',
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: '0.25rem',
+                     opacity: liveFaceDetection?.detected && (liveFaceDetection?.confidence || 0) >= 0.5 ? 1 : 0.6
+                   }}
+                 >
+                   <Camera />
+                   {liveFaceDetection?.detected && (liveFaceDetection?.confidence || 0) >= 0.5 ? 'Capture' : 'No Face'}
+                 </button>
                 <button
                   onClick={() => {
                     stopCamera()
                     setShowCameraPreview(false)
                   }}
                   style={{
-                    padding: '0.75rem 1.5rem',
+                    padding: '0.5rem 1rem',
                     backgroundColor: 'rgba(0, 0, 0, 0.5)',
                     color: 'white',
                     border: 'none',
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     cursor: 'pointer',
-                    fontSize: '0.9rem',
+                    fontSize: '0.8rem',
                     fontWeight: '500'
                   }}
                 >
@@ -586,48 +833,48 @@ export default function SimplifiedSkinAnalysis() {
 
           {/* Ready State */}
           {!userImage && !showCameraPreview && (
-            <div style={{ textAlign: 'center' }}>
-              <Sparkles style={{ opacity: 0.5, marginBottom: '1rem' }} />
+            <div style={{ textAlign: 'center', padding: '1rem' }}>
+              <Sparkles style={{ opacity: 0.5, marginBottom: '0.5rem', fontSize: '1.5rem' }} />
               <h3 style={{
                 fontSize: '1.2rem',
                 fontWeight: 500,
                 color: getTextColor(1),
-                marginBottom: '0.5rem'
+                marginBottom: '0.25rem'
               }}>
                 Ready for Skin Analysis
               </h3>
               <p style={{
                 fontSize: '0.9rem',
                 color: getTextColor(0.7),
-                marginBottom: '1rem'
+                marginBottom: '0.5rem'
               }}>
-                Take a selfie or upload a photo to begin your skin analysis
+                Take a selfie or upload a photo
               </p>
               <div style={{
                 fontSize: '0.8rem',
                 color: getTextColor(0.6),
                 backgroundColor: getBgColor(0.1),
-                padding: '0.75rem',
-                borderRadius: '8px',
+                padding: '0.5rem',
+                borderRadius: '6px',
                 border: `1px solid ${getBorderColor(0.2)}`
               }}>
-                💡 <strong>Tip:</strong> Ensure your face is clearly visible and well-lit for the best analysis results
+                💡 <strong>Tip:</strong> Ensure your face is clearly visible
               </div>
             </div>
           )}
 
           {/* Captured/Uploaded Image */}
           {userImage && !showCameraPreview && (
-            <div style={{ width: '100%', position: 'relative' }}>
+            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
               <img
                 src={userImage}
                 alt="User photo"
                 style={{
                   width: '100%',
-                  borderRadius: '12px',
-                  maxHeight: '400px',
+                  height: '100%',
+                  borderRadius: '6px',
                   objectFit: 'cover',
-                  aspectRatio: '9/16',
+                  aspectRatio: '3/4',
                   backgroundColor: '#f0f0f0'
                 }}
                 onLoad={() => {
@@ -644,16 +891,16 @@ export default function SimplifiedSkinAnalysis() {
                 onClick={resetStates}
                 style={{
                   position: 'absolute',
-                  top: '0.5rem',
-                  right: '0.5rem',
-                  padding: '0.5rem',
+                  top: '0.25rem',
+                  right: '0.25rem',
+                  padding: '0.25rem',
                   backgroundColor: 'rgba(0, 0, 0, 0.5)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '50%',
                   cursor: 'pointer',
-                  width: '32px',
-                  height: '32px',
+                  width: '24px',
+                  height: '24px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -668,9 +915,9 @@ export default function SimplifiedSkinAnalysis() {
           {cameraError && (
             <div style={{
               color: '#ef4444',
-              fontSize: '0.9rem',
+              fontSize: '0.8rem',
               textAlign: 'center',
-              marginTop: '1rem'
+              marginTop: '0.5rem'
             }}>
               {cameraError}
             </div>
@@ -681,47 +928,60 @@ export default function SimplifiedSkinAnalysis() {
         {!userImage && !showCameraPreview && (
           <div style={{
             display: 'flex',
-            gap: '1rem',
-            marginBottom: '1rem'
+            gap: '0.25rem',
+            marginBottom: '0.25rem',
+            justifyContent: 'center',
+            maxWidth: '400px',
+            margin: '0 auto 0.25rem auto'
           }}>
             <button
-              onClick={startCamera}
+              onClick={() => {
+                console.log('🔍 Use Camera button clicked')
+                startCamera()
+              }}
               disabled={cameraLoading}
               style={{
                 flex: 1,
-                padding: '1rem',
+                maxWidth: '120px',
+                padding: '0.5rem',
                 backgroundColor: getBgColor(0.1),
                 border: `1px solid ${getBorderColor(0.2)}`,
-                borderRadius: '12px',
+                borderRadius: '6px',
                 color: getTextColor(1),
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '0.5rem',
-                fontWeight: '500'
+                gap: '0.25rem',
+                fontWeight: '500',
+                fontSize: '0.8rem'
               }}
             >
               <Camera />
-              {cameraLoading ? 'Starting Camera...' : 'Use Camera'}
+              {cameraLoading ? 'Starting...' : 'Use Camera'}
             </button>
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                console.log('🔍 Upload button clicked')
+                fileInputRef.current?.click()
+              }}
               style={{
                 flex: 1,
-                padding: '1rem',
+                maxWidth: '120px',
+                padding: '0.5rem',
                 backgroundColor: getBgColor(0.1),
                 border: `1px solid ${getBorderColor(0.2)}`,
-                borderRadius: '12px',
+                borderRadius: '6px',
                 color: getTextColor(1),
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '0.5rem',
-                fontWeight: '500'
+                gap: '0.25rem',
+                fontWeight: '500',
+                fontSize: '0.8rem'
               }}
             >
               <Upload />
@@ -742,44 +1002,48 @@ export default function SimplifiedSkinAnalysis() {
         {userImage && !showResults && (
           <div style={{
             backgroundColor: getBgColor(0.05),
-            borderRadius: '12px',
-            padding: '1rem',
-            border: `1px solid ${getBorderColor(0.1)}`
+            borderRadius: '6px',
+            padding: '0.25rem',
+            border: `1px solid ${getBorderColor(0.1)}`,
+            marginBottom: '0.25rem',
+            maxWidth: '400px',
+            margin: '0 auto 0.25rem auto'
           }}>
             <h4 style={{
-              fontSize: '1rem',
+              fontSize: '0.8rem',
               fontWeight: 500,
               color: getTextColor(1),
-              marginBottom: '1rem'
+              marginBottom: '0.25rem',
+              textAlign: 'center'
             }}>
               Optional: Help improve analysis accuracy
             </h4>
             
             <div style={{
               display: 'flex',
-              gap: '1rem',
-              marginBottom: '1rem'
+              gap: '0.25rem',
+              marginBottom: '0.25rem'
             }}>
               <div style={{ flex: 1 }}>
                 <label style={{
                   fontSize: '0.8rem',
                   color: getTextColor(0.7),
-                  marginBottom: '0.5rem',
+                  marginBottom: '0.25rem',
                   display: 'block'
                 }}>
-                  Age Category
+                  Age
                 </label>
                 <select
                   value={ageCategory}
                   onChange={(e) => setAgeCategory(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '0.5rem',
-                    borderRadius: '8px',
+                    padding: '0.25rem',
+                    borderRadius: '4px',
                     border: `1px solid ${getBorderColor(0.2)}`,
                     backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
                     color: getTextColor(1),
-                    fontSize: '0.9rem'
+                    fontSize: '0.8rem'
                   }}
                 >
                   <option value="">Select age</option>
@@ -796,7 +1060,7 @@ export default function SimplifiedSkinAnalysis() {
                 <label style={{
                   fontSize: '0.8rem',
                   color: getTextColor(0.7),
-                  marginBottom: '0.5rem',
+                  marginBottom: '0.25rem',
                   display: 'block'
                 }}>
                   Ethnicity
@@ -806,12 +1070,12 @@ export default function SimplifiedSkinAnalysis() {
                   onChange={(e) => setEthnicity(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '0.5rem',
-                    borderRadius: '8px',
+                    padding: '0.25rem',
+                    borderRadius: '4px',
                     border: `1px solid ${getBorderColor(0.2)}`,
                     backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
                     color: getTextColor(1),
-                    fontSize: '0.9rem'
+                    fontSize: '0.8rem'
                   }}
                 >
                   <option value="">Select ethnicity</option>
@@ -830,45 +1094,55 @@ export default function SimplifiedSkinAnalysis() {
         
         {/* Analysis Button */}
         {userImage && !showResults && (
-          <button
-            onClick={handleAnalysis}
-            disabled={isAnalyzing}
-            style={{
-              width: '100%',
-              padding: '1rem',
-              backgroundColor: isAnalyzing ? getBgColor(0.1) : '#3b82f6',
-              color: isAnalyzing ? getTextColor(0.5) : 'white',
-              border: 'none',
-              borderRadius: '12px',
-              cursor: isAnalyzing ? 'not-allowed' : 'pointer',
-              fontSize: '1rem',
-              fontWeight: '500',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            {isAnalyzing ? (
-              <>
-                <div style={{
-                  width: '16px',
-                  height: '16px',
-                  border: '2px solid transparent',
-                  borderTop: '2px solid currentColor',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
-                }} />
-                Analyzing... (Detecting Face & Analyzing Skin)
-              </>
-            ) : (
-              <>
-                <Sparkles />
-                Analyze My Skin
-              </>
-            )}
-          </button>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '0.25rem'
+          }}>
+            <button
+              onClick={() => {
+                console.log('🔍 Analyze My Skin button clicked')
+                handleAnalysis()
+              }}
+              disabled={isAnalyzing}
+              style={{
+                width: '100%',
+                maxWidth: '250px',
+                padding: '0.5rem',
+                backgroundColor: isAnalyzing ? getBgColor(0.1) : '#3b82f6',
+                color: isAnalyzing ? getTextColor(0.5) : 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: isAnalyzing ? 'not-allowed' : 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.25rem',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {isAnalyzing ? (
+                <>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    border: '2px solid transparent',
+                    borderTop: '2px solid currentColor',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }} />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Sparkles />
+                  Analyze My Skin
+                </>
+              )}
+            </button>
+          </div>
         )}
 
         {/* Error Display */}
@@ -876,10 +1150,13 @@ export default function SimplifiedSkinAnalysis() {
           <div style={{
             backgroundColor: '#fef2f2',
             border: '1px solid #fecaca',
-            borderRadius: '8px',
-            padding: '1rem',
+            borderRadius: '6px',
+            padding: '0.5rem',
             color: '#dc2626',
-            fontSize: '0.9rem'
+            fontSize: '0.8rem',
+            marginBottom: '0.5rem',
+            maxWidth: '600px',
+            margin: '0 auto 0.5rem auto'
           }}>
             {analysisError}
           </div>
@@ -889,15 +1166,18 @@ export default function SimplifiedSkinAnalysis() {
         {showResults && analysisResult && (
           <div style={{
             backgroundColor: getBgColor(0.05),
-            borderRadius: '12px',
-            padding: '1rem',
-            border: `1px solid ${getBorderColor(0.1)}`
+            borderRadius: '6px',
+            padding: '0.25rem',
+            border: `1px solid ${getBorderColor(0.1)}`,
+            marginBottom: '0.25rem',
+            maxWidth: '400px',
+            margin: '0 auto 0.25rem auto'
           }}>
             <h3 style={{
-              fontSize: '1.1rem',
+              fontSize: '0.9rem',
               fontWeight: 500,
               color: getTextColor(1),
-              marginBottom: '0.75rem',
+              marginBottom: '0.25rem',
               textAlign: 'center'
             }}>
               Analysis Complete
@@ -906,9 +1186,9 @@ export default function SimplifiedSkinAnalysis() {
             {/* Health Score */}
             <div style={{
               backgroundColor: getBgColor(0.1),
-              borderRadius: '8px',
-              padding: '0.75rem',
-              marginBottom: '0.75rem',
+              borderRadius: '6px',
+              padding: '0.5rem',
+              marginBottom: '0.5rem',
               textAlign: 'center'
             }}>
               <div style={{
@@ -931,21 +1211,21 @@ export default function SimplifiedSkinAnalysis() {
             {analysisResult.face_detection && (
               <div style={{
                 backgroundColor: getBgColor(0.1),
-                borderRadius: '8px',
-                padding: '0.75rem',
-                marginBottom: '0.75rem',
+                borderRadius: '6px',
+                padding: '0.5rem',
+                marginBottom: '0.5rem',
                 border: `1px solid ${getBorderColor(0.2)}`
               }}>
                 <div style={{
-                  fontSize: '0.9rem',
+                  fontSize: '0.8rem',
                   color: getTextColor(0.8),
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem'
+                  gap: '0.25rem'
                 }}>
                   <div style={{
-                    width: '8px',
-                    height: '8px',
+                    width: '6px',
+                    height: '6px',
                     borderRadius: '50%',
                     backgroundColor: analysisResult.face_detection.detected ? '#10b981' : '#ef4444'
                   }} />
@@ -958,52 +1238,55 @@ export default function SimplifiedSkinAnalysis() {
 
             {/* Conditions Summary */}
             {analysisResult.skin_analysis.conditions_detected.length > 0 && (
-              <div style={{ marginBottom: '0.75rem' }}>
+              <div style={{ marginBottom: '0.5rem' }}>
                 <div style={{
-                  fontSize: '0.9rem',
+                  fontSize: '0.8rem',
                   fontWeight: 500,
                   color: getTextColor(1),
-                  marginBottom: '0.5rem'
+                  marginBottom: '0.25rem'
                 }}>
                   Conditions Found:
                 </div>
                 <div style={{ 
                   display: 'flex', 
-                  flexWrap: 'wrap', 
+                  flexDirection: 'column',
                   gap: '0.25rem',
-                  fontSize: '0.8rem'
+                  fontSize: '0.7rem',
+                  maxHeight: '120px',
+                  overflowY: 'auto'
                 }}>
-                  {analysisResult.skin_analysis.conditions_detected.slice(0, 3).map((condition, index) => (
-                    <span key={index} style={{
+                  {analysisResult.skin_analysis.conditions_detected.map((condition, index) => (
+                    <div key={index} style={{
                       backgroundColor: getBgColor(0.1),
                       padding: '0.25rem 0.5rem',
-                      borderRadius: '12px',
+                      borderRadius: '8px',
                       color: getTextColor(0.8),
-                      border: `1px solid ${getBorderColor(0.2)}`
+                      border: `1px solid ${getBorderColor(0.2)}`,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
                     }}>
-                      {condition.condition.replace('_', ' ')}
-                    </span>
+                      <span style={{ flex: 1 }}>
+                        {condition.condition.replace('_', ' ')}
+                      </span>
+                      <span style={{
+                        fontSize: '0.6rem',
+                        color: getTextColor(0.6),
+                        marginLeft: '0.5rem'
+                      }}>
+                        {condition.severity}
+                      </span>
+                    </div>
                   ))}
-                  {analysisResult.skin_analysis.conditions_detected.length > 3 && (
-                    <span style={{
-                      backgroundColor: getBgColor(0.1),
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '12px',
-                      color: getTextColor(0.6),
-                      border: `1px solid ${getBorderColor(0.2)}`
-                    }}>
-                      +{analysisResult.skin_analysis.conditions_detected.length - 3} more
-                    </span>
-                  )}
                 </div>
               </div>
             )}
 
             {/* Top Recommendation */}
             {analysisResult.recommendations.immediate_care.length > 0 && (
-              <div style={{ marginBottom: '0.75rem' }}>
+              <div style={{ marginBottom: '0.5rem' }}>
                 <div style={{
-                  fontSize: '0.9rem',
+                  fontSize: '0.8rem',
                   fontWeight: 500,
                   color: getTextColor(1),
                   marginBottom: '0.25rem'
@@ -1011,11 +1294,11 @@ export default function SimplifiedSkinAnalysis() {
                   Top Recommendation:
                 </div>
                 <div style={{
-                  fontSize: '0.8rem',
+                  fontSize: '0.7rem',
                   color: getTextColor(0.8),
                   backgroundColor: getBgColor(0.05),
-                  padding: '0.5rem',
-                  borderRadius: '6px',
+                  padding: '0.25rem',
+                  borderRadius: '4px',
                   border: `1px solid ${getBorderColor(0.1)}`
                 }}>
                   {analysisResult.recommendations.immediate_care[0]}
@@ -1023,34 +1306,72 @@ export default function SimplifiedSkinAnalysis() {
               </div>
             )}
 
-            {/* Products Button */}
-            <Link href="/catalog" style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem',
-              backgroundColor: '#10b981',
-              color: 'white',
-              textDecoration: 'none',
-              borderRadius: '8px',
-              fontSize: '0.9rem',
-              fontWeight: '500',
-              marginTop: '0.5rem'
-            }}>
-              <ShoppingCart />
-              View Products
-              <ArrowRight />
-            </Link>
+                         {/* Products Button */}
+             <div style={{
+               display: 'flex',
+               justifyContent: 'center',
+               marginTop: '0.5rem',
+               padding: '0.5rem',
+               backgroundColor: getBgColor(0.05),
+               borderRadius: '8px',
+               border: `1px solid ${getBorderColor(0.1)}`
+             }}>
+               <Link 
+                 href={`/catalog?analysis=${encodeURIComponent(JSON.stringify({
+                   health_score: analysisResult.skin_analysis.overall_health_score,
+                   conditions: analysisResult.skin_analysis.conditions_detected.map(c => c.condition),
+                   recommendations: analysisResult.recommendations.immediate_care,
+                   face_detected: analysisResult.face_detection.detected
+                 }))}`}
+                 style={{
+                   display: 'flex',
+                   alignItems: 'center',
+                   justifyContent: 'center',
+                   gap: '0.5rem',
+                   padding: '0.75rem 1.5rem',
+                   backgroundColor: '#10b981',
+                   color: 'white',
+                   textDecoration: 'none',
+                   borderRadius: '8px',
+                   fontSize: '0.9rem',
+                   fontWeight: '600',
+                   boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                   transition: 'all 0.3s ease'
+                 }}
+                 onMouseEnter={(e) => {
+                   e.currentTarget.style.transform = 'translateY(-2px)'
+                   e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)'
+                 }}
+                 onMouseLeave={(e) => {
+                   e.currentTarget.style.transform = 'translateY(0)'
+                   e.currentTarget.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.3)'
+                 }}
+               >
+                 <Sparkles style={{ width: '16px', height: '16px' }} />
+                 View Recommended Products
+                 <ArrowRight style={{ width: '16px', height: '16px' }} />
+               </Link>
+             </div>
           </div>
         )}
 
-        {/* Sign In Modal */}
-        <SignInModal 
-          isOpen={showSignInModal} 
-          onClose={() => setShowSignInModal(false)} 
-        />
+                 {/* Sign In Modal */}
+         <SignInModal 
+           isOpen={showSignInModal} 
+           onClose={() => setShowSignInModal(false)} 
+         />
       </div>
+
+             {/* Footer */}
+       <footer style={{
+         padding: '0.25rem 1rem',
+         textAlign: 'center',
+         fontSize: '0.6rem',
+         color: theme === 'dark' ? '#ffffff' : '#000000',
+         flexShrink: 0
+       }}>
+         © 2025 SHINE SKIN COLLECTIVE. All Rights Reserved.
+       </footer>
 
       <style jsx>{`
         @keyframes spin {

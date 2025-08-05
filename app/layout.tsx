@@ -7,8 +7,8 @@ import { ThemeProvider } from '@/hooks/useTheme'
 import { AuthProvider } from '@/hooks/useAuth'
 
 export const metadata: Metadata = {
-  title: 'Shine - AI-Powered Skincare',
-  description: 'Get AI-powered skin analysis and tailored product recommendations for your unique skin profile',
+  title: 'SHINE SKIN COLLECTIVE - AI-Powered Skincare',
+  description: 'Get AI-powered skin analysis and tailored product recommendations for your unique skin profile with SHINE SKIN COLLECTIVE',
 }
 
 export default function RootLayout({
