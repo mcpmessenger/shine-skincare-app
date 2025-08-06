@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from pathlib import Path
 import json
 from datetime import datetime
+import cv2
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -97,34 +98,141 @@ class EnhancedEmbeddingSystem:
         Generate enhanced embeddings for skin condition analysis
         """
         try:
-            import cv2
+            import traceback
+            
+            logger.info(f"🔍 Starting embedding generation with {len(image_data)} bytes")
             
             # Convert image bytes to numpy array
             nparr = np.frombuffer(image_data, np.uint8)
+            logger.info(f"🔍 Converted to numpy array with shape: {nparr.shape}")
+            
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             
             if img is None:
+                logger.error("❌ cv2.imdecode returned None")
                 return {'error': 'Failed to decode image'}
+            
+            logger.info(f"🔍 Successfully decoded image with shape: {img.shape}")
             
             # Resize image for consistent processing
             img = cv2.resize(img, (224, 224))
+            logger.info(f"🔍 Resized image to: {img.shape}")
             
-            # Generate enhanced embeddings (2048 dimensions to match demographic baselines)
-            enhanced_embedding = np.random.rand(2048).astype(np.float32)
+            # Convert to grayscale for texture analysis
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            logger.info(f"🔍 Converted to grayscale: {gray.shape}")
+            
+            # Extract features based on image characteristics
+            features = []
+            
+            # 1. Color statistics (RGB channels)
+            b, g, r = cv2.split(img)
+            features.extend([
+                np.mean(b), np.std(b), np.mean(g), np.std(g), np.mean(r), np.std(r)
+            ])
+            logger.info(f"🔍 Added color statistics: {len(features)} features")
+            
+            # 2. Texture features (GLCM-like)
+            features.extend([
+                np.mean(gray), np.std(gray), np.var(gray),
+                np.percentile(gray, 25), np.percentile(gray, 75)
+            ])
+            logger.info(f"🔍 Added texture features: {len(features)} features")
+            
+            # 3. Edge density
+            edges = cv2.Canny(gray, 50, 150)
+            edge_density = np.sum(edges > 0) / (edges.shape[0] * edges.shape[1])
+            features.append(edge_density)
+            logger.info(f"🔍 Added edge density: {len(features)} features")
+            
+            # 4. Local Binary Pattern-like features
+            lbp_features = self._extract_lbp_features(gray)
+            features.extend(lbp_features)
+            logger.info(f"🔍 Added LBP features: {len(features)} features")
+            
+            # 5. Histogram features
+            hist_features = self._extract_histogram_features(gray)
+            features.extend(hist_features)
+            logger.info(f"🔍 Added histogram features: {len(features)} features")
+            
+            # 6. Fill the rest with derived features to reach 2048 dimensions
+            base_features = np.array(features)
+            enhanced_embedding = np.zeros(2048, dtype=np.float32)
+            
+            # Use the base features to seed the embedding
+            for i in range(2048):
+                if i < len(base_features):
+                    enhanced_embedding[i] = base_features[i]
+                else:
+                    # Create derived features based on the base features
+                    seed = i % len(base_features)
+                    enhanced_embedding[i] = base_features[seed] * (0.5 + 0.5 * np.sin(i * 0.1))
             
             # Normalize the embedding
-            enhanced_embedding = enhanced_embedding / np.linalg.norm(enhanced_embedding)
+            norm = np.linalg.norm(enhanced_embedding)
+            if norm > 0:
+                enhanced_embedding = enhanced_embedding / norm
+            
+            logger.info(f"✅ Generated embedding with {len(features)} base features, {len(enhanced_embedding)} total dimensions")
             
             return {
                 'enhanced': enhanced_embedding.tolist(),
                 'combined': enhanced_embedding.tolist(),
                 'dimensions': len(enhanced_embedding),
-                'normalized': True
+                'normalized': True,
+                'base_features_count': len(features)
             }
             
         except Exception as e:
             logger.error(f"❌ Enhanced embedding generation failed: {e}")
+            logger.error(f"❌ Full traceback: {traceback.format_exc()}")
             return {'error': str(e)}
+    
+    def _extract_lbp_features(self, gray_img: np.ndarray) -> List[float]:
+        """Extract Local Binary Pattern-like features"""
+        features = []
+        
+        # Simple texture analysis
+        for radius in [1, 2, 3]:
+            for x in range(0, gray_img.shape[0] - radius, radius):
+                for y in range(0, gray_img.shape[1] - radius, radius):
+                    if x + radius < gray_img.shape[0] and y + radius < gray_img.shape[1]:
+                        patch = gray_img[x:x+radius, y:y+radius]
+                        features.append(np.mean(patch))
+                        features.append(np.std(patch))
+                        if len(features) >= 50:  # Limit to prevent too many features
+                            break
+                if len(features) >= 50:
+                    break
+            if len(features) >= 50:
+                break
+        
+        return features[:50]  # Return max 50 features
+    
+    def _extract_histogram_features(self, gray_img: np.ndarray) -> List[float]:
+        """Extract histogram-based features"""
+        features = []
+        
+        # Calculate histogram
+        hist = cv2.calcHist([gray_img], [0], None, [256], [0, 256])
+        hist = hist.flatten()
+        
+        # Extract histogram features
+        features.extend([
+            np.mean(hist),
+            np.std(hist),
+            np.percentile(hist, 25),
+            np.percentile(hist, 50),
+            np.percentile(hist, 75),
+            np.max(hist),
+            np.min(hist)
+        ])
+        
+        # Add histogram bins (sampled)
+        for i in range(0, 256, 16):  # Sample every 16th bin
+            features.append(hist[i])
+        
+        return features
 
     def get_system_status(self) -> Dict:
         """Get system status"""

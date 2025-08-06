@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Brain, Users, Activity, Shield, Camera, Upload, Sparkles, CheckCircle, X } from 'lucide-react'
+import { Brain, User, Camera, Upload, Sparkles, CheckCircle, X } from 'lucide-react'
 
 interface DemographicAnalysisResult {
   status: string
@@ -200,7 +200,7 @@ export function EnhancedAnalysis({ onAnalysisComplete, onError }: EnhancedAnalys
                 : 'border-gray-200 dark:border-gray-700 hover:border-green-300'
             }`}
           >
-            <Users className="w-8 h-8 mb-2 text-green-500" />
+            <User className="w-8 h-8 mb-2 text-green-500" />
             <h4 className="font-medium">Demographic Analysis</h4>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Age, gender, and ethnicity-specific analysis
@@ -215,7 +215,7 @@ export function EnhancedAnalysis({ onAnalysisComplete, onError }: EnhancedAnalys
                 : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
             }`}
           >
-            <Activity className="w-8 h-8 mb-2 text-purple-500" />
+            <Camera className="w-8 h-8 mb-2 text-purple-500" />
             <h4 className="font-medium">Condition Analysis</h4>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Specific skin condition identification

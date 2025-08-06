@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, LogIn, User, Lock } from 'lucide-react'
+import { X, User } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useTheme } from '@/hooks/useTheme'
 
@@ -12,15 +12,15 @@ interface SignInModalProps {
 }
 
 export const SignInModal = ({ isOpen, onClose, onSuccess }: SignInModalProps) => {
-  const { login, state } = useAuth()
+  const { signInWithGoogle, state } = useAuth()
   const { theme } = useTheme()
   const [isLoggingIn, setIsLoggingIn] = useState(false)
 
   const handleLogin = async () => {
     setIsLoggingIn(true)
     try {
-      await login()
-      // The login function will redirect to Google OAuth
+      await signInWithGoogle()
+      // The signInWithGoogle function will redirect to Google OAuth
       // onSuccess will be called when user returns from OAuth
     } catch (error) {
       console.error('Login failed:', error)
@@ -79,7 +79,7 @@ export const SignInModal = ({ isOpen, onClose, onSuccess }: SignInModalProps) =>
             e.currentTarget.style.backgroundColor = 'transparent'
           }}
         >
-          <X size={20} />
+          <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
@@ -94,7 +94,6 @@ export const SignInModal = ({ isOpen, onClose, onSuccess }: SignInModalProps) =>
             gap: '0.5rem',
             marginBottom: '1rem'
           }}>
-            <Lock size={24} style={{ color: '#3b82f6' }} />
             <h2 style={{
               fontSize: '1.5rem',
               fontWeight: 600,
@@ -189,7 +188,7 @@ export const SignInModal = ({ isOpen, onClose, onSuccess }: SignInModalProps) =>
             </>
           ) : (
             <>
-              <LogIn size={20} />
+                             <User className="w-5 h-5" />
               Sign in with Google
             </>
           )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle, AlertCircle, TrendingUp, Users, Activity, Brain, Shield, X } from 'lucide-react'
+import { CheckCircle, AlertCircle, TrendingUp, User, Brain, X } from 'lucide-react'
 
 interface DemographicAnalysisResult {
   status: string
@@ -134,7 +134,7 @@ export function AnalysisResults({ result, type, onClose }: AnalysisResultsProps)
       {/* Health Score */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
         <div className="flex items-center mb-4">
-          <Users className="w-6 h-6 text-green-500 mr-2" />
+          <User className="w-6 h-6 text-green-500 mr-2" />
           <h3 className="text-lg font-semibold">Demographic Health Score</h3>
         </div>
         
@@ -217,7 +217,7 @@ export function AnalysisResults({ result, type, onClose }: AnalysisResultsProps)
       {/* Best Match */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
         <div className="flex items-center mb-4">
-          <Activity className="w-6 h-6 text-purple-500 mr-2" />
+          <User className="w-6 h-6 text-purple-500 mr-2" />
           <h3 className="text-lg font-semibold">Condition Analysis</h3>
         </div>
         
@@ -272,7 +272,7 @@ export function AnalysisResults({ result, type, onClose }: AnalysisResultsProps)
       {/* Health Score */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
         <div className="flex items-center mb-4">
-          <Brain className="w-6 h-6 text-blue-500 mr-2" />
+          <User className="w-6 h-6 text-blue-500 mr-2" />
           <h3 className="text-lg font-semibold">Enhanced Analysis Results</h3>
         </div>
         

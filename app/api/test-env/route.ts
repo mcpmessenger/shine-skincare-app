@@ -1,23 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server'
 
-export const dynamic = 'force-dynamic';
-
-export async function GET(request: NextRequest) {
-  try {
-    return NextResponse.json({
-      message: 'Environment test',
-      environment: {
-        googleClientId: process.env.GOOGLE_CLIENT_ID ? 'SET' : 'NOT SET',
-        googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ? 'SET' : 'NOT SET',
-        vercelUrl: process.env.NEXT_PUBLIC_VERCEL_URL || 'NOT SET',
-        nodeEnv: process.env.NODE_ENV,
-        timestamp: new Date().toISOString()
-      }
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Test failed', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
-  }
+export async function GET() {
+  return NextResponse.json({
+    success: true,
+    env: {
+      hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasSupabaseAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabaseAnonKeyLength: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length || 0,
+      serviceRoleKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0,
+    }
+  })
 } 

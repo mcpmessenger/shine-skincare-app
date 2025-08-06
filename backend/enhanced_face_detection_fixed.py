@@ -16,7 +16,7 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def enhanced_face_detector(image_data: str, confidence_threshold: float = 0.5) -> Dict:
+def enhanced_face_detector(image_data: str, confidence_threshold: float = 0.3) -> Dict:
     """
     Enhanced face detection with multiple detection methods
     """
@@ -50,13 +50,17 @@ def enhanced_face_detector(image_data: str, confidence_threshold: float = 0.5) -
                 'confidence': 0.0
             }
 
-        # Detect faces
+        # Detect faces with more lenient parameters for better detection
         faces = face_cascade.detectMultiScale(
             gray,
-            scaleFactor=1.1,
-            minNeighbors=5,
-            minSize=(30, 30)
+            scaleFactor=1.05,  # More sensitive scaling
+            minNeighbors=3,    # Lower threshold for detection
+            minSize=(20, 20)   # Smaller minimum face size
         )
+        
+        logger.info(f"🔍 Face detection: Found {len(faces)} potential faces")
+        logger.info(f"🔍 Image dimensions: {image.shape[1]}x{image.shape[0]}")
+        logger.info(f"🔍 Confidence threshold: {confidence_threshold}")
 
         if len(faces) == 0:
             return {
@@ -71,8 +75,12 @@ def enhanced_face_detector(image_data: str, confidence_threshold: float = 0.5) -
         for (x, y, w, h) in faces:
             face_roi = gray[y:y+h, x:x+w]
             
-            # Calculate confidence based on face size and position
-            confidence = min(1.0, (w * h) / (image.shape[0] * image.shape[1]) * 10)
+            # Calculate confidence based on face size and position (more lenient)
+            face_area = w * h
+            image_area = image.shape[0] * image.shape[1]
+            confidence = min(1.0, (face_area / image_area) * 15)  # Increased multiplier for higher confidence
+            
+            logger.info(f"🔍 Face {len(face_results)+1}: bbox=({x},{y},{w},{h}), confidence={confidence:.3f}")
             
             if confidence >= confidence_threshold:
                 face_results.append({
@@ -80,6 +88,9 @@ def enhanced_face_detector(image_data: str, confidence_threshold: float = 0.5) -
                     'confidence': float(confidence),
                     'center': [int(x + w/2), int(y + h/2)]
                 })
+                logger.info(f"✅ Face {len(face_results)} accepted with confidence {confidence:.3f}")
+            else:
+                logger.info(f"❌ Face rejected: confidence {confidence:.3f} < threshold {confidence_threshold}")
 
         return {
             'success': True,

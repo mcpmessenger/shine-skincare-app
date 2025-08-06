@@ -20,6 +20,8 @@ from integrated_skin_analysis import IntegratedSkinAnalysis
 
 # Import enhanced face detection
 from enhanced_face_detection_fixed import enhanced_face_detector as robust_face_detector
+# Import enhanced image processing
+from enhanced_image_processing import enhanced_face_detect_endpoint
 
 # Import enhanced systems
 from enhanced_severity_scoring import enhanced_severity_scorer
@@ -77,7 +79,7 @@ def convert_numpy_types(obj):
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app, origins=['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:3000', 'http://localhost:3001'], supports_credentials=True)
+CORS(app, origins=['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://127.0.0.1:3002'], supports_credentials=True)
 
 # Initialize the integrated analysis system
 try:
@@ -231,7 +233,7 @@ def analyze_skin_normalized():
 @app.route('/api/v3/face/detect', methods=['POST'])
 def face_detect():
     """
-    Face detection endpoint for camera interface
+    Enhanced face detection endpoint with robust image processing
     """
     try:
         # Get request data
@@ -244,89 +246,26 @@ def face_detect():
         if not image_data:
             return jsonify({'error': 'No image data provided'}), 400
         
-        # Decode base64 image
-        try:
-            image_bytes = base64.b64decode(image_data)
-        except Exception as e:
-            return jsonify({'error': f'Invalid image data: {e}'}), 400
+        # Use enhanced face detection with robust image processing
+        result = enhanced_face_detect_endpoint(image_data)
         
-        # Convert to numpy array
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        img_array = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        if img_array is None:
-            return jsonify({'error': 'Failed to decode image'}), 400
-        
-        # Use enhanced face detection
-        face_detection_result = robust_face_detector(image_data)
-        
-        if face_detection_result['success'] and face_detection_result['faces_detected'] > 0 and face_detection_result.get('faces') and len(face_detection_result['faces']) > 0:
-            # Get the first detected face
-            first_face = face_detection_result['faces'][0]
-            bbox = first_face['bbox']
-            image_dimensions = face_detection_result['image_dimensions']
-            image_width = image_dimensions[0]
-            image_height = image_dimensions[1]
-            
-            # Convert pixel coordinates to percentages
-            x_percent = (bbox[0] / image_width) * 100
-            y_percent = (bbox[1] / image_height) * 100
-            width_percent = (bbox[2] / image_width) * 100
-            height_percent = (bbox[3] / image_height) * 100
-            
-            # Debug logging
-            logger.info(f"🔍 Direct Face Detection Debug:")
-            logger.info(f"  Original bbox (pixels): {bbox}")
-            logger.info(f"  Image dimensions: {image_dimensions}")
-            logger.info(f"  Converted to percentages: x={x_percent:.2f}%, y={y_percent:.2f}%, w={width_percent:.2f}%, h={height_percent:.2f}%")
-            
+        if result['success']:
             return jsonify({
                 'status': 'success',
-                'face_detected': True,
-                'confidence': first_face['confidence'],
-                'face_bounds': {
-                    'x': x_percent,
-                    'y': y_percent,
-                    'width': width_percent,
-                    'height': height_percent
-                },
-                'quality_metrics': {
-                    'lighting': 'good',
-                    'sharpness': 'good',
-                    'positioning': 'good'
-                },
-                'guidance': {
-                    'message': 'Face detected successfully',
-                    'method': 'enhanced_face_detection',
-                    'suggestions': [
-                        'Ensure good lighting for better analysis',
-                        'Keep face centered in the frame',
-                        'Avoid shadows and reflections'
-                    ]
-                }
+                'face_detected': result['face_detected'],
+                'confidence': result['confidence'],
+                'face_bounds': result['face_bounds'],
+                'quality_metrics': result.get('quality_metrics', {}),
+                'guidance': result.get('guidance', {}),
+                'processing_metadata': result.get('processing_metadata', {})
             })
         else:
             return jsonify({
-                'status': 'success',
-                'face_detected': False,
-                'confidence': 0.0,
-                'face_bounds': {'x': 0, 'y': 0, 'width': 0, 'height': 0},
-                'quality_metrics': {
-                    'lighting': 'unknown',
-                    'sharpness': 'unknown',
-                    'positioning': 'unknown'
-                },
-                'guidance': {
-                    'message': 'No face detected',
-                    'method': 'enhanced_face_detection',
-                    'suggestions': [
-                        'Ensure a face is clearly visible in the image',
-                        'Try adjusting lighting conditions',
-                        'Make sure the face is not too small or too large',
-                        'Avoid extreme angles or partial occlusion'
-                    ]
-                }
-            })
+                'status': 'error',
+                'error': result['error'],
+                'details': result.get('details', ''),
+                'metadata': result.get('metadata', {})
+            }), 400
             
     except Exception as e:
         logger.error(f"Face detection error: {e}")

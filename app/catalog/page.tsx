@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Star, ShoppingCart } from 'lucide-react'
-import { useTheme } from 'next-themes'
+import { useTheme } from '@/hooks/useTheme'
 import { useAuth } from '@/hooks/useAuth'
 import { useCart } from '@/hooks/useCart'
 import { CartDrawer } from '@/components/cart-drawer'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { SignInModal } from '@/components/sign-in-modal'
 import { products } from '@/lib/products'
+import { Header } from '@/components/header'
 
 interface AnalysisData {
   health_score: number
@@ -77,97 +78,23 @@ export default function CatalogPage() {
     dispatch({ type: 'ADD_ITEM', payload: product })
   }
 
-  const getTextColor = (opacity: number = 1) => {
-    return theme === 'dark' 
-      ? `rgba(255, 255, 255, ${opacity})` 
-      : `rgba(0, 0, 0, ${opacity})`
-  }
 
-  const getBgColor = (opacity: number = 0.05) => {
-    return theme === 'dark' 
-      ? `rgba(255, 255, 255, ${opacity})` 
-      : `rgba(0, 0, 0, ${opacity})`
-  }
-
-  const getBorderColor = (opacity: number = 0.1) => {
-    return theme === 'dark' 
-      ? `rgba(255, 255, 255, ${opacity})` 
-      : `rgba(0, 0, 0, ${opacity})`
-  }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
-      color: theme === 'dark' ? '#ffffff' : '#000000'
-    }}>
+    <div className="min-h-screen bg-primary text-primary">
       {/* Header */}
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '1rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1rem'
-        }}>
-          <Link href="/">
-            <img
-              src="https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png"
-              alt="Shine Logo"
-              style={{
-                height: '40px',
-                width: 'auto'
-              }}
-            />
-          </Link>
-          <h1 style={{ margin: 0, fontSize: '1.5rem' }}>
-            Product Catalog
-          </h1>
-        </div>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1rem'
-        }}>
-          <ThemeToggle />
-          <CartDrawer />
-        </div>
-      </div>
+      <Header title="Product Catalog" />
 
       {/* Analysis Results Summary */}
       {showRecommendations && analysisData && (
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '1rem',
-          backgroundColor: getBgColor(0.1),
-          borderRadius: '12px',
-          border: `1px solid ${getBorderColor(0.2)}`,
-          marginBottom: '1rem'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginBottom: '0.5rem'
-          }}>
-            <Star style={{ color: '#3b82f6' }} />
-            <h3 style={{ margin: 0, fontSize: '1.1rem', color: getTextColor(1) }}>
+        <div className="max-w-6xl mx-auto p-4 bg-secondary rounded-xl border border-primary mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Star className="text-blue-500" />
+            <h3 className="text-xl font-semibold text-primary">
               Personalized Recommendations
             </h3>
           </div>
-          <div style={{
-            display: 'flex',
-            gap: '1rem',
-            flexWrap: 'wrap',
-            fontSize: '0.9rem',
-            color: getTextColor(0.8)
-          }}>
+          <div className="flex gap-4 flex-wrap text-sm text-secondary">
             <span>Health Score: {Math.round(analysisData.health_score)}%</span>
             <span>•</span>
             <span>Conditions: {analysisData.conditions.slice(0, 3).join(', ')}</span>
@@ -178,128 +105,51 @@ export default function CatalogPage() {
 
       {/* Recommended Products */}
       {showRecommendations && analysisData && getRecommendedProducts().length > 0 && (
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '1rem'
-        }}>
-          <h2 style={{
-            fontSize: '1.3rem',
-            marginBottom: '1rem',
-            color: getTextColor(1)
-          }}>
+        <div className="max-w-6xl mx-auto p-4">
+          <h2 className="text-2xl font-semibold mb-4 text-primary">
             Recommended Products
           </h2>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-            gap: '1.5rem'
-          }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {getRecommendedProducts().map(product => (
-              <div key={product.id} style={{
-                backgroundColor: getBgColor(0.05),
-                borderRadius: '12px',
-                padding: '1.5rem',
-                border: `2px solid #3b82f6`,
-                position: 'relative'
-              }}>
-                <div style={{
-                  position: 'absolute',
-                  top: '0.5rem',
-                  right: '0.5rem',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '4px',
-                  fontSize: '0.7rem',
-                  fontWeight: 'bold'
-                }}>
+              <div key={product.id} className="bg-secondary rounded-xl p-6 border-2 border-blue-500 relative">
+                <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold">
                   RECOMMENDED
                 </div>
                 
                 {/* Product Image */}
                 {product.image && (
-                  <div style={{
-                    marginBottom: '1rem',
-                    textAlign: 'center'
-                  }}>
+                  <div className="mb-4 text-center">
                     <img
                       src={product.image}
                       alt={product.name}
-                      style={{
-                        width: '100%',
-                        height: '200px',
-                        objectFit: 'cover',
-                        borderRadius: '8px',
-                        border: `1px solid ${getBorderColor(0.1)}`
-                      }}
+                      className="w-full h-48 object-cover rounded-lg border border-primary"
                     />
                   </div>
                 )}
                 
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  marginBottom: '0.5rem'
-                }}>
-                  <h3 style={{
-                    margin: 0,
-                    fontSize: '1.1rem',
-                    fontWeight: 'bold'
-                  }}>
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-lg font-bold text-primary">
                     {product.name}
                   </h3>
-                  <span style={{
-                    fontSize: '1.2rem',
-                    fontWeight: 'bold',
-                    color: '#3b82f6'
-                  }}>
+                  <span className="text-xl font-bold text-blue-500">
                     ${product.price.toFixed(2)}
                   </span>
                 </div>
                 
-                <p style={{
-                  color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
-                  fontSize: '0.9rem',
-                  margin: '0 0 1rem 0',
-                  lineHeight: '1.4'
-                }}>
+                <p className="text-secondary text-sm mb-4 leading-relaxed">
                   {product.description}
                 </p>
                 
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <span style={{
-                    padding: '0.25rem 0.75rem',
-                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                    border: '1px solid rgba(59, 130, 246, 0.3)',
-                    borderRadius: '12px',
-                    fontSize: '0.8rem',
-                    textTransform: 'capitalize'
-                  }}>
+                <div className="flex justify-between items-center">
+                  <span className="px-3 py-1 bg-blue-100 border border-blue-300 rounded-xl text-xs capitalize text-blue-700">
                     {product.category}
                   </span>
                   
                   <button
                     onClick={() => addToCart(product)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.75rem 1.5rem',
-                      backgroundColor: isAuthenticated ? '#3b82f6' : 'rgba(59, 130, 246, 0.5)',
-                      border: '1px solid #3b82f6',
-                      borderRadius: '8px',
-                      color: '#ffffff',
-                      cursor: isAuthenticated ? 'pointer' : 'not-allowed',
-                      fontSize: '0.9rem',
-                      fontWeight: 'bold',
-                      transition: 'all 0.3s ease'
-                    }}
+                    className={`flex items-center gap-2 px-6 py-3 bg-blue-500 border border-blue-500 rounded-lg text-white text-sm font-bold transition-all duration-300 ${
+                      isAuthenticated ? 'cursor-pointer hover:bg-blue-600' : 'cursor-not-allowed opacity-50'
+                    }`}
                   >
                     <ShoppingCart />
                     {isAuthenticated ? 'Add to Cart' : 'Sign In to Add'}
@@ -312,114 +162,48 @@ export default function CatalogPage() {
       )}
 
       {/* All Products */}
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '1rem'
-      }}>
-        <h2 style={{
-          fontSize: '1.3rem',
-          marginBottom: '1rem',
-          color: getTextColor(1)
-        }}>
+      <div className="max-w-6xl mx-auto p-4">
+        <h2 className="text-2xl font-semibold mb-4 text-primary">
           All Products
         </h2>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-          gap: '1.5rem'
-        }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {products.map(product => (
-            <div key={product.id} style={{
-              backgroundColor: getBgColor(0.05),
-              borderRadius: '12px',
-              padding: '1.5rem',
-              border: `1px solid ${getBorderColor(0.1)}`
-            }}>
+            <div key={product.id} className="bg-secondary rounded-xl p-6 border border-primary">
               
               {/* Product Image */}
               {product.image && (
-                <div style={{
-                  marginBottom: '1rem',
-                  textAlign: 'center'
-                }}>
+                <div className="mb-4 text-center">
                   <img
                     src={product.image}
                     alt={product.name}
-                    style={{
-                      width: '100%',
-                      height: '200px',
-                      objectFit: 'cover',
-                      borderRadius: '8px',
-                      border: `1px solid ${getBorderColor(0.1)}`
-                    }}
+                    className="w-full h-48 object-cover rounded-lg border border-primary"
                   />
                 </div>
               )}
               
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: '0.5rem'
-              }}>
-                <h3 style={{
-                  margin: 0,
-                  fontSize: '1.1rem',
-                  fontWeight: 'bold'
-                }}>
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-lg font-bold text-primary">
                   {product.name}
                 </h3>
-                <span style={{
-                  fontSize: '1.2rem',
-                  fontWeight: 'bold',
-                  color: '#3b82f6'
-                }}>
+                <span className="text-xl font-bold text-blue-500">
                   ${product.price.toFixed(2)}
                 </span>
               </div>
               
-              <p style={{
-                color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
-                fontSize: '0.9rem',
-                margin: '0 0 1rem 0',
-                lineHeight: '1.4'
-              }}>
+              <p className="text-secondary text-sm mb-4 leading-relaxed">
                 {product.description}
               </p>
               
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <span style={{
-                  padding: '0.25rem 0.75rem',
-                  backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  borderRadius: '12px',
-                  fontSize: '0.8rem',
-                  textTransform: 'capitalize'
-                }}>
+              <div className="flex justify-between items-center">
+                <span className="px-3 py-1 bg-blue-100 border border-blue-300 rounded-xl text-xs capitalize text-blue-700">
                   {product.category}
                 </span>
                 
                 <button
                   onClick={() => addToCart(product)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.75rem 1.5rem',
-                    backgroundColor: isAuthenticated ? '#3b82f6' : 'rgba(59, 130, 246, 0.5)',
-                    border: '1px solid #3b82f6',
-                    borderRadius: '8px',
-                    color: '#ffffff',
-                    cursor: isAuthenticated ? 'pointer' : 'not-allowed',
-                    fontSize: '0.9rem',
-                    fontWeight: 'bold',
-                    transition: 'all 0.3s ease'
-                  }}
+                  className={`flex items-center gap-2 px-6 py-3 bg-blue-500 border border-blue-500 rounded-lg text-white text-sm font-bold transition-all duration-300 ${
+                    isAuthenticated ? 'cursor-pointer hover:bg-blue-600' : 'cursor-not-allowed opacity-50'
+                  }`}
                 >
                   <ShoppingCart />
                   {isAuthenticated ? 'Add to Cart' : 'Sign In to Add'}
@@ -431,14 +215,7 @@ export default function CatalogPage() {
       </div>
 
       {/* Footer */}
-      <footer style={{
-        padding: '0.25rem 1rem',
-        textAlign: 'center',
-        fontSize: '0.6rem',
-        color: theme === 'dark' ? '#ffffff' : '#000000',
-        flexShrink: 0,
-        marginTop: '2rem'
-      }}>
+      <footer className="p-1 px-4 text-center text-xs text-primary flex-shrink-0 mt-8">
         © 2025 SHINE SKIN COLLECTIVE. All Rights Reserved.
       </footer>
 
