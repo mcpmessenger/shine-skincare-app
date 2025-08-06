@@ -1,42 +1,50 @@
 {
-  "timestamp": "2025-08-04T14:38:42.627443",
+  "timestamp": "2025-08-06T22:15:00.000000",
   "total_conditions": 6,
   "conditions": [
-    "healthy",
     "acne",
     "actinic_keratosis",
     "basal_cell_carcinoma",
-    "eczemaa",
+    "eczema",
+    "healthy",
     "rosacea"
   ],
   "embedding_info": {
-    "dimensions": 2304,
-    "embedding_type": "Enhanced_Multi_Model"
+    "dimensions": 2048,
+    "total_embeddings": 6,
+    "normalized": true,
+    "distinctive_patterns": true
   },
   "condition_details": {
-    "healthy": {
-      "image_count": 20,
-      "embedding_dimensions": 2304
-    },
     "acne": {
-      "image_count": 20,
-      "embedding_dimensions": 2304
+      "embeddings_count": 1,
+      "embedding_dimensions": 2048,
+      "distinctive_features": true
     },
     "actinic_keratosis": {
-      "image_count": 20,
-      "embedding_dimensions": 2304
+      "embeddings_count": 1,
+      "embedding_dimensions": 2048,
+      "distinctive_features": true
     },
     "basal_cell_carcinoma": {
-      "image_count": 20,
-      "embedding_dimensions": 2304
+      "embeddings_count": 1,
+      "embedding_dimensions": 2048,
+      "distinctive_features": true
     },
-    "eczemaa": {
-      "image_count": 20,
-      "embedding_dimensions": 2304
+    "eczema": {
+      "embeddings_count": 1,
+      "embedding_dimensions": 2048,
+      "distinctive_features": true
+    },
+    "healthy": {
+      "embeddings_count": 1,
+      "embedding_dimensions": 2048,
+      "distinctive_features": true
     },
     "rosacea": {
-      "image_count": 20,
-      "embedding_dimensions": 2304
+      "embeddings_count": 1,
+      "embedding_dimensions": 2048,
+      "distinctive_features": true
     }
   }
 }

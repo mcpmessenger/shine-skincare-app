@@ -31,7 +31,7 @@ class UTKFaceIntegration:
     def _load_baselines(self) -> Dict:
         """Load UTKFace baselines"""
         try:
-            baselines_path = Path(__file__).parent / "data" / "demographic_baselines.npy"
+            baselines_path = Path("data/utkface/demographic_baselines.npy")
             if baselines_path.exists():
                 baselines = np.load(str(baselines_path), allow_pickle=True).item()
                 logger.info(f"✅ Loaded {len(baselines)} UTKFace baselines")

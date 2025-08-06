@@ -48,7 +48,7 @@ class EnhancedEmbeddingSystem:
     def _load_demographic_baselines(self) -> Dict:
         """Load existing demographic baselines"""
         try:
-            baselines_path = Path(__file__).parent / "data" / "demographic_baselines.npy"
+            baselines_path = Path("data/utkface/demographic_baselines.npy")
             if baselines_path.exists():
                 baselines = np.load(str(baselines_path), allow_pickle=True).item()
                 logger.info(f"✅ Loaded {len(baselines)} demographic baselines")
@@ -72,10 +72,31 @@ class EnhancedEmbeddingSystem:
 
     def _create_demographic_key(self, demographics: Dict) -> str:
         """Create a key from demographic information"""
-        age_group = demographics.get('age_group', 'unknown')
-        gender = demographics.get('gender', 'unknown')
-        ethnicity = demographics.get('ethnicity', 'unknown')
-        return f"{age_group}_{gender}_{ethnicity}"
+        age = demographics.get('age', 30)
+        gender = demographics.get('gender', 0)
+        ethnicity = demographics.get('ethnicity', 0)
+        
+        # Convert age to age range format used in baselines
+        if age < 10:
+            age_range = "0-9"
+        elif age < 20:
+            age_range = "10-19"
+        elif age < 30:
+            age_range = "20-29"
+        elif age < 40:
+            age_range = "30-39"
+        elif age < 50:
+            age_range = "40-49"
+        elif age < 60:
+            age_range = "50-59"
+        elif age < 70:
+            age_range = "60-69"
+        elif age < 80:
+            age_range = "70-79"
+        else:
+            age_range = "80+"
+        
+        return f"{age_range}_{gender}_{ethnicity}"
 
     def calculate_similarity(self, embedding1: np.ndarray, embedding2: np.ndarray) -> float:
         """Calculate cosine similarity between two embeddings"""
@@ -159,14 +180,27 @@ class EnhancedEmbeddingSystem:
             base_features = np.array(features)
             enhanced_embedding = np.zeros(2048, dtype=np.float32)
             
-            # Use the base features to seed the embedding
+            # Add some randomization based on image characteristics
+            np.random.seed(int(np.sum(base_features) * 1000) % 2**32)
+            
+            # Use the base features to seed the embedding with more image-specific characteristics
             for i in range(2048):
                 if i < len(base_features):
                     enhanced_embedding[i] = base_features[i]
                 else:
-                    # Create derived features based on the base features
+                    # Create derived features based on the base features with image-specific patterns
                     seed = i % len(base_features)
-                    enhanced_embedding[i] = base_features[seed] * (0.5 + 0.5 * np.sin(i * 0.1))
+                    
+                    # Add image-specific characteristics based on color and texture
+                    color_factor = np.mean(base_features[:6]) if len(base_features) >= 6 else 0.5  # Color statistics
+                    texture_factor = np.mean(base_features[6:17]) if len(base_features) >= 17 else 0.5  # Texture features
+                    edge_factor = base_features[17] if len(base_features) > 17 else 0.5  # Edge density
+                    
+                    # Create more varied patterns based on image characteristics
+                    pattern_factor = (color_factor * 0.4 + texture_factor * 0.4 + edge_factor * 0.2)
+                    random_factor = np.random.uniform(0.7, 1.3)
+                    
+                    enhanced_embedding[i] = base_features[seed] * pattern_factor * random_factor
             
             # Normalize the embedding
             norm = np.linalg.norm(enhanced_embedding)
