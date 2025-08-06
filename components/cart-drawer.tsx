@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Plus, Minus, Trash2 } from 'lucide-react'
+import { X, Trash2 } from 'lucide-react'
 import { useCart } from '@/hooks/useCart'
 import { CartIcon } from './cart-icon'
 import Link from 'next/link'
@@ -71,7 +71,7 @@ export const CartDrawer = () => {
                 padding: '0.5rem'
               }}
             >
-              <X size={24} />
+              <X className="w-6 h-6" />
             </button>
           </div>
 
@@ -143,7 +143,7 @@ export const CartDrawer = () => {
                            cursor: 'pointer'
                          }}
                        >
-                         <Minus size={12} />
+                         <span className="text-xs">−</span>
                        </button>
                        <span style={{
                          color: theme === 'dark' ? '#ffffff' : '#000000',
@@ -167,7 +167,7 @@ export const CartDrawer = () => {
                            cursor: 'pointer'
                          }}
                        >
-                         <Plus size={12} />
+                         <span className="text-xs">+</span>
                        </button>
                       <button
                         onClick={() => removeItem(item.id)}
@@ -181,7 +181,7 @@ export const CartDrawer = () => {
                           marginLeft: 'auto'
                         }}
                       >
-                        <Trash2 size={12} />
+                        <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   </div>

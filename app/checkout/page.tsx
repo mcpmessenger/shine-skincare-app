@@ -71,10 +71,7 @@ export default function CheckoutPage() {
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          gap: '2rem',
-          '@media (max-width: 768px)': {
-            gridTemplateColumns: '1fr'
-          }
+          gap: '2rem'
         }}>
           {/* Order Summary */}
           <div style={{

@@ -23,7 +23,7 @@ export const CartIcon = () => {
       border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.2)',
       transition: 'all 0.3s ease'
     }}>
-      <ShoppingCart size={20} color={theme === 'dark' ? "#ffffff" : "#000000"} />
+      <ShoppingCart className="w-5 h-5" />
       {itemCount > 0 && (
         <div style={{
           position: 'absolute',

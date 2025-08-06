@@ -97,13 +97,12 @@ cd backend && python enhanced_analysis_api.py  # Backend (http://localhost:5000)
 ```
 
 #### **Environment Setup**
+Create a `.env.local` file in the root directory:
 ```bash
 # Frontend (.env.local)
 NEXT_PUBLIC_API_URL=http://localhost:5000
-
-# Backend (.env)
-FLASK_ENV=development
-FLASK_DEBUG=1
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 ### 🎯 **Usage**

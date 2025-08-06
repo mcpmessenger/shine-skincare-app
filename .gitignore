@@ -16,6 +16,8 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*
+*.env
 
 # IDE and editor files
 .vscode/
@@ -370,3 +372,65 @@ debug_*.py
 # Security Scan Results
 security_scan_*.log
 scan_results_*.txt
+
+# Additional Security Patterns
+*api_key*
+*api_secret*
+*client_secret*
+*client_id*
+*private_key*
+*public_key*
+*access_token*
+*refresh_token*
+*bearer_token*
+*oauth*
+*auth_token*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Build artifacts
+build/
+dist/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Package files
+*.tgz
+*.tar.gz
+*.zip
+
+# Configuration files with secrets
+config.json
+secrets.json
+credentials.json
