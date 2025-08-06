@@ -9,6 +9,7 @@ import { useCart } from '@/hooks/useCart'
 import { CartDrawer } from '@/components/cart-drawer'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { SignInModal } from '@/components/sign-in-modal'
+import { products } from '@/lib/products'
 
 interface AnalysisResult {
   success: boolean
@@ -97,75 +98,114 @@ export default function SuggestionsPage() {
     return '#ef4444'
   }
 
-  // Map recommendations to products
+  // Map recommendations to real products
   const getRecommendedProducts = () => {
     if (!analysisResult?.top_recommendations) return []
     
     const recommendations = analysisResult.top_recommendations
     const recommendedProducts = []
     
+    // Map recommendations to actual products
     recommendations.forEach(rec => {
-      if (rec.toLowerCase().includes('vitamin c')) {
-        recommendedProducts.push({
-          id: 'vitamin-c',
-          name: "Vitamin C Serum",
-          description: "Brightening serum with 20% Vitamin C for even skin tone and radiance",
-          price: 45.00,
-          category: "serum",
-          match: rec
-        })
+      const recLower = rec.toLowerCase()
+      
+      // Vitamin C recommendations
+      if (recLower.includes('vitamin c') || recLower.includes('brightening')) {
+        const vitaminCProduct = products.find(p => 
+          p.name.toLowerCase().includes('vitamin c') || 
+          p.name.toLowerCase().includes('ce ferulic')
+        )
+        if (vitaminCProduct) {
+          recommendedProducts.push({ ...vitaminCProduct, match: rec })
+        }
       }
-      if (rec.toLowerCase().includes('hyaluronic') || rec.toLowerCase().includes('moisturizer')) {
-        recommendedProducts.push({
-          id: 'hyaluronic',
-          name: "Hyaluronic Acid Moisturizer",
-          description: "Deeply hydrating moisturizer with hyaluronic acid for plump, smooth skin",
-          price: 32.00,
-          category: "moisturizer",
-          match: rec
-        })
+      
+      // Cleanser recommendations
+      if (recLower.includes('cleanser') || recLower.includes('gentle')) {
+        const cleanserProducts = products.filter(p => p.category === 'cleanser')
+        if (cleanserProducts.length > 0) {
+          recommendedProducts.push({ ...cleanserProducts[0], match: rec })
+        }
       }
-      if (rec.toLowerCase().includes('retinol')) {
-        recommendedProducts.push({
-          id: 'retinol',
-          name: "Retinol Night Cream",
-          description: "Anti-aging night cream with retinol to reduce fine lines and wrinkles",
-          price: 58.00,
-          category: "treatment",
-          match: rec
-        })
+      
+      // Moisturizer recommendations
+      if (recLower.includes('moisturizer') || recLower.includes('hydration') || recLower.includes('hyaluronic')) {
+        const moisturizerProducts = products.filter(p => p.category === 'moisturizer')
+        if (moisturizerProducts.length > 0) {
+          recommendedProducts.push({ ...moisturizerProducts[0], match: rec })
+        }
       }
-      if (rec.toLowerCase().includes('niacinamide')) {
-        recommendedProducts.push({
-          id: 'niacinamide',
-          name: "Niacinamide Serum",
-          description: "Pore-refining serum with 10% niacinamide for clearer, smoother skin",
-          price: 38.00,
-          category: "serum",
-          match: rec
-        })
+      
+      // Treatment recommendations (retinol, anti-aging)
+      if (recLower.includes('retinol') || recLower.includes('anti-aging') || recLower.includes('treatment')) {
+        const treatmentProducts = products.filter(p => p.category === 'treatment')
+        if (treatmentProducts.length > 0) {
+          recommendedProducts.push({ ...treatmentProducts[0], match: rec })
+        }
       }
-      if (rec.toLowerCase().includes('peptide')) {
-        recommendedProducts.push({
-          id: 'peptide',
-          name: "Peptide Eye Cream",
-          description: "Firming eye cream with peptides to reduce dark circles and puffiness",
-          price: 42.00,
-          category: "treatment",
-          match: rec
-        })
+      
+      // Serum recommendations
+      if (recLower.includes('serum') || recLower.includes('niacinamide')) {
+        const serumProducts = products.filter(p => p.category === 'serum')
+        if (serumProducts.length > 0) {
+          recommendedProducts.push({ ...serumProducts[0], match: rec })
+        }
       }
-      if (rec.toLowerCase().includes('sunscreen') || rec.toLowerCase().includes('spf')) {
-        recommendedProducts.push({
-          id: 'sunscreen',
-          name: "SPF 50 Sunscreen",
-          description: "Broad-spectrum sunscreen with zinc oxide for daily protection",
-          price: 28.00,
-          category: "sunscreen",
-          match: rec
-        })
+      
+      // Sunscreen recommendations
+      if (recLower.includes('sunscreen') || recLower.includes('spf')) {
+        const sunscreenProducts = products.filter(p => p.category === 'sunscreen')
+        if (sunscreenProducts.length > 0) {
+          recommendedProducts.push({ ...sunscreenProducts[0], match: rec })
+        }
       }
     })
+    
+    // If no specific matches, add some general recommendations based on conditions
+    if (recommendedProducts.length === 0) {
+      const detectedConditions = analysisResult.detected_conditions || []
+      const hasAcne = detectedConditions.some(c => c.name.toLowerCase().includes('acne'))
+      const hasAging = detectedConditions.some(c => c.name.toLowerCase().includes('aging') || c.name.toLowerCase().includes('wrinkle'))
+      const hasPigmentation = detectedConditions.some(c => c.name.toLowerCase().includes('pigment') || c.name.toLowerCase().includes('spot'))
+      
+      if (hasAcne) {
+        const acneProducts = products.filter(p => 
+          p.description.toLowerCase().includes('acne') || 
+          p.name.toLowerCase().includes('cleansing')
+        )
+        if (acneProducts.length > 0) {
+          recommendedProducts.push({ ...acneProducts[0], match: 'Acne treatment' })
+        }
+      }
+      
+      if (hasAging) {
+        const antiAgingProducts = products.filter(p => 
+          p.description.toLowerCase().includes('anti-aging') || 
+          p.name.toLowerCase().includes('advanced')
+        )
+        if (antiAgingProducts.length > 0) {
+          recommendedProducts.push({ ...antiAgingProducts[0], match: 'Anti-aging treatment' })
+        }
+      }
+      
+      if (hasPigmentation) {
+        const pigmentProducts = products.filter(p => 
+          p.description.toLowerCase().includes('pigment') || 
+          p.name.toLowerCase().includes('pigment')
+        )
+        if (pigmentProducts.length > 0) {
+          recommendedProducts.push({ ...pigmentProducts[0], match: 'Pigmentation treatment' })
+        }
+      }
+      
+      // Default to basic skincare if no specific conditions
+      if (recommendedProducts.length === 0) {
+        const basicProducts = products.slice(0, 3) // First 3 products as basic recommendations
+        basicProducts.forEach(product => {
+          recommendedProducts.push({ ...product, match: 'Basic skincare' })
+        })
+      }
+    }
     
     // Remove duplicates and limit to top 6
     const unique = recommendedProducts.filter((product, index, self) =>
@@ -453,36 +493,61 @@ export default function SuggestionsPage() {
                   }}>
                     RECOMMENDED
                   </div>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    marginBottom: '0.5rem'
-                  }}>
-                    <h3 style={{
-                      margin: 0,
-                      fontSize: '1.1rem',
-                      fontWeight: 'bold'
-                    }}>
-                      {product.name}
-                    </h3>
-                    <span style={{
-                      fontSize: '1.2rem',
-                      fontWeight: 'bold',
-                      color: '#3b82f6'
-                    }}>
-                      ${product.price.toFixed(2)}
-                    </span>
-                  </div>
-                  
-                  <p style={{
-                    color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
-                    fontSize: '0.9rem',
-                    margin: '0 0 1rem 0',
-                    lineHeight: '1.4'
-                  }}>
-                    {product.description}
-                  </p>
+                                     <div style={{
+                     display: 'flex',
+                     gap: '1rem',
+                     marginBottom: '1rem'
+                   }}>
+                     {product.image && (
+                       <img
+                         src={product.image}
+                         alt={product.name}
+                         style={{
+                           width: '80px',
+                           height: '80px',
+                           objectFit: 'cover',
+                           borderRadius: '8px',
+                           border: `1px solid ${getBorderColor(0.2)}`
+                         }}
+                         onError={(e) => {
+                           // Hide image if it fails to load
+                           e.currentTarget.style.display = 'none'
+                         }}
+                       />
+                     )}
+                     <div style={{ flex: 1 }}>
+                       <div style={{
+                         display: 'flex',
+                         justifyContent: 'space-between',
+                         alignItems: 'flex-start',
+                         marginBottom: '0.5rem'
+                       }}>
+                         <h3 style={{
+                           margin: 0,
+                           fontSize: '1.1rem',
+                           fontWeight: 'bold'
+                         }}>
+                           {product.name}
+                         </h3>
+                         <span style={{
+                           fontSize: '1.2rem',
+                           fontWeight: 'bold',
+                           color: '#3b82f6'
+                         }}>
+                           ${product.price.toFixed(2)}
+                         </span>
+                       </div>
+                       
+                       <p style={{
+                         color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+                         fontSize: '0.9rem',
+                         margin: 0,
+                         lineHeight: '1.4'
+                       }}>
+                         {product.description}
+                       </p>
+                     </div>
+                   </div>
                   
                   <div style={{
                     display: 'flex',
@@ -603,24 +668,46 @@ export default function SuggestionsPage() {
           </div>
         )}
 
-        {/* Back to Analysis Button */}
-        <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-          <Link href="/" style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.75rem 1.5rem',
-            backgroundColor: '#3b82f6',
-            color: '#ffffff',
-            textDecoration: 'none',
-            borderRadius: '8px',
-            fontWeight: 'bold',
-            transition: 'all 0.3s ease'
-          }}>
-            <ArrowLeft />
-            New Analysis
-          </Link>
-        </div>
+                 {/* Action Buttons */}
+         <div style={{ 
+           textAlign: 'center', 
+           marginTop: '2rem',
+           display: 'flex',
+           gap: '1rem',
+           justifyContent: 'center',
+           flexWrap: 'wrap'
+         }}>
+           <Link href="/catalog" style={{
+             display: 'inline-flex',
+             alignItems: 'center',
+             gap: '0.5rem',
+             padding: '0.75rem 1.5rem',
+             backgroundColor: '#10b981',
+             color: '#ffffff',
+             textDecoration: 'none',
+             borderRadius: '8px',
+             fontWeight: 'bold',
+             transition: 'all 0.3s ease'
+           }}>
+             <ShoppingCart />
+             View All Products
+           </Link>
+           <Link href="/" style={{
+             display: 'inline-flex',
+             alignItems: 'center',
+             gap: '0.5rem',
+             padding: '0.75rem 1.5rem',
+             backgroundColor: '#3b82f6',
+             color: '#ffffff',
+             textDecoration: 'none',
+             borderRadius: '8px',
+             fontWeight: 'bold',
+             transition: 'all 0.3s ease'
+           }}>
+             <ArrowLeft />
+             New Analysis
+           </Link>
+         </div>
       </div>
 
       {/* Footer */}

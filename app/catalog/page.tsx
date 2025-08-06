@@ -9,6 +9,7 @@ import { useCart } from '@/hooks/useCart'
 import { CartDrawer } from '@/components/cart-drawer'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { SignInModal } from '@/components/sign-in-modal'
+import { products } from '@/lib/products'
 
 interface AnalysisData {
   health_score: number
@@ -409,48 +410,4 @@ export default function CatalogPage() {
   )
 }
 
-// Sample products data
-const products = [
-  {
-    id: 1,
-    name: "Vitamin C Serum",
-    description: "Brightening serum with 20% Vitamin C for even skin tone and radiance",
-    price: 45.00,
-    category: "serum"
-  },
-  {
-    id: 2,
-    name: "Hyaluronic Acid Moisturizer",
-    description: "Deeply hydrating moisturizer with hyaluronic acid for plump, smooth skin",
-    price: 32.00,
-    category: "moisturizer"
-  },
-  {
-    id: 3,
-    name: "Retinol Night Cream",
-    description: "Anti-aging night cream with retinol to reduce fine lines and wrinkles",
-    price: 58.00,
-    category: "treatment"
-  },
-  {
-    id: 4,
-    name: "SPF 50 Sunscreen",
-    description: "Broad-spectrum sunscreen with zinc oxide for daily protection",
-    price: 28.00,
-    category: "sunscreen"
-  },
-  {
-    id: 5,
-    name: "Niacinamide Serum",
-    description: "Pore-refining serum with 10% niacinamide for clearer, smoother skin",
-    price: 38.00,
-    category: "serum"
-  },
-  {
-    id: 6,
-    name: "Gentle Cleanser",
-    description: "pH-balanced cleanser that removes impurities without stripping skin",
-    price: 24.00,
-    category: "cleanser"
-  }
-] 
+// Using imported products from lib/products.ts 
