@@ -99,12 +99,44 @@ def enhanced_face_detector(image_data: str, confidence_threshold: float = 0.3) -
             'faces': face_results,
             'image_dimensions': [image.shape[1], image.shape[0]]
         }
-
+        
     except Exception as e:
-        logger.error(f"❌ Face detection error: {e}")
+        logger.error(f"❌ Enhanced face detection failed: {e}")
         return {
             'success': False,
             'error': str(e),
             'faces_detected': 0,
             'confidence': 0.0
-        } 
+        }
+
+def get_face_bounds_from_detection(detection_result: Dict) -> Dict:
+    """
+    Extract face bounds from detection result for API compatibility
+    """
+    if not detection_result.get('success', False):
+        return {
+            'x': 0, 'y': 0, 'width': 0, 'height': 0,
+            'confidence': 0.0,
+            'face_detected': False
+        }
+    
+    faces = detection_result.get('faces', [])
+    if not faces:
+        return {
+            'x': 0, 'y': 0, 'width': 0, 'height': 0,
+            'confidence': 0.0,
+            'face_detected': False
+        }
+    
+    # Get the face with highest confidence
+    best_face = max(faces, key=lambda f: f['confidence'])
+    bbox = best_face['bbox']
+    
+    return {
+        'x': bbox[0],
+        'y': bbox[1], 
+        'width': bbox[2],
+        'height': bbox[3],
+        'confidence': best_face['confidence'],
+        'face_detected': True
+    } 

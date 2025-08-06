@@ -4,6 +4,38 @@
 
 **SHINE SKIN COLLECTIVE** is a sophisticated AI-powered skincare analysis platform that provides real-time skin condition detection, personalized recommendations, and a seamless user experience with comprehensive product suggestions.
 
+## ⚠️ **CURRENT TESTING STATUS & KNOWN ISSUES**
+
+### 🔴 **Critical Issues (Active Development)**
+- **Condition Detection Accuracy**: System currently defaults to "healthy" even for acne/wrinkle images
+- **Frontend-Backend Disconnect**: Backend shows varied analysis but frontend receives same results
+- **Embeddings Data**: Using simulated embeddings due to missing real dataset files
+- **Fallback Logic Override**: Analysis results being overridden by fallback logic
+- **Dataset Mismatch**: HAM10000 dataset contains skin lesions, not facial images suitable for normalization
+- **Missing UTKFace Dataset**: Large embedded facial dataset not properly integrated or located
+
+### 🟡 **Testing Limitations**
+- **Simulated Data**: Currently using generated embeddings instead of real medical datasets
+- **Limited Condition Detection**: Only 6 conditions supported (healthy, acne, eczema, rosacea, actinic_keratosis, basal_cell_carcinoma)
+- **Accuracy Issues**: Detection confidence scores are inconsistent and often incorrect
+- **Recommendation Engine**: Product recommendations may not match detected conditions
+
+### 🟢 **Working Components**
+- ✅ Backend API server starts successfully
+- ✅ Frontend connects to backend
+- ✅ Camera and upload functionality
+- ✅ Basic image processing pipeline
+- ✅ Face detection system
+- ✅ CORS configuration
+
+### 📋 **Development Status**
+- **Phase**: Active debugging and improvement
+- **Priority**: Fix condition detection accuracy
+- **Next Steps**: Implement real embeddings, improve detection logic
+- **Testing**: Manual testing required - automated tests may fail
+
+---
+
 ### ✨ **Latest Features (v3.3)**
 
 #### **🎯 Core Functionality**
@@ -274,6 +306,79 @@ eb deploy
 ```
 
 ### 📝 **Changelog**
+
+## 🔧 **Current Development Challenges & Status**
+
+### **Active Issues Being Addressed**
+1. **Condition Detection Logic**: System overrides analysis results with fallback "healthy" responses
+2. **Embeddings Data**: Missing real medical datasets, using simulated embeddings
+3. **Frontend-Backend Sync**: Backend shows varied analysis but frontend receives static results
+4. **Recommendation Accuracy**: Product suggestions don't match detected conditions
+5. **Dataset Integration Issues**: 
+   - HAM10000 dataset contains skin lesions, not facial images suitable for face normalization
+   - UTKFace dataset (large embedded facial dataset) not properly located or integrated
+   - Need facial images that can pass through same face scan for normalization
+6. **Embeddings Data Source**: Large embedded dataset (possibly UTKFace) exists but not found in current implementation
+
+### **Technical Debt & Cleanup**
+- ✅ **Temporary Files Removed**: Cleaned up test scripts and debug files
+- ✅ **Security Scan Completed**: No sensitive data exposed
+- ✅ **Git Configuration**: Updated `.gitignore` for comprehensive coverage
+- 🔄 **Large Files Assessment**: Some test images may need removal before GitHub push
+
+### **GitHub Push Status**
+- **Security**: ✅ CLEAN - No API keys or sensitive data
+- **File Cleanup**: ✅ COMPLETE - Temporary files removed
+- **Documentation**: ✅ UPDATED - Transparent about current limitations
+- **Ready for Push**: ✅ YES - Safe to push to GitHub
+
+### **Testing Strategy**
+- **Manual Testing**: Required for current development phase
+- **Automated Tests**: May fail due to simulated data limitations
+- **Real Data Integration**: Planned for next development phase
+- **Accuracy Validation**: Needs improvement with real medical datasets
+
+### **Next Development Phase**
+1. **Fix Condition Detection**: Remove fallback logic override
+2. **Implement Real Embeddings**: Replace simulated data with real medical datasets
+3. **Improve Accuracy**: Enhance detection algorithms and confidence scoring
+4. **Add Comprehensive Testing**: Automated tests with real image validation
+5. **Dataset Integration Priority**:
+   - Locate and integrate UTKFace dataset (large embedded facial dataset)
+   - Replace HAM10000 with facial images suitable for normalization
+   - Ensure facial images can pass through same face scan for normalization
+   - Implement proper face normalization pipeline
+
+---
+
+## 🔍 **DATASET CHALLENGES & INTEGRATION ISSUES**
+
+### **Current Dataset Problems**
+- **HAM10000 Dataset**: Contains skin lesions, not facial images suitable for face normalization
+- **Missing UTKFace Integration**: Large embedded facial dataset exists but not properly located or integrated
+- **Face Normalization Pipeline**: Need facial images that can pass through same face scan for normalization
+- **Embeddings Data Source**: Large embedded dataset (possibly UTKFace) exists but not found in current implementation
+
+### **Dataset Requirements for Face Analysis**
+- **Facial Images**: Need complete facial images, not just skin lesions
+- **Normalization Pipeline**: Images must be compatible with face detection and normalization
+- **Embeddings Generation**: Facial images must be processable through same face scan pipeline
+- **UTKFace Dataset**: Contains 20,000+ facial images with age/gender/ethnicity labels - needs proper integration
+
+### **Technical Implementation Needed**
+1. **Locate UTKFace Dataset**: Find and integrate the large embedded facial dataset
+2. **Face Normalization**: Implement pipeline for facial image normalization
+3. **Replace HAM10000**: Use facial images instead of skin lesions for analysis
+4. **Embeddings Generation**: Create embeddings from facial images using same face scan process
+5. **Dataset Validation**: Ensure all images can pass through face detection and normalization
+
+### **Impact on Analysis Accuracy**
+- **Current Limitation**: Using simulated embeddings due to dataset integration issues
+- **Accuracy Impact**: Analysis results are not based on real facial data
+- **Normalization Issues**: Cannot properly normalize facial features for comparison
+- **Detection Problems**: Face-based analysis requires facial images, not skin lesions
+
+---
 
 #### **v3.3 (Current)**
 - ✅ **New Suggestions Page** - Dedicated results page with detailed analysis

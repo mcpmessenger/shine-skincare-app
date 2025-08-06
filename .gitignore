@@ -368,6 +368,8 @@ local_*.py
 test_*.py
 temp_*.py
 debug_*.py
+create_*.py
+check_*.py
 
 # Security Scan Results
 security_scan_*.log
