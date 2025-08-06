@@ -216,6 +216,27 @@ export default function CatalogPage() {
                 }}>
                   RECOMMENDED
                 </div>
+                
+                {/* Product Image */}
+                {product.image && (
+                  <div style={{
+                    marginBottom: '1rem',
+                    textAlign: 'center'
+                  }}>
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      style={{
+                        width: '100%',
+                        height: '200px',
+                        objectFit: 'cover',
+                        borderRadius: '8px',
+                        border: `1px solid ${getBorderColor(0.1)}`
+                      }}
+                    />
+                  </div>
+                )}
+                
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -315,6 +336,27 @@ export default function CatalogPage() {
               padding: '1.5rem',
               border: `1px solid ${getBorderColor(0.1)}`
             }}>
+              
+              {/* Product Image */}
+              {product.image && (
+                <div style={{
+                  marginBottom: '1rem',
+                  textAlign: 'center'
+                }}>
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    style={{
+                      width: '100%',
+                      height: '200px',
+                      objectFit: 'cover',
+                      borderRadius: '8px',
+                      border: `1px solid ${getBorderColor(0.1)}`
+                    }}
+                  />
+                </div>
+              )}
+              
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
