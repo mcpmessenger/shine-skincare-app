@@ -25,15 +25,15 @@ class EnhancedSkinAnalyzer:
         # Analysis parameters
         self.analysis_params = {
             'acne': {
-                'redness_threshold': 0.6,
-                'saturation_threshold': 0.4,
-                'size_threshold': 0.02,
-                'clustering_threshold': 0.1
+                'redness_threshold': 0.5,    # Reduced from 0.6 for better sensitivity
+                'saturation_threshold': 0.5, # Increased from 0.4 for better detection
+                'size_threshold': 0.01,      # Reduced from 0.02 for smaller acne spots
+                'clustering_threshold': 0.05  # Reduced from 0.1 for better clustering
             },
             'redness': {
                 'hue_range': [(0, 10), (170, 180)],
-                'saturation_threshold': 0.3,
-                'value_threshold': 0.4
+                'saturation_threshold': 0.4, # Increased from 0.3 to reduce false positives
+                'value_threshold': 0.5       # Increased from 0.4 to reduce false positives
             },
             'dark_spots': {
                 'luminance_threshold': 0.4,
@@ -157,21 +157,21 @@ class EnhancedSkinAnalyzer:
         try:
             # Red channel analysis for inflammation
             red_channel = image[:, :, 2]
-            red_threshold = np.mean(red_channel) + 1.5 * np.std(red_channel)
+            red_threshold = np.mean(red_channel) + 1.0 * np.std(red_channel)  # Reduced from 1.5
             red_regions = red_channel > red_threshold
             
             # Saturation analysis for active acne
             saturation = hsv[:, :, 1]
-            sat_threshold = np.mean(saturation) + np.std(saturation)
+            sat_threshold = np.mean(saturation) + 0.5 * np.std(saturation)  # Reduced from 1.0
             sat_regions = saturation > sat_threshold
             
             # Value analysis for brightness
             value = hsv[:, :, 2]
-            val_threshold = np.mean(value) + 0.5 * np.std(value)
+            val_threshold = np.mean(value) + 0.3 * np.std(value)  # Reduced from 0.5
             val_regions = value > val_threshold
             
-            # Combine detections with morphological operations
-            acne_mask = red_regions & sat_regions & val_regions
+            # Combine detections - use OR instead of AND for more sensitivity
+            acne_mask = red_regions | sat_regions | val_regions  # Changed from & to |
             
             # Morphological operations to clean up the mask
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
@@ -187,7 +187,7 @@ class EnhancedSkinAnalyzer:
             
             for i in range(1, num_labels):  # Skip background
                 area = stats[i, cv2.CC_STAT_AREA]
-                if area > 10:  # Minimum size threshold
+                if area > 5:  # Reduced minimum size threshold from 10 to 5
                     acne_spots.append({
                         'area': area,
                         'centroid': (centroids[i][0], centroids[i][1]),
@@ -205,21 +205,21 @@ class EnhancedSkinAnalyzer:
             acne_percentage = total_acne_area / total_pixels
             spot_count = len(acne_spots)
             
-            # Determine severity
+            # Determine severity - more sensitive thresholds
             severity = 'none'
-            if acne_percentage > 0.05 or spot_count > 5:
+            if acne_percentage > 0.03 or spot_count > 3:  # Reduced from 0.05/5
                 severity = 'severe'
-            elif acne_percentage > 0.02 or spot_count > 2:
+            elif acne_percentage > 0.01 or spot_count > 1:  # Reduced from 0.02/2
                 severity = 'moderate'
-            elif acne_percentage > 0.005 or spot_count > 0:
+            elif acne_percentage > 0.002 or spot_count > 0:  # Reduced from 0.005
                 severity = 'mild'
             
             return {
-                'detected': acne_percentage > 0.005,
+                'detected': acne_percentage > 0.002,  # Reduced from 0.005
                 'percentage': float(acne_percentage),
                 'spot_count': spot_count,
                 'severity': severity,
-                'confidence': min(1.0, acne_percentage * 20 + spot_count * 0.1),
+                'confidence': min(1.0, acne_percentage * 50 + spot_count * 0.2),  # Increased multipliers
                 'spots': acne_spots
             }
             
@@ -262,18 +262,18 @@ class EnhancedSkinAnalyzer:
             
             # Determine severity
             severity = 'none'
-            if redness_percentage > 0.15:
+            if redness_percentage > 0.20:  # Increased from 0.15
                 severity = 'severe'
-            elif redness_percentage > 0.08:
+            elif redness_percentage > 0.12:  # Increased from 0.08
                 severity = 'moderate'
-            elif redness_percentage > 0.03:
+            elif redness_percentage > 0.08:  # Increased from 0.05
                 severity = 'mild'
             
             return {
-                'detected': redness_percentage > 0.03,
+                'detected': redness_percentage > 0.08,  # Increased from 0.05
                 'percentage': float(redness_percentage),
                 'severity': severity,
-                'confidence': min(1.0, redness_percentage * 10)
+                'confidence': min(1.0, redness_percentage * 8)  # Reduced multiplier from 10 to 8
             }
             
         except Exception as e:
