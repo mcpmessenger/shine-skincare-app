@@ -1,870 +1,762 @@
-'use client'
+'use client';
 
-import { useState, useRef, useEffect } from 'react'
-import { Camera, Upload, Sparkles, Sun, User, ShoppingCart, X, ArrowRight } from 'lucide-react'
-import Link from 'next/link'
-import { useCart } from '@/hooks/useCart'
-import { useAuth } from '@/hooks/useAuth'
-import { CartDrawer } from '@/components/cart-drawer'
-import { SignInModal } from '@/components/sign-in-modal'
-import { products } from '@/lib/products'
-import { useTheme } from '@/hooks/useTheme'
-import { ThemeToggle } from '@/components/theme-toggle'
-import { directBackendClient, isDirectBackendAvailable } from '@/lib/direct-backend'
-import { handleFileUpload, handleCameraCapture, validateImage, ProcessedImage } from '@/lib/image-processing'
-import { Header } from '@/components/header'
+import { useState, useRef, useEffect } from 'react';
+import { Camera, Upload, ArrowRight, Zap, Eye } from 'lucide-react';
+import { Header } from '@/components/header';
 
-export default function SimplifiedSkinAnalysis() {
-  const { dispatch, isAuthenticated } = useCart()
-  const { state: authState } = useAuth()
-  const { theme } = useTheme()
-  const [showSignInModal, setShowSignInModal] = useState(false)
-  
-  // Core states
-  const [userImage, setUserImage] = useState<string | null>(null)
-  const [processedImage, setProcessedImage] = useState<ProcessedImage | null>(null)
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [analysisError, setAnalysisError] = useState<string | null>(null)
-  const [imageValidation, setImageValidation] = useState<{
-    isValid: boolean
-    errors: string[]
-    warnings: string[]
-  } | null>(null)
-  
-  // Face detection states
-  const [faceDetection, setFaceDetection] = useState<{
-    detected: boolean
-    confidence: number
-    face_bounds: {
-      x: number
-      y: number
-      width: number
-      height: number
-    }
-  } | null>(null)
-  
-  // Live camera face detection
-  const [liveFaceDetection, setLiveFaceDetection] = useState<{
-    detected: boolean
-    confidence: number
-    face_bounds: {
-      x: number
-      y: number
-      width: number
-      height: number
-    }
-  } | null>(null)
-  
-  // Camera states
-  const [cameraLoading, setCameraLoading] = useState(false)
-  const [cameraError, setCameraError] = useState<string | null>(null)
-  const [cameraActive, setCameraActive] = useState(false)
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
-  const [showCameraPreview, setShowCameraPreview] = useState(false)
-  
-  // Upload states
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [uploadMethod, setUploadMethod] = useState<'camera' | 'upload' | null>(null)
-  
-  // Demographic inputs
-  const [ageCategory, setAgeCategory] = useState<string>('')
-  const [ethnicity, setEthnicity] = useState<string>('')
-  
-  // UI states
-  const [showDemographics, setShowDemographics] = useState(false)
-  
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
+export default function HomePage() {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [isCameraLoading, setIsCameraLoading] = useState(false);
+  const [faceDetected, setFaceDetected] = useState(false);
+  const [faceConfidence, setFaceConfidence] = useState(0);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  const resetStates = () => {
-    setUserImage(null)
-    setProcessedImage(null)
-    setAnalysisError(null)
-    setSelectedFile(null)
-    setFaceDetection(null)
-    setLiveFaceDetection(null)
-    setImageValidation(null)
-    stopCamera()
-    setShowCameraPreview(false)
-  }
+  useEffect(() => {
+    // Set loading to false after initialization
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000); // Show logo for 1 second
+  }, []);
 
-  // Start camera with live preview
   const startCamera = async () => {
     try {
-      setCameraError(null)
-      setCameraLoading(true)
-      setShowCameraPreview(false)
+      console.log('Starting camera...');
+      setIsCameraLoading(true);
+      setShowCamera(true); // Set this immediately to show the camera container
       
-      console.log('📸 Starting camera with live preview...')
+             const stream = await navigator.mediaDevices.getUserMedia({ 
+         video: { 
+           facingMode: 'user',
+           width: { ideal: 720 },
+           height: { ideal: 1280 }
+         } 
+       });
       
-      // Check if MediaDevices API is available
-      if (!navigator.mediaDevices) {
-        console.error('❌ MediaDevices API not available')
-        setCameraError('Camera API not supported in this browser')
-        setCameraLoading(false)
-        return
-      }
+      console.log('Camera stream obtained:', stream);
       
-      // Check available devices
-      const devices = await navigator.mediaDevices.enumerateDevices()
-      const videoDevices = devices.filter(device => device.kind === 'videoinput')
-      console.log('📹 Available video devices:', videoDevices)
-      
-      if (videoDevices.length === 0) {
-        setCameraError('No camera devices found')
-        setCameraLoading(false)
-        return
-      }
-      
-      // Get camera stream
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'user' } 
-      })
-      
-      console.log('✅ Camera stream obtained successfully')
-      
-      // Show camera preview first to ensure video element exists
-      setShowCameraPreview(true)
-      
-      // Wait a bit for the video element to be rendered
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      // Set up the video element for live preview
       if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.muted = true
-        videoRef.current.autoplay = true
-        videoRef.current.playsInline = true
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+        setIsCameraLoading(false);
         
-        // Wait for video to be ready
-        await new Promise((resolve, reject) => {
-          if (videoRef.current) {
-            videoRef.current.onloadedmetadata = () => {
-              console.log('✅ Video metadata loaded')
-              resolve(true)
-            }
-            videoRef.current.onerror = (error) => {
-              console.error('❌ Video error:', error)
-              reject(error)
-            }
-            videoRef.current.play().then(() => {
-              console.log('✅ Video started playing')
-            }).catch(reject)
-          }
-        })
+                 // Wait for video to load
+         videoRef.current.onloadedmetadata = () => {
+           console.log('Video metadata loaded');
+         };
         
-        console.log('✅ Video element ready for preview')
-        setCameraStream(stream)
-        setCameraActive(true)
-        setCameraLoading(false)
-        
+        // Force video to play
+        videoRef.current.play().catch(e => console.error('Video play error:', e));
       } else {
-        throw new Error('Video element not found')
+        console.error('Video ref is null');
+        setIsCameraLoading(false);
       }
-      
     } catch (error) {
-      console.error('❌ Camera failed:', error)
-      setCameraError(`Camera failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      setCameraLoading(false)
-      setShowCameraPreview(false)
+      console.error('Error accessing camera:', error);
+      setIsCameraLoading(false);
+      setShowCamera(false); // Hide camera if there's an error
+      alert('Unable to access camera. Please check permissions.');
     }
-  }
-
-  // Capture photo from live preview
-  const capturePhoto = async () => {
-    if (!videoRef.current || !cameraStream) return
-    
-    try {
-      console.log('📸 Capturing photo from live preview...')
-      
-      const processedImage = await handleCameraCapture(videoRef.current)
-      
-      setUserImage(processedImage.dataUrl)
-      setProcessedImage(processedImage)
-      setUploadMethod('camera')
-      
-      // Validate the captured image
-      const validation = validateImage(processedImage)
-      setImageValidation(validation)
-      
-      console.log('📸 Captured image dimensions:', processedImage.width, 'x', processedImage.height)
-      console.log('📸 Image size:', processedImage.size, 'bytes')
-      console.log('✅ Static JPEG photo captured from camera')
-      
-      if (!validation.isValid) {
-        console.warn('⚠️ Image validation warnings:', validation.errors, validation.warnings)
-      }
-      
-      // Stop camera and hide preview
-      stopCamera()
-      setShowCameraPreview(false)
-      
-    } catch (error) {
-      console.error('❌ Photo capture failed:', error)
-      setCameraError(`Photo capture failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    }
-  }
+  };
 
   const stopCamera = () => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop())
-      setCameraActive(false)
-      setCameraStream(null)
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
-  }
+    setShowCamera(false);
+    setShowImagePreview(false);
+    setUploadedImage(null);
+    setFaceDetected(false);
+    setFaceConfidence(0);
+    setIsVideoPlaying(false);
+  };
 
-  // Live face detection for camera preview
   const performLiveFaceDetection = async () => {
-    if (!videoRef.current || !cameraActive) return
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) return;
+
+    // Check if video is ready
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      console.log('Video not ready yet, retrying...');
+      setTimeout(performLiveFaceDetection, 500);
+      return;
+    }
+
+    // Set canvas size to match video display size (not video resolution)
+    const videoElement = video;
+    const videoRect = videoElement.getBoundingClientRect();
+    canvas.width = videoRect.width;
+    canvas.height = videoRect.height;
+
+    // Clear the canvas first
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    try {
-      // Create a canvas to capture the current video frame
-      const canvas = document.createElement('canvas')
-      const context = canvas.getContext('2d')
-      
-      if (context && videoRef.current) {
-        // Set canvas size to match video
-        canvas.width = videoRef.current.videoWidth
-        canvas.height = videoRef.current.videoHeight
-        
-        // Draw current video frame to canvas
-        context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
-        
-        // Convert canvas to base64 for analysis
-        const imageData = canvas.toDataURL('image/jpeg', 0.8).split(',')[1]
-        
-        // Use dedicated face detection endpoint for faster response
+    console.log('Canvas size set to:', canvas.width, 'x', canvas.height);
+    console.log('Video element size:', videoRect.width, 'x', videoRect.height);
+    console.log('Video resolution:', video.videoWidth, 'x', video.videoHeight);
+
+    // Canvas is working - no need for test rectangle anymore
+
+    // Convert video frame to base64 for face detection
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    if (tempCtx) {
+      tempCanvas.width = video.videoWidth;
+      tempCanvas.height = video.videoHeight;
+      tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+      const imageData = tempCanvas.toDataURL('image/jpeg', 0.8);
+
+      try {
         const response = await fetch('http://localhost:5000/api/v3/face/detect', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            image_data: imageData,
-            confidence_threshold: 0.3
+            image_data: imageData.split(',')[1] // Remove data:image/jpeg;base64, prefix
           })
-        })
-        
-        if (response.ok) {
-          const result = await response.json()
-          console.log('🔍 Live face detection result:', result)
+        });
+
+                 if (response.ok) {
+           const result = await response.json();
+           console.log('Live face detection result:', result);
+           console.log('Result structure:', JSON.stringify(result, null, 2));
           
-          if (result.success && result.faces && result.faces.length > 0) {
-            // Use the first detected face
-            const face = result.faces[0]
+          // Allow zero confidence - if faces array exists and has any elements, consider it detected
+          if (result.faces && result.faces.length > 0) {
+            const face = result.faces[0];
+            setFaceDetected(true);
+            setFaceConfidence(face.confidence || 0);
             
-            // Convert pixel coordinates to percentages for display
-            const videoWidth = videoRef.current.videoWidth
-            const videoHeight = videoRef.current.videoHeight
+            console.log('FACE DETECTED! Face data:', face);
+            console.log('Face bounds:', face.bounds);
+            console.log('Face confidence:', face.confidence);
             
-            setLiveFaceDetection({
-              detected: true,
-              confidence: face.confidence,
-              face_bounds: {
-                x: (face.box[0] / videoWidth) * 100,
-                y: (face.box[1] / videoHeight) * 100,
-                width: (face.box[2] / videoWidth) * 100,
-                height: (face.box[3] / videoHeight) * 100
+            // Draw face detection overlay on the main canvas
+            console.log('Drawing overlay for face:', face);
+            console.log('Canvas size:', canvas.width, 'x', canvas.height);
+            console.log('Face bounds:', face.bounds);
+            // Draw green matrix overlay over the detected face
+            const { x, y, width, height } = face.bounds;
+            
+            // Scale coordinates to match canvas display size
+            const videoElement = videoRef.current;
+            if (videoElement) {
+              const videoRect = videoElement.getBoundingClientRect();
+              const scaleX = videoRect.width / videoElement.videoWidth;
+              const scaleY = videoRect.height / videoElement.videoHeight;
+              
+              const scaledX = x * scaleX;
+              const scaledY = y * scaleY;
+              const scaledWidth = width * scaleX;
+              const scaledHeight = height * scaleY;
+              
+              console.log('Drawing matrix overlay over face at:', { scaledX, scaledY, scaledWidth, scaledHeight });
+              console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+              
+              // Check if coordinates are reasonable
+              if (scaledX < 0 || scaledY < 0 || scaledWidth <= 0 || scaledHeight <= 0) {
+                console.log('Invalid coordinates, drawing fallback rectangle');
+                ctx.strokeStyle = '#00FF00';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(100, 100, 200, 200);
+                return;
               }
-            })
-          } else {
-            setLiveFaceDetection({
-              detected: false,
-              confidence: 0,
-              face_bounds: { x: 0, y: 0, width: 0, height: 0 }
-            })
-          }
-        } else {
-          setLiveFaceDetection({
-            detected: false,
-            confidence: 0,
-            face_bounds: { x: 0, y: 0, width: 0, height: 0 }
-          })
+              
+              // Draw an oval around the detected face
+              ctx.strokeStyle = '#00FF00';
+              ctx.lineWidth = 3;
+              
+              // Calculate center and radius for oval
+              const centerX = scaledX + scaledWidth/2;
+              const centerY = scaledY + scaledHeight/2;
+              const radiusX = scaledWidth/2;
+              const radiusY = scaledHeight/2;
+              
+              // Draw oval
+              ctx.beginPath();
+              ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+              ctx.stroke();
+              
+              // Draw corner markers for better visibility
+              const markerSize = 15;
+              ctx.strokeStyle = '#00FF00';
+              ctx.lineWidth = 2;
+              
+              // Top-left corner
+              ctx.beginPath();
+              ctx.moveTo(scaledX, scaledY + markerSize);
+              ctx.lineTo(scaledX, scaledY);
+              ctx.lineTo(scaledX + markerSize, scaledY);
+              ctx.stroke();
+              
+              // Top-right corner
+              ctx.beginPath();
+              ctx.moveTo(scaledX + scaledWidth - markerSize, scaledY);
+              ctx.lineTo(scaledX + scaledWidth, scaledY);
+              ctx.lineTo(scaledX + scaledWidth, scaledY + markerSize);
+              ctx.stroke();
+              
+              // Bottom-left corner
+              ctx.beginPath();
+              ctx.moveTo(scaledX, scaledY + scaledHeight - markerSize);
+              ctx.lineTo(scaledX, scaledY + scaledHeight);
+              ctx.lineTo(scaledX + markerSize, scaledY + scaledHeight);
+              ctx.stroke();
+              
+              // Bottom-right corner
+              ctx.beginPath();
+              ctx.moveTo(scaledX + scaledWidth - markerSize, scaledY + scaledHeight);
+              ctx.lineTo(scaledX + scaledWidth, scaledY + scaledHeight);
+              ctx.lineTo(scaledX + scaledWidth, scaledY + scaledHeight - markerSize);
+              ctx.stroke();
+              
+              // Draw confidence text with background
+              const confidenceText = `${Math.round(face.confidence * 100)}%`;
+              const textWidth = ctx.measureText(confidenceText).width;
+              
+              // Draw background for text
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+              ctx.fillRect(scaledX, scaledY - 25, textWidth + 10, 20);
+              
+              // Draw confidence text
+              ctx.fillStyle = '#00FF00';
+              ctx.font = 'bold 14px Arial';
+              ctx.fillText(confidenceText, scaledX + 5, scaledY - 10);
+              
+              console.log('Drew simple overlay over detected face');
+            }
+            
+            console.log('Face detected with confidence:', face.confidence);
+                     } else {
+             setFaceDetected(false);
+             setFaceConfidence(0);
+             console.log('No faces detected in live mode');
+             
+             // Draw a test oval in the center to verify oval drawing works
+             const centerX = canvas.width / 2;
+             const centerY = canvas.height / 2;
+             const radiusX = 100;
+             const radiusY = 150;
+             
+             ctx.strokeStyle = '#00FF00';
+             ctx.lineWidth = 3;
+             ctx.beginPath();
+             ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+             ctx.stroke();
+             
+             console.log('Drew test oval in center - no face detected');
+           }
         }
+      } catch (error) {
+        console.error('Live face detection error:', error);
+      }
+    }
+
+    // Continue detection
+    if (showCamera) {
+      setTimeout(performLiveFaceDetection, 1000);
+    }
+  };
+
+  const performFaceDetectionOnImage = async (imageData: string) => {
+    try {
+      console.log('Performing face detection on uploaded image...');
+      const response = await fetch('http://localhost:5000/api/v3/face/detect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image_data: imageData.split(',')[1] // Remove data:image/jpeg;base64, prefix
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Face detection result:', result);
+        
+        // Allow zero confidence - if faces array exists and has any elements, consider it detected
+        if (result.faces && result.faces.length > 0) {
+          const face = result.faces[0];
+          setFaceDetected(true);
+          setFaceConfidence(face.confidence || 0);
+          console.log('Face detected with confidence:', face.confidence);
+        } else {
+          setFaceDetected(false);
+          setFaceConfidence(0);
+          console.log('No faces detected');
+        }
+      } else {
+        console.error('Face detection failed:', response.status);
+        setFaceDetected(false);
+        setFaceConfidence(0);
       }
     } catch (error) {
-      console.log('Live face detection error:', error)
-      // Don't show error to user for live detection
+      console.error('Face detection error:', error);
+      setFaceDetected(false);
+      setFaceConfidence(0);
     }
-  }
+  };
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      try {
-        setSelectedFile(file)
-        setUploadMethod('upload')
-        
-        // Process the uploaded file using the new utility
-        const processedImage = await handleFileUpload(file)
-        
-        setUserImage(processedImage.dataUrl)
-        setProcessedImage(processedImage)
-        
-        // Validate the uploaded image
-        const validation = validateImage(processedImage)
-        setImageValidation(validation)
-        
-        console.log('📁 File uploaded successfully')
-        console.log('📁 Image dimensions:', processedImage.width, 'x', processedImage.height)
-        console.log('📁 Image size:', processedImage.size, 'bytes')
-        
-        if (!validation.isValid) {
-          console.warn('⚠️ Image validation warnings:', validation.errors, validation.warnings)
-        }
-        
-      } catch (error) {
-        console.error('❌ File upload failed:', error)
-        setAnalysisError(error instanceof Error ? error.message : 'Failed to process uploaded file')
-        setSelectedFile(null)
-        setUploadMethod(null)
-      }
+  const drawFaceDetectionOverlay = (ctx: CanvasRenderingContext2D, face: any) => {
+    const { x, y, width, height } = face.bounds;
+    
+    console.log('Original face bounds:', { x, y, width, height });
+    console.log('Canvas size:', ctx.canvas.width, 'x', ctx.canvas.height);
+    
+    // Use a simpler approach - draw a matrix overlay in the center of the canvas
+    const centerX = ctx.canvas.width / 2;
+    const centerY = ctx.canvas.height / 2;
+    const overlaySize = Math.min(ctx.canvas.width, ctx.canvas.height) * 0.6;
+    
+    console.log('Drawing overlay at center:', { centerX, centerY, overlaySize });
+    
+    // Draw matrix-style grid overlay
+    ctx.strokeStyle = '#00FF00'; // Bright green for matrix effect
+    ctx.lineWidth = 3;
+    
+    // Draw vertical lines
+    for (let i = 0; i <= 4; i++) {
+      const lineX = centerX - overlaySize/2 + (overlaySize * i / 4);
+      ctx.beginPath();
+      ctx.moveTo(lineX, centerY - overlaySize/2);
+      ctx.lineTo(lineX, centerY + overlaySize/2);
+      ctx.stroke();
     }
-  }
-
-  const handleAnalysis = async () => {
-    if (!userImage || !processedImage) {
-      setAnalysisError('No image available for analysis')
-      return
+    
+    // Draw horizontal lines
+    for (let i = 0; i <= 4; i++) {
+      const lineY = centerY - overlaySize/2 + (overlaySize * i / 4);
+      ctx.beginPath();
+      ctx.moveTo(centerX - overlaySize/2, lineY);
+      ctx.lineTo(centerX + overlaySize/2, lineY);
+      ctx.stroke();
     }
+    
+    // Draw corner markers
+    ctx.strokeStyle = '#00FF00';
+    ctx.lineWidth = 3;
+    const markerSize = 20;
+    
+    // Top-left corner
+    ctx.beginPath();
+    ctx.moveTo(centerX - overlaySize/2, centerY - overlaySize/2 + markerSize);
+    ctx.lineTo(centerX - overlaySize/2, centerY - overlaySize/2);
+    ctx.lineTo(centerX - overlaySize/2 + markerSize, centerY - overlaySize/2);
+    ctx.stroke();
+    
+    // Top-right corner
+    ctx.beginPath();
+    ctx.moveTo(centerX + overlaySize/2 - markerSize, centerY - overlaySize/2);
+    ctx.lineTo(centerX + overlaySize/2, centerY - overlaySize/2);
+    ctx.lineTo(centerX + overlaySize/2, centerY - overlaySize/2 + markerSize);
+    ctx.stroke();
+    
+    // Bottom-left corner
+    ctx.beginPath();
+    ctx.moveTo(centerX - overlaySize/2, centerY + overlaySize/2 - markerSize);
+    ctx.lineTo(centerX - overlaySize/2, centerY + overlaySize/2);
+    ctx.lineTo(centerX - overlaySize/2 + markerSize, centerY + overlaySize/2);
+    ctx.stroke();
+    
+    // Bottom-right corner
+    ctx.beginPath();
+    ctx.moveTo(centerX + overlaySize/2 - markerSize, centerY + overlaySize/2);
+    ctx.lineTo(centerX + overlaySize/2, centerY + overlaySize/2);
+    ctx.lineTo(centerX + overlaySize/2, centerY + overlaySize/2 - markerSize);
+    ctx.stroke();
+    
+    // Draw face detection circle
+    ctx.strokeStyle = '#00FF00';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, overlaySize/2, 0, 2 * Math.PI);
+    ctx.stroke();
+    
+    // Draw confidence text with glowing effect
+    const confidenceText = `${Math.round(faceConfidence * 100)}%`;
+    const textWidth = ctx.measureText(confidenceText).width;
+    
+    // Draw glow effect
+    ctx.shadowColor = '#00FF00';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = '#00FF00';
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText(confidenceText, centerX - textWidth/2, centerY - overlaySize/2 - 10);
+    
+    // Reset shadow
+    ctx.shadowBlur = 0;
+    
+    // Draw status text
+    const statusText = 'FACE DETECTED';
+    const statusWidth = ctx.measureText(statusText).width;
+    
+    // Draw background for status
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(centerX - statusWidth/2 - 5, centerY - overlaySize/2 - 40, statusWidth + 10, 20);
+    
+    // Draw status text
+    ctx.fillStyle = '#00FF00';
+    ctx.font = 'bold 12px Arial';
+    ctx.fillText(statusText, centerX - statusWidth/2, centerY - overlaySize/2 - 25);
+  };
 
-    // Check image validation
-    if (imageValidation && !imageValidation.isValid) {
-      setAnalysisError(`Image validation failed: ${imageValidation.errors.join(', ')}`)
-      return
-    }
+  const capturePhoto = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
 
-    setIsAnalyzing(true)
-    setAnalysisError(null)
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) return;
+
+    // Set canvas size to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    // Draw video frame to canvas
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Convert canvas to base64
+    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+    // Stop camera
+    stopCamera();
+
+    // Start analysis (face detection will be performed during analysis)
+    await analyzeSkin(imageData);
+  };
+
+  const analyzeSkin = async (imageData: string) => {
+    setIsAnalyzing(true);
 
     try {
-      // Use the processed image base64 data
-      const imageData = processedImage.base64
-
-      console.log('🔍 Starting analysis with image data length:', imageData.length)
-      console.log('🔍 Image data starts with:', imageData.substring(0, 50))
-      console.log('🔍 Image data type:', typeof imageData)
-      console.log('🔍 Original userImage type:', typeof userImage)
-      console.log('🔍 Original userImage starts with:', userImage.substring(0, 50))
-
-      // Perform face detection first for upload mode
-      if (uploadMethod === 'upload') {
-        console.log('🔍 Performing face detection for upload mode...')
-        const faceDetectionResponse = await directBackendClient.faceDetection({
-          image_data: imageData
+      const response = await fetch('http://localhost:5000/api/v3/skin/analyze-real', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image_data: imageData.split(',')[1], // Remove data:image/jpeg;base64, prefix
+          user_demographics: {
+            age: '25-35',
+            ethnicity: 'caucasian',
+            gender: 'female',
+            fitzpatrick_type: '3'
+          }
         })
-        
-        if (faceDetectionResponse.success && faceDetectionResponse.data) {
-          console.log('🔍 Face detection result:', faceDetectionResponse.data)
-          
-          // Handle the face detection response structure
-          const isDetected = faceDetectionResponse.data.face_detected || false
-          const faceBounds = faceDetectionResponse.data.face_bounds || { x: 0, y: 0, width: 0, height: 0 }
-          
-          console.log('🔍 Frontend Face Detection Debug (Upload Mode):')
-          console.log('  Received face_bounds:', faceBounds)
-          console.log('  Is detected:', isDetected)
-          
-          setFaceDetection({
-            detected: isDetected,
-            confidence: faceDetectionResponse.data.confidence || 0,
-            face_bounds: {
-              x: faceBounds.x,
-              y: faceBounds.y,
-              width: faceBounds.width,
-              height: faceBounds.height
-            }
-          })
-        } else {
-          console.log('⚠️ Face detection failed for upload mode:', faceDetectionResponse.error)
-          setFaceDetection({
-            detected: false,
-            confidence: 0,
-            face_bounds: { x: 0, y: 0, width: 0, height: 0 }
-          })
-        }
-      }
+      });
 
-      const response = await directBackendClient.realSkinAnalysis({
-        image_data: imageData,
-        user_demographics: {
-          age_category: ageCategory,
-          race_category: ethnicity
-        }
-      })
-
-      console.log('🔍 Analysis response:', response)
-      console.log('🔍 Response success:', response.success)
-      console.log('🔍 Response data:', response.data)
-      console.log('🔍 Response data type:', typeof response.data)
-      console.log('🔍 Top recommendations in response:', response.data?.top_recommendations)
-      console.log('🔍 Top recommendations length:', response.data?.top_recommendations?.length)
-
-      if (response.success && response.data) {
-        console.log('🔍 Analysis successful, checking face detection...')
+      if (response.ok) {
+        const result = await response.json();
         
-        // Extract face detection results from analysis response (for both camera and upload)
-        let finalFaceDetection = null
-        if (response.data.face_detection) {
-          // Handle both 'detected' and 'face_detected' field names
-          const isDetected = response.data.face_detection.detected || response.data.face_detection.face_detected || false
-          const faceBounds = response.data.face_detection.face_bounds || { x: 0, y: 0, width: 0, height: 0 }
-          const confidence = response.data.face_detection.confidence || 0
-          
-          console.log(`🔍 Frontend Face Detection Debug (${uploadMethod === 'camera' ? 'Camera' : 'Upload'} Mode):`)
-          console.log('  Received face_bounds:', faceBounds)
-          console.log('  Is detected:', isDetected)
-          console.log('  Confidence:', confidence)
-          
-          finalFaceDetection = {
-            detected: isDetected,
-            confidence: confidence,
-            face_bounds: {
-              x: faceBounds.x,
-              y: faceBounds.y,
-              width: faceBounds.width,
-              height: faceBounds.height
-            }
-          }
-          
-          setFaceDetection(finalFaceDetection)
-        }
-        
-        // Check if no face was detected and show notification
-        if (finalFaceDetection && !finalFaceDetection.detected) {
-          setAnalysisError('⚠️ No face detected in the image. Please ensure your face is clearly visible and try again. For best results, use a well-lit photo with your face centered.')
-          setIsAnalyzing(false)
-          return
-        }
-        
-        // If face detected but confidence is low, adjust the analysis data
-        if (finalFaceDetection && finalFaceDetection.detected && finalFaceDetection.confidence < 0.5) {
-          console.log('⚠️ Face detected but confidence is low:', finalFaceDetection.confidence)
-          
-          // Modify the analysis data to indicate lower confidence
-          response.data.confidence_score = Math.min(response.data.confidence_score || 0.8, 0.6)
-          response.data.analysis_summary = 'Analysis performed with reduced confidence due to unclear face detection. Please consider retaking the photo for more accurate results.'
-          
-          // Add a warning to the recommendations
-          if (response.data.top_recommendations) {
-            response.data.top_recommendations.unshift('⚠️ Consider retaking photo for clearer face detection')
-          }
-        }
-        
-        // Redirect to suggestions page with analysis data
-        const analysisData = encodeURIComponent(JSON.stringify(response.data))
-        window.location.href = `/suggestions?analysis=${analysisData}`
+        // Navigate to results page with analysis data
+        const analysisParam = encodeURIComponent(JSON.stringify(result));
+        window.location.href = `/suggestions?analysis=${analysisParam}`;
       } else {
-        console.error('❌ Analysis failed:', response.error)
-        setAnalysisError(response.error || 'Analysis failed. Please try again.')
+        throw new Error('Analysis failed');
       }
     } catch (error) {
-      console.error('❌ Analysis error:', error)
-      setAnalysisError('Analysis failed. Please try again.')
-    } finally {
-      setIsAnalyzing(false)
+      console.error('Analysis error:', error);
+      alert('Analysis failed. Please try again.');
+      setIsAnalyzing(false);
     }
-  }
+  };
 
-  // Face Detection Overlay Component
-  const FaceDetectionOverlay = ({ faceDetection }: { faceDetection: any }) => {
-    if (!faceDetection || !faceDetection.detected) return null
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    const { face_bounds, confidence } = faceDetection
-    const confidencePercent = Math.round(confidence * 100)
-    
-    // Determine confidence level and color
-    let confidenceLevel = 'Low'
-    let confidenceColor = 'text-red-500'
-    if (confidence >= 0.8) {
-      confidenceLevel = 'High'
-      confidenceColor = 'text-green-500'
-    } else if (confidence >= 0.6) {
-      confidenceLevel = 'Medium'
-      confidenceColor = 'text-yellow-500'
-    }
-
-    return (
-      <div className="face-detection-overlay">
-        {/* Face Detection Circle/Oval */}
-        <div 
-          className="face-detection-circle"
-          style={{
-            left: `${face_bounds.x}%`,
-            top: `${face_bounds.y}%`,
-            width: `${face_bounds.width}%`,
-            height: `${face_bounds.height}%`
-          }}
-        />
-        
-        {/* Enhanced Confidence Badge */}
-        <div className="face-confidence-badge">
-          <div className="flex items-center gap-1">
-            <span>Face Detected:</span>
-            <span className={`font-bold ${confidenceColor}`}>
-              {confidencePercent}% ({confidenceLevel})
-            </span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Live Face Detection Overlay Component for Camera
-  const LiveFaceDetectionOverlay = ({ faceDetection }: { faceDetection: any }) => {
-    if (!faceDetection) return null
-
-    const { face_bounds, confidence, detected } = faceDetection
-    const confidencePercent = Math.round(confidence * 100)
-
-    return (
-      <div className="face-detection-overlay">
-        {/* Face Detection Circle/Oval */}
-        {detected && (
-          <div 
-            className="face-detection-circle-live"
-            style={{
-              left: `${face_bounds.x}%`,
-              top: `${face_bounds.y}%`,
-              width: `${face_bounds.width}%`,
-              height: `${face_bounds.height}%`
-            }}
-          />
-        )}
-        
-        {/* Live Detection Status */}
-        <div className={`live-detection-status ${detected ? 'detected' : 'not-detected'}`}>
-          {detected ? `Face: ${confidencePercent}%` : 'No Face Detected'}
-        </div>
-        
-        {/* Capture Hint */}
-        {detected && confidence > 0.7 && (
-          <div className="capture-hint">
-            ✅ Ready to capture
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  // Simplified camera implementation - no live face detection
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
-    
-    if (cameraActive && showCameraPreview) {
-      // Enable live face detection for camera preview
-      console.log('📹 Camera active, starting live face detection')
-      interval = setInterval(performLiveFaceDetection, 1000) // Check every second
-    } else {
-      // Clear live face detection when camera stops
-      setLiveFaceDetection(null)
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval)
-    }
-  }, [cameraActive, showCameraPreview])
-
-  // Debug video element state
-  useEffect(() => {
-    if (showCameraPreview && videoRef.current) {
-      console.log('🎥 Video element state:', {
-        srcObject: videoRef.current.srcObject,
-        readyState: videoRef.current.readyState,
-        videoWidth: videoRef.current.videoWidth,
-        videoHeight: videoRef.current.videoHeight,
-        paused: videoRef.current.paused,
-        ended: videoRef.current.ended,
-        currentTime: videoRef.current.currentTime
-      })
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const imageData = e.target?.result as string;
+      setUploadedImage(imageData);
+      setShowImagePreview(true);
       
-      // Ensure video is playing when preview is shown
-      if (videoRef.current.paused) {
-        console.log('🔄 Ensuring video is playing...')
-        videoRef.current.play().catch(e => console.error('Failed to play video:', e))
-      }
-    }
-  }, [showCameraPreview])
+      // Perform face detection on uploaded image
+      await performFaceDetectionOnImage(imageData);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  if (isAnalyzing) {
+    return (
+              <div className="min-h-screen bg-primary text-primary flex items-center justify-center">
+          <div className="text-center">
+            <img 
+              src="https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png" 
+              alt="Shine Skin Collective" 
+              className="w-32 h-32 mx-auto mb-6 animate-pulse"
+            />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-4"></div>
+            <p className="text-secondary font-light">Analyzing your skin...</p>
+          </div>
+        </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-primary text-primary flex items-center justify-center">
+        <div className="text-center">
+          <img 
+            src="https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png" 
+            alt="Shine Skin Collective" 
+            className="w-32 h-32 mx-auto mb-6 animate-pulse"
+          />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-4"></div>
+          <p className="text-secondary font-light">Loading Shine...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="h-screen bg-primary text-primary font-inter font-light flex flex-col overflow-hidden">
-      {/* Header */}
+    <div className="min-h-screen bg-primary text-primary">
       <Header />
-
-      {/* Main Content */}
-      <div className="flex-1 max-w-6xl mx-auto p-1 flex flex-col gap-1 w-full h-full overflow-hidden">
-        
-        {/* Photo Display Area */}
-        <div className="bg-secondary rounded-2xl p-1 border border-primary flex flex-col items-center justify-center relative aspect-[3/4] max-h-[65vh] min-h-[300px] flex-1 shadow-lg">
-          {/* Camera Preview */}
-          {showCameraPreview && (
-            <div className="w-full h-full relative">
-              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-md text-xs z-10">
-                📸 Camera Preview - Click "Capture Photo" to take a picture
-              </div>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                onLoadedMetadata={() => console.log('🎥 Video metadata loaded in JSX')}
-                onCanPlay={() => console.log('🎥 Video can play')}
-                onPlaying={() => console.log('🎥 Video is playing')}
-                onError={(e) => console.error('🎥 Video error in JSX:', e)}
-                className="w-full h-full rounded-md object-cover aspect-[3/4] bg-black block"
-              />
-              {/* Face Detection Overlay for Camera */}
-              {liveFaceDetection && <LiveFaceDetectionOverlay faceDetection={liveFaceDetection} />}
-              {/* Camera Controls */}
-              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-2 z-10">
-                <button
-                  onClick={capturePhoto}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm font-medium flex items-center gap-1 transition-all duration-200 hover:bg-blue-600 cursor-pointer"
-                >
-                  <Camera />
-                  Capture Photo
-                </button>
-                <button
-                  onClick={() => {
-                    stopCamera()
-                    setShowCameraPreview(false)
-                  }}
-                  className="px-4 py-2 bg-black/50 text-white border-none rounded-md cursor-pointer text-sm font-medium"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Ready State */}
-          {!userImage && !showCameraPreview && (
-            <div className="text-center p-4">
-              <Sparkles className="opacity-50 mb-2 text-2xl" />
-              <h3 className="text-xl font-medium text-primary mb-1">
-                Ready for Skin Analysis
-              </h3>
-              <p className="text-sm text-secondary mb-2">
-                Take a selfie or upload a photo
-              </p>
-              <div className="text-xs text-secondary bg-secondary p-2 rounded-md border border-primary">
-                💡 <strong>Tip:</strong> Ensure your face is clearly visible
-              </div>
-            </div>
-          )}
-
-          {/* Captured/Uploaded Image */}
-          {userImage && !showCameraPreview && (
-            <div className="w-full h-full relative">
-              <img
-                src={userImage}
-                alt="User photo"
-                className="w-full h-full rounded-md object-cover aspect-[3/4] bg-gray-100"
-                onLoad={() => {
-                  console.log('Image loaded successfully')
-                }}
-                onError={(e) => {
-                  console.error('Image failed to load:', e)
-                  setAnalysisError('Failed to load captured image')
-                }}
-              />
-              {/* Face Detection Overlay */}
-              {faceDetection && <FaceDetectionOverlay faceDetection={faceDetection} />}
-              <button
-                onClick={resetStates}
-                className="absolute top-1 right-1 p-1 bg-black/50 text-white border-none rounded-full cursor-pointer w-6 h-6 flex items-center justify-center z-10"
-              >
-                <X />
-              </button>
-            </div>
-          )}
-
-          {cameraError && (
-            <div className="text-red-500 text-sm text-center mt-2">
-              {cameraError}
-            </div>
-          )}
-        </div>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
-
-                 {/* Demographic Inputs */}
-         {userImage && (
-           <div className="bg-secondary rounded-xl p-3 border border-primary mb-1 max-w-md mx-auto mb-1 shadow-sm">
-            <h4 className="text-sm font-medium text-primary mb-1 text-center">
-              Optional: Help improve analysis accuracy
-            </h4>
-            
-                         <div className="flex gap-3 mb-3">
-               <div className="flex-1">
-                 <label className="text-xs text-secondary mb-2 block">
-                   Age
-                 </label>
-                 <select
-                   value={ageCategory}
-                   onChange={(e) => setAgeCategory(e.target.value)}
-                   className="w-full p-2 rounded-lg border border-primary bg-primary text-primary text-xs"
-                 >
-                   <option value="">Select age</option>
-                   <option value="18-25">18-25</option>
-                   <option value="26-35">26-35</option>
-                   <option value="36-45">36-45</option>
-                   <option value="46-55">46-55</option>
-                   <option value="56-65">56-65</option>
-                   <option value="65+">65+</option>
-                 </select>
-               </div>
-               
-                                <div className="flex-1">
-                   <label className="text-xs text-secondary mb-2 block">
-                     Ethnicity
-                   </label>
-                   <select
-                     value={ethnicity}
-                     onChange={(e) => setEthnicity(e.target.value)}
-                     className="w-full p-2 rounded-lg border border-primary bg-primary text-primary text-xs"
-                   >
-                   <option value="">Select ethnicity</option>
-                   <option value="caucasian">Caucasian</option>
-                   <option value="african_american">African American</option>
-                   <option value="asian">Asian</option>
-                   <option value="hispanic">Hispanic</option>
-                   <option value="middle_eastern">Middle Eastern</option>
-                   <option value="mixed">Mixed</option>
-                   <option value="other">Other</option>
-                 </select>
-               </div>
-             </div>
-          </div>
-        )}
-        
-                            
-
-                            {/* Error Display */}
-           {analysisError && (
-             <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm mb-2 max-w-lg mx-auto mb-2 shadow-sm">
-               {analysisError}
-             </div>
-           )}
-           
-           {/* Analysis Status */}
-           {isAnalyzing && (
-             <div className="bg-secondary rounded-xl p-3 mb-1 max-w-md mx-auto mb-1 text-center shadow-sm">
-             <div className="text-sm text-secondary flex items-center justify-center gap-2">
-               <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-               Analyzing your skin...
-             </div>
-           </div>
-         )}
-
-                           {/* Sign In Modal */}
-          <SignInModal 
-            isOpen={showSignInModal} 
-            onClose={() => setShowSignInModal(false)} 
+      <div className="container mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <img 
+            src="https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png" 
+            alt="Shine Skin Collective" 
+            className="w-20 h-20 mx-auto mb-4"
           />
+                     <h1 className="text-3xl md:text-4xl font-light mb-2">AI-Powered Skin Analysis</h1>
+          <p className="text-lg text-secondary font-light">
+            AI-Powered Skin Analysis & Recommendations
+          </p>
         </div>
 
-        {/* Bottom Action Buttons */}
-        <div className="flex-shrink-0 p-1">
-          {/* Input Methods - Moved to bottom */}
-          {!userImage && !showCameraPreview && (
-            <div className="flex gap-2 justify-center max-w-md mx-auto mb-1">
-              <button
-                onClick={startCamera}
-                disabled={cameraLoading}
-                className="flex-1 max-w-[140px] p-3 bg-secondary border border-primary rounded-xl text-primary cursor-pointer transition-all duration-300 flex items-center justify-center gap-2 font-medium text-sm hover:bg-hover hover:shadow-lg disabled:opacity-50"
-              >
-                <Camera />
-                {cameraLoading ? 'Starting...' : 'Use Camera'}
-              </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex-1 max-w-[140px] p-3 bg-secondary border border-primary rounded-xl text-primary cursor-pointer transition-all duration-300 flex items-center justify-center gap-2 font-medium text-sm hover:bg-hover hover:shadow-lg"
-              >
-                <Upload />
-                Upload
-              </button>
-            </div>
-          )}
 
-                     {/* Confidence Indicator and Submit Button */}
-           {userImage && !showCameraPreview && (
-             <div className="flex flex-col items-center gap-2 mb-1">
-               {/* Confidence Indicator */}
-               {faceDetection && (
-                 <div className="bg-secondary rounded-lg p-3 border border-primary max-w-md w-full">
-                   <div className="text-center">
-                     <div className="text-xs text-secondary mb-1">Face Detection Confidence</div>
-                     <div className="flex items-center justify-center gap-2">
-                       <div className={`text-lg font-bold ${
-                         faceDetection.confidence >= 0.8 ? 'text-green-500' :
-                         faceDetection.confidence >= 0.6 ? 'text-yellow-500' : 'text-red-500'
-                       }`}>
-                         {Math.round(faceDetection.confidence * 100)}%
-                       </div>
-                       <div className="text-xs text-secondary">
-                         {faceDetection.confidence >= 0.8 ? 'High' :
-                          faceDetection.confidence >= 0.6 ? 'Medium' : 'Low'}
-                       </div>
+
+        {/* Main Content */}
+        <div className="max-w-2xl mx-auto">
+                     
+          
+          {/* Camera Section */}
+          {showCamera ? (
+            <div className="bg-secondary rounded-2xl shadow-lg p-6 mb-6 border border-primary">
+              <div className="relative">
+                                 <video
+                   ref={videoRef}
+                   autoPlay
+                   playsInline
+                   muted
+                   className="w-full rounded-xl"
+                   onLoadedMetadata={() => console.log('Video loaded')}
+                   onError={(e) => console.error('Video error:', e)}
+                   onCanPlay={() => console.log('Video can play')}
+                   onPlaying={() => {
+                     console.log('Video is playing');
+                     setIsVideoPlaying(true);
+                     // Start live face detection when video starts playing
+                     setTimeout(performLiveFaceDetection, 1000);
+                   }}
+                   onPause={() => setIsVideoPlaying(false)}
+                   style={{ display: 'block', minHeight: '600px', objectFit: 'cover' }}
+                 />
+                                 <canvas
+                   ref={canvasRef}
+                   className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                   style={{ zIndex: 10 }}
+                 />
+                 
+                 {/* Video Not Displaying Fallback */}
+                 {(!isVideoPlaying || !videoRef.current?.srcObject) && !isCameraLoading && (
+                   <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 rounded-xl">
+                     <div className="text-center text-white">
+                       <Camera className="w-12 h-12 mx-auto mb-2" />
+                       <p className="text-sm">Camera not displaying</p>
+                       <p className="text-xs opacity-75">Please check camera permissions</p>
                      </div>
-                     {faceDetection.confidence < 0.6 && (
-                       <div className="text-xs text-red-500 mt-1">
-                         ⚠️ Low confidence - consider retaking photo
-                       </div>
-                     )}
+                   </div>
+                 )}
+                 
+                                   {/* Camera Loading Message */}
+                  {isCameraLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 rounded-xl">
+                      <div className="text-center text-white">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                        <p className="text-sm">Loading camera...</p>
+                      </div>
+                    </div>
+                  )}
+                
+                                 {/* Camera Instructions */}
+                 <div className="absolute top-4 left-4">
+                   <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+                     <Camera className="w-4 h-4" />
+                     <span className="text-sm font-light">
+                       Position your face and tap Capture
+                     </span>
                    </div>
                  </div>
-               )}
-               
-               {/* Submit Button */}
-               <button
-                 onClick={handleAnalysis}
-                 disabled={isAnalyzing}
-                 className={`w-full max-w-[280px] p-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300 ${
-                   isAnalyzing 
-                     ? 'bg-secondary text-secondary cursor-not-allowed' 
-                     : 'bg-blue-500 text-white cursor-pointer hover:bg-blue-600 hover:shadow-lg'
-                 }`}
-               >
-                 {isAnalyzing ? (
-                   <>
-                     <div className="w-3 h-3 border-2 border-transparent border-t-current rounded-full animate-spin" />
-                     Analyzing...
-                   </>
-                 ) : (
-                   <>
-                     <Sparkles />
-                     Submit for Analysis
-                   </>
-                 )}
-               </button>
-             </div>
-           )}
-        </div>
+                 
+                                   {/* Camera Status */}
+                  <div className="absolute top-4 right-16">
+                    <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+                      <Camera className="w-4 h-4" />
+                      <span className="text-sm font-light">
+                        Camera Active
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Face Detection Status */}
+                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
+                    <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
+                      faceDetected 
+                        ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' 
+                        : 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200'
+                    }`}>
+                      <div className={`w-2 h-2 rounded-full ${
+                        faceDetected ? 'bg-green-500' : 'bg-red-500'
+                      } animate-pulse`}></div>
+                      <span className="text-sm font-light">
+                        {faceDetected ? 'Face Detected' : 'No Face'}
+                      </span>
+                    </div>
+                  </div>
 
-        {/* Footer */}
-        <footer className="p-1 px-4 text-center text-xs text-primary flex-shrink-0">
-          © 2025 SHINE SKIN COLLECTIVE. All Rights Reserved.
-        </footer>
+                                 {/* Capture Button */}
+                 <button
+                   onClick={capturePhoto}
+                   className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl font-light transition-all bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100"
+                 >
+                   <Camera className="w-5 h-5 inline mr-2" />
+                   Capture Photo
+                 </button>
 
-      <style jsx>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        
-        @keyframes pulse {
-          0% { box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3); }
-          50% { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.6); }
-          100% { box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3); }
-        }
-      `}</style>
-    </div>
-  )
-} 
+                {/* Close Camera Button */}
+                <button
+                  onClick={stopCamera}
+                  className="absolute top-4 right-4 p-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ) : showImagePreview ? (
+            /* Image Preview Section */
+            <div className="bg-secondary rounded-2xl shadow-lg p-6 mb-6 border border-primary">
+              <div className="relative">
+                <img
+                  src={uploadedImage!}
+                  alt="Uploaded photo"
+                  className="w-full rounded-xl"
+                />
+                
+                
+
+                                 {/* Analyze Button */}
+                 <button
+                   onClick={() => uploadedImage && analyzeSkin(uploadedImage)}
+                   className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl font-light transition-all bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100"
+                 >
+                   <ArrowRight className="w-5 h-5 inline mr-2" />
+                   Analyze Photo
+                 </button>
+
+                {/* Close Button */}
+                <button
+                  onClick={() => {
+                    setShowImagePreview(false);
+                    setUploadedImage(null);
+                    setFaceDetected(false);
+                    setFaceConfidence(0);
+                  }}
+                  className="absolute top-4 right-4 p-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Upload Section */
+            <div className="bg-secondary rounded-2xl shadow-lg p-8 mb-6 border border-primary">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-light mb-2">Start Your Skin Analysis</h2>
+                <p className="text-secondary font-light">
+                  Get personalized skincare recommendations based on AI analysis
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Camera Option */}
+                <button
+                  onClick={startCamera}
+                  className="flex flex-col items-center p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl hover:border-gray-400 dark:hover:border-gray-500 transition-colors group"
+                >
+                  <Camera className="w-12 h-12 text-gray-600 mb-4 group-hover:scale-110 transition-transform" />
+                  <h3 className="font-light mb-2">Use Camera</h3>
+                  <p className="text-sm opacity-75 text-center font-light">
+                    Take a photo with your device camera
+                  </p>
+                </button>
+
+                {/* Upload Option */}
+                <label className="flex flex-col items-center p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl hover:border-gray-400 dark:hover:border-gray-500 transition-colors group cursor-pointer">
+                  <Upload className="w-12 h-12 text-gray-600 mb-4 group-hover:scale-110 transition-transform" />
+                  <h3 className="font-light mb-2">Upload Photo</h3>
+                  <p className="text-sm opacity-75 text-center font-light">
+                    Upload an existing photo from your device
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Features */}
+          <div className="bg-secondary rounded-2xl shadow-lg p-6 border border-primary">
+            <h3 className="text-xl font-light mb-4 text-center">Why Choose Shine?</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <Zap className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                <h4 className="font-light mb-1">AI-Powered</h4>
+                <p className="text-sm opacity-75 font-light">Advanced machine learning for accurate analysis</p>
+              </div>
+              <div className="text-center">
+                                 <Eye className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                <h4 className="font-light mb-1">Secure</h4>
+                <p className="text-sm opacity-75 font-light">Your privacy is our top priority</p>
+              </div>
+                               <div className="text-center">
+                   <Eye className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                   <h4 className="font-light mb-1">Comprehensive</h4>
+                   <p className="text-sm opacity-75 font-light">Detailed analysis and personalized recommendations</p>
+                 </div>
+            </div>
+                     </div>
+         </div>
+         
+         {/* Disclaimer */}
+         <div className="mt-8 text-center">
+           <p className="text-xs text-secondary font-light">
+             © 2024 All Rights Reserved. This application is for informational purposes only and does not constitute medical advice. 
+             Always consult with a qualified healthcare professional for medical concerns.
+           </p>
+         </div>
+       </div>
+     </div>
+   );
+ } 

@@ -7,7 +7,6 @@ import { useTheme } from '@/hooks/useTheme'
 import { useAuth } from '@/hooks/useAuth'
 import { useCart } from '@/hooks/useCart'
 import { CartDrawer } from '@/components/cart-drawer'
-import { ThemeToggle } from '@/components/theme-toggle'
 import { SignInModal } from '@/components/sign-in-modal'
 import { products } from '@/lib/products'
 import { Header } from '@/components/header'
@@ -26,6 +25,7 @@ export default function CatalogPage() {
   const [showSignInModal, setShowSignInModal] = useState(false)
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null)
   const [showRecommendations, setShowRecommendations] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Parse analysis data from URL parameters
   useEffect(() => {
@@ -42,6 +42,11 @@ export default function CatalogPage() {
         }
       }
     }
+    
+    // Set loading to false after initialization
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000); // Show logo for 1 second
   }, [])
 
   const getRecommendedProducts = () => {
@@ -78,7 +83,21 @@ export default function CatalogPage() {
     dispatch({ type: 'ADD_ITEM', payload: product })
   }
 
-
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-primary text-primary flex items-center justify-center">
+        <div className="text-center">
+          <img 
+            src="https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png" 
+            alt="Shine Skin Collective" 
+            className="w-32 h-32 mx-auto mb-6 animate-pulse"
+          />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300 font-light">Loading Shine...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-primary text-primary">
