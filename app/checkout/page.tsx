@@ -6,6 +6,7 @@ import { loadStripe } from '@stripe/stripe-js'
 import { Elements } from '@stripe/react-stripe-js'
 import { CheckoutForm } from '@/components/checkout-form'
 import { useTheme } from '@/hooks/useTheme'
+import { Header } from '@/components/header'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
@@ -55,6 +56,7 @@ export default function CheckoutPage() {
       backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
       color: theme === 'dark' ? '#ffffff' : '#000000'
     }}>
+      <Header />
       <div style={{
         maxWidth: '1200px',
         margin: '0 auto',

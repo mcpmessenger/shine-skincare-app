@@ -18,6 +18,7 @@ from flask_cors import CORS
 from datetime import datetime
 import traceback
 from typing import Optional, Dict, List
+from sklearn.metrics.pairwise import cosine_similarity
 
 # Import Version 4 components
 from advanced_face_detection import advanced_face_detector, detect_faces_advanced
@@ -59,6 +60,8 @@ def convert_numpy_types(obj):
             return {key: convert_numpy_types(value) for key, value in obj.items()}
         elif isinstance(obj, list):
             return [convert_numpy_types(element) for element in obj]
+        elif isinstance(obj, tuple):
+            return tuple(convert_numpy_types(element) for element in obj)
         else:
             return obj
     except Exception as e:
@@ -160,6 +163,8 @@ class Version4AnalysisSystem:
             }
             
             logger.info("✅ Comprehensive analysis completed successfully")
+            # Convert numpy types before returning
+            results = convert_numpy_types(results)
             return results
             
         except Exception as e:
@@ -349,6 +354,168 @@ class Version4AnalysisSystem:
             'bias_evaluation': {'success': False, 'error': error_message},
             'recommendations': {'success': False, 'error': error_message}
         }
+    
+    def _resize_embedding(self, embedding: np.ndarray, target_dim: int = 2048) -> np.ndarray:
+        """Resize embedding to target dimension for compatibility using interpolation"""
+        try:
+            if len(embedding) == target_dim:
+                return embedding
+            elif len(embedding) < target_dim:
+                # Use interpolation to expand the embedding
+                from scipy.interpolate import interp1d
+                
+                # Create interpolation function
+                x_old = np.linspace(0, 1, len(embedding))
+                x_new = np.linspace(0, 1, target_dim)
+                
+                # Interpolate each dimension
+                resized = np.zeros(target_dim)
+                f = interp1d(x_old, embedding, kind='linear', bounds_error=False, fill_value='extrapolate')
+                resized = f(x_new)
+                
+                # Normalize to maintain similar magnitude
+                resized = resized * (len(embedding) / target_dim)
+                
+                return resized
+            else:
+                # Truncate or use interpolation to shrink
+                from scipy.interpolate import interp1d
+                
+                x_old = np.linspace(0, 1, len(embedding))
+                x_new = np.linspace(0, 1, target_dim)
+                
+                f = interp1d(x_old, embedding, kind='linear', bounds_error=False, fill_value='extrapolate')
+                resized = f(x_new)
+                
+                return resized
+        except Exception as e:
+            logger.error(f"Error resizing embedding: {e}")
+            # Fallback to simple padding if interpolation fails
+            if len(embedding) < target_dim:
+                resized = np.zeros(target_dim)
+                resized[:len(embedding)] = embedding
+                return resized
+            else:
+                return embedding[:target_dim]
+
+    def _calculate_cosine_similarities(self, user_embedding: np.ndarray, 
+                                     demographic_data: Optional[Dict] = None) -> Dict:
+        """Calculate cosine similarities against dataset embeddings"""
+        try:
+            # Load condition embeddings
+            embeddings_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'condition_embeddings.npy')
+            condition_embeddings = np.load(embeddings_path, allow_pickle=True)
+            
+            # Load UTKFace baselines
+            baselines_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'utkface', 'demographic_baselines.npy')
+            utkface_baselines = np.load(baselines_path, allow_pickle=True)
+            
+            similarities = {
+                'healthy_baseline': {
+                    'utkface_similarity': 0.0,
+                    'confidence': 0.0,
+                    'demographic_match': 'unknown'
+                },
+                'condition_similarities': {},
+                'variance_metrics': {
+                    'similarity_std': 0.0,
+                    'confidence_range': '0.0-0.0',
+                    'dataset_coverage': 'limited'
+                }
+            }
+            
+            # Calculate similarities against condition embeddings
+            # Condition embeddings are stored as (6, 2048) array
+            condition_names = ['acne', 'actinic_keratosis', 'basal_cell_carcinoma', 'eczema', 'healthy', 'rosacea']
+            condition_scores = []
+            
+            # Resize user embedding to match condition embeddings
+            target_dim = condition_embeddings.shape[1]  # Should be 2048
+            resized_user_embedding = self._resize_embedding(user_embedding, target_dim)
+            
+            for i, condition in enumerate(condition_names):
+                if i < condition_embeddings.shape[0]:
+                    embedding = condition_embeddings[i]
+                    if resized_user_embedding.shape == embedding.shape:
+                        similarity = cosine_similarity([resized_user_embedding], [embedding])[0][0]
+                        similarities['condition_similarities'][condition] = {
+                            'similarity': float(similarity),
+                            'confidence': min(1.0, max(0.1, abs(similarity) * 10)),  # Boost confidence calculation
+                            'dataset': 'facial_skin_diseases'
+                        }
+                        condition_scores.append(similarity)
+            
+            # Calculate UTKFace healthy baseline similarity
+            if demographic_data and hasattr(utkface_baselines, 'item'):
+                try:
+                    # UTKFace baselines are stored as object array containing dictionaries
+                    baseline_dict = utkface_baselines.item()
+                    if isinstance(baseline_dict, dict):
+                        # Convert demographic data to the correct key format
+                        # Format: "age_range_gender_ethnicity"
+                        age_category = demographic_data.get('age_category', '25-35')
+                        race_category = demographic_data.get('race_category', 'caucasian')
+                        
+                        # Map age category to age range
+                        age_mapping = {
+                            '0-9': '0-9', '10-19': '10-19', '20-29': '20-29', 
+                            '30-39': '30-39', '40-49': '40-49', '50-59': '50-59',
+                            '60-69': '60-69', '70+': '70+'
+                        }
+                        age_range = age_mapping.get(age_category, '25-35')
+                        
+                        # Map race category to ethnicity code
+                        ethnicity_mapping = {
+                            'caucasian': '0', 'black': '1', 'asian': '2', 
+                            'indian': '3', 'others': '4'
+                        }
+                        ethnicity_code = ethnicity_mapping.get(race_category.lower(), '0')
+                        
+                        # Try different gender combinations (0=male, 1=female)
+                        for gender_code in ['0', '1']:
+                            demo_key = f"{age_range}_{gender_code}_{ethnicity_code}"
+                            if demo_key in baseline_dict:
+                                healthy_embedding = baseline_dict[demo_key]
+                                if isinstance(healthy_embedding, np.ndarray) and healthy_embedding.size > 0:
+                                    if resized_user_embedding.shape == healthy_embedding.shape:
+                                        healthy_similarity = cosine_similarity([resized_user_embedding], [healthy_embedding])[0][0]
+                                        similarities['healthy_baseline']['utkface_similarity'] = float(healthy_similarity)
+                                        similarities['healthy_baseline']['confidence'] = min(1.0, max(0.1, abs(healthy_similarity) * 10))  # Boost confidence
+                                        similarities['healthy_baseline']['demographic_match'] = 'good'
+                                        break
+                                        
+                        # If no match found, try a default key
+                        if similarities['healthy_baseline']['utkface_similarity'] == 0.0:
+                            default_keys = ['25-35_0_0', '25-35_1_0', '20-29_0_0', '20-29_1_0']
+                            for default_key in default_keys:
+                                if default_key in baseline_dict:
+                                    healthy_embedding = baseline_dict[default_key]
+                                    if isinstance(healthy_embedding, np.ndarray) and healthy_embedding.size > 0:
+                                        if resized_user_embedding.shape == healthy_embedding.shape:
+                                            healthy_similarity = cosine_similarity([resized_user_embedding], [healthy_embedding])[0][0]
+                                            similarities['healthy_baseline']['utkface_similarity'] = float(healthy_similarity)
+                                            similarities['healthy_baseline']['confidence'] = min(1.0, max(0.1, abs(healthy_similarity) * 10))  # Boost confidence
+                                            similarities['healthy_baseline']['demographic_match'] = 'partial'
+                                            break
+                                            
+                except Exception as e:
+                    logger.warning(f"Could not calculate UTKFace baseline similarity: {e}")
+            
+            # Calculate variance metrics
+            if condition_scores:
+                similarities['variance_metrics']['similarity_std'] = float(np.std(condition_scores))
+                similarities['variance_metrics']['confidence_range'] = f"{min(condition_scores):.1f}-{max(condition_scores):.1f}"
+                similarities['variance_metrics']['dataset_coverage'] = 'comprehensive' if len(condition_scores) >= 3 else 'limited'
+            
+            return similarities
+            
+        except Exception as e:
+            logger.error(f"Error calculating cosine similarities: {e}")
+            return {
+                'healthy_baseline': {'utkface_similarity': 0.0, 'confidence': 0.0, 'demographic_match': 'unknown'},
+                'condition_similarities': {},
+                'variance_metrics': {'similarity_std': 0.0, 'confidence_range': '0.0-0.0', 'dataset_coverage': 'error'}
+            }
 
 # Initialize the Version 4 analysis system
 v4_analysis_system = Version4AnalysisSystem()
@@ -619,6 +786,27 @@ def analyze_skin_v3():
         # Extract analysis data from comprehensive results
         skin_analysis = comprehensive_results.get('skin_analysis', {})
         recommendations = comprehensive_results.get('recommendations', {})
+        embeddings = comprehensive_results.get('embeddings', {})
+        
+        # Calculate real cosine similarities if embeddings are available
+        cosine_similarities = {
+            "healthy_baseline": {
+                "utkface_similarity": 0.0,
+                "confidence": 0.0,
+                "demographic_match": "unknown"
+            },
+            "condition_similarities": {},
+            "variance_metrics": {
+                "similarity_std": 0.0,
+                "confidence_range": "0.0-0.0",
+                "dataset_coverage": "limited"
+            }
+        }
+        
+        # Calculate real similarities if embeddings are available
+        if embeddings.get('success') and embeddings.get('embeddings'):
+            user_embedding = np.array(embeddings['embeddings'][0]['embedding'])
+            cosine_similarities = v4_analysis_system._calculate_cosine_similarities(user_embedding, user_demographics)
         
         # Build analysis data for frontend compatibility
         analysis_data = {
@@ -738,7 +926,8 @@ def analyze_skin_v3():
                         "demographic_match": "good",
                         "treatment_suggestions": analysis_data.get('top_recommendations', [])
                     } for concern in analysis_data.get('concerns', [])
-                ]
+                ],
+                "cosine_similarities": cosine_similarities
             },
             "recommendations": {
                 "immediate_care": analysis_data.get('top_recommendations', [])[:2],

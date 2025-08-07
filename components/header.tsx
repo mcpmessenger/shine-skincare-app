@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { ShoppingCart, User } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCart } from '@/hooks/useCart'
-import { ThemeToggle } from '@/components/theme-toggle'
+import ThemeToggle from '@/components/theme-toggle'
 import { SignInModal } from '@/components/sign-in-modal'
 import { useState } from 'react'
 
@@ -48,14 +48,16 @@ export function Header({ showProductsTab = true, title }: HeaderProps) {
         </nav>
 
         {/* Right Side Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           {/* Theme Toggle */}
-          <ThemeToggle />
+          <div className="flex-shrink-0">
+            <ThemeToggle />
+          </div>
 
           {/* Cart */}
           <button
             onClick={() => setShowSignInModal(true)}
-            className="bg-secondary border-none text-primary cursor-pointer p-2 rounded-xl flex items-center justify-center w-8 h-8 hover:bg-hover transition-colors shadow-sm"
+            className="bg-secondary border-none text-primary cursor-pointer p-2 rounded-xl flex items-center justify-center w-8 h-8 hover:bg-hover transition-colors shadow-sm flex-shrink-0"
           >
             <ShoppingCart className="w-4 h-4" />
           </button>
@@ -64,14 +66,14 @@ export function Header({ showProductsTab = true, title }: HeaderProps) {
           {isAuthenticated ? (
             <button
               onClick={() => setShowSignInModal(true)}
-              className="bg-hover border-none cursor-pointer p-1 rounded-full flex items-center justify-center w-8 h-8 hover:bg-secondary transition-colors"
+              className="bg-hover border-none cursor-pointer p-1 rounded-full flex items-center justify-center w-8 h-8 hover:bg-secondary transition-colors flex-shrink-0"
             >
               <User className="w-4 h-4 text-primary" />
             </button>
           ) : (
             <button
               onClick={() => setShowSignInModal(true)}
-              className="bg-hover border border-primary text-primary cursor-pointer px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 hover:bg-secondary shadow-sm"
+              className="bg-hover border border-primary text-primary cursor-pointer px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 hover:bg-secondary shadow-sm flex-shrink-0"
             >
               Sign In
             </button>
