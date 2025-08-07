@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { EnhancedAnalysis } from '@/components/enhanced-analysis'
 import { AnalysisResults } from '@/components/analysis-results'
+import { Header } from '@/components/header'
 
 export default function EnhancedTestPage() {
   const [analysisResult, setAnalysisResult] = useState<any>(null)
@@ -29,6 +30,7 @@ export default function EnhancedTestPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Header />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
