@@ -1,0 +1,48 @@
+{
+  "face_detection": {
+    "success": true,
+    "faces_detected": 0,
+    "method_used": "opencv",
+    "confidence": 0.0,
+    "error": null
+  },
+  "embeddings": {
+    "success": true,
+    "embedding_dimension": 512,
+    "embedding_norm": 1.0000001192092896,
+    "demographic_data": {
+      "age": 25,
+      "ethnicity": "caucasian",
+      "gender": "female",
+      "fitzpatrick_type": 3
+    },
+    "model_type": "timm"
+  },
+  "bias_mitigation": {
+    "success": true,
+    "bias_detected": false,
+    "fairness_metrics": {
+      "demographic_parity": 0.0007281244943732057,
+      "equalized_odds": 0,
+      "equal_opportunity": 0,
+      "predictive_rate_parity": 0
+    },
+    "samples_tested": 100,
+    "demographic_groups": 2
+  },
+  "overall": {
+    "success": true,
+    "components_tested": 4,
+    "components_successful": 4,
+    "success_rate": 1.0,
+    "test_duration_seconds": 0.347877,
+    "timestamp": "2025-08-06T18:48:11.886301"
+  },
+  "integration": {
+    "success": true,
+    "face_detection_success": false,
+    "embedding_generated": true,
+    "bias_evaluation_success": false,
+    "all_components_working": false
+  }
+}
