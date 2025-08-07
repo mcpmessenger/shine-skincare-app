@@ -13,36 +13,78 @@ import { products } from '@/lib/products'
 import { Header } from '@/components/header'
 
 interface AnalysisResult {
-  success: boolean
-  confidence_score: number
-  analysis_summary: string
-  primary_concerns: string[]
-  detected_conditions: Array<{
-    confidence: number
-    description: string
-    name: string
-    severity: string
-    source: string
-  }>
-  severity_level: string
-  top_recommendations: string[]
-  immediate_actions: string[]
-  lifestyle_changes: string[]
-  medical_advice: string[]
-  prevention_tips: string[]
-  best_match: string
-  condition_matches: any[]
+  // New V4 format fields
+  status?: string
+  analysis_type?: string
+  demographics?: any
   face_detection?: {
-    confidence: number
     detected: boolean
+    confidence: number
     face_bounds?: {
       x: number
       y: number
       width: number
       height: number
     }
-    image_dimensions?: number[]
+    method?: string
+    quality_metrics?: {
+      overall_quality: string
+      quality_score: number
+    }
   }
+  skin_analysis?: {
+    overall_health_score: number
+    texture: string
+    tone: string
+    conditions_detected: Array<{
+      condition: string
+      severity: string
+      confidence: number
+      location: string
+      description: string
+    }>
+    analysis_confidence: number
+  }
+  similarity_search?: {
+    dataset_used: string
+    similar_cases: Array<{
+      condition: string
+      similarity_score: number
+      dataset_source: string
+      demographic_match: string
+      treatment_suggestions: string[]
+    }>
+  }
+  recommendations?: {
+    immediate_care: string[]
+    long_term_care: string[]
+    professional_consultation: boolean
+  }
+  quality_assessment?: {
+    image_quality: string
+    confidence_reliability: string
+  }
+  
+  // Legacy V3 format fields (for backward compatibility)
+  success?: boolean
+  confidence_score?: number
+  analysis_summary?: string
+  primary_concerns?: string[]
+  detected_conditions?: Array<{
+    confidence: number
+    description: string
+    name: string
+    severity: string
+    source: string
+  }>
+  severity_level?: string
+  top_recommendations?: string[]
+  immediate_actions?: string[]
+  lifestyle_changes?: string[]
+  medical_advice?: string[]
+  prevention_tips?: string[]
+  best_match?: string
+  condition_matches?: any[]
 }
 
 export default function SuggestionsPage() {
@@ -96,10 +138,25 @@ export default function SuggestionsPage() {
 
   // Map recommendations to real products
   const getRecommendedProducts = () => {
-    if (!analysisResult?.top_recommendations) return []
+    // Handle new V4 format
+    if (analysisResult?.recommendations?.immediate_care) {
+      const recommendations = [
+        ...analysisResult.recommendations.immediate_care,
+        ...analysisResult.recommendations.long_term_care
+      ]
+      return mapRecommendationsToProducts(recommendations)
+    }
     
-    const recommendations = analysisResult.top_recommendations
-    const recommendedProducts = []
+    // Handle legacy V3 format
+    if (analysisResult?.top_recommendations) {
+      return mapRecommendationsToProducts(analysisResult.top_recommendations)
+    }
+    
+    return []
+  }
+
+  const mapRecommendationsToProducts = (recommendations: string[]) => {
+    const recommendedProducts: any[] = []
     
     // Map recommendations to actual products
     recommendations.forEach(rec => {
@@ -140,16 +197,8 @@ export default function SuggestionsPage() {
         }
       }
       
-      // Serum recommendations
-      if (recLower.includes('serum') || recLower.includes('niacinamide')) {
-        const serumProducts = products.filter(p => p.category === 'serum')
-        if (serumProducts.length > 0) {
-          recommendedProducts.push({ ...serumProducts[0], match: rec })
-        }
-      }
-      
       // Sunscreen recommendations
-      if (recLower.includes('sunscreen') || recLower.includes('spf')) {
+      if (recLower.includes('sunscreen') || recLower.includes('spf') || recLower.includes('sun protection')) {
         const sunscreenProducts = products.filter(p => p.category === 'sunscreen')
         if (sunscreenProducts.length > 0) {
           recommendedProducts.push({ ...sunscreenProducts[0], match: rec })
@@ -157,50 +206,14 @@ export default function SuggestionsPage() {
       }
     })
     
-    // If no specific matches, add some general recommendations based on conditions
+    // If no specific matches, add basic products
     if (recommendedProducts.length === 0) {
-      const detectedConditions = analysisResult.detected_conditions || []
-      const hasAcne = detectedConditions.some(c => c.name.toLowerCase().includes('acne'))
-      const hasAging = detectedConditions.some(c => c.name.toLowerCase().includes('aging') || c.name.toLowerCase().includes('wrinkle'))
-      const hasPigmentation = detectedConditions.some(c => c.name.toLowerCase().includes('pigment') || c.name.toLowerCase().includes('spot'))
-      
-      if (hasAcne) {
-        const acneProducts = products.filter(p => 
-          p.description.toLowerCase().includes('acne') || 
-          p.name.toLowerCase().includes('cleansing')
-        )
-        if (acneProducts.length > 0) {
-          recommendedProducts.push({ ...acneProducts[0], match: 'Acne treatment' })
-        }
-      }
-      
-      if (hasAging) {
-        const antiAgingProducts = products.filter(p => 
-          p.description.toLowerCase().includes('anti-aging') || 
-          p.name.toLowerCase().includes('advanced')
-        )
-        if (antiAgingProducts.length > 0) {
-          recommendedProducts.push({ ...antiAgingProducts[0], match: 'Anti-aging treatment' })
-        }
-      }
-      
-      if (hasPigmentation) {
-        const pigmentProducts = products.filter(p => 
-          p.description.toLowerCase().includes('pigment') || 
-          p.name.toLowerCase().includes('pigment')
-        )
-        if (pigmentProducts.length > 0) {
-          recommendedProducts.push({ ...pigmentProducts[0], match: 'Pigmentation treatment' })
-        }
-      }
-      
-      // Default to basic skincare if no specific conditions
-      if (recommendedProducts.length === 0) {
-        const basicProducts = products.slice(0, 3) // First 3 products as basic recommendations
-        basicProducts.forEach(product => {
-          recommendedProducts.push({ ...product, match: 'Basic skincare' })
-        })
-      }
+      const basicProducts = products.filter(p => 
+        p.category === 'cleanser' || p.category === 'moisturizer'
+      ).slice(0, 2)
+      basicProducts.forEach(product => {
+        recommendedProducts.push({ ...product, match: 'Basic skincare' })
+      })
     }
     
     // Remove duplicates and limit to top 6
@@ -209,6 +222,59 @@ export default function SuggestionsPage() {
     )
     
     return unique.slice(0, 6)
+  }
+
+  // Helper function to get condition name (handles both V3 and V4 formats)
+  const getConditionName = (condition: any) => {
+    // V4 format has 'condition' property
+    if ('condition' in condition) {
+      return condition.condition
+    }
+    // V3 format has 'name' property
+    if ('name' in condition) {
+      return condition.name
+    }
+    return 'Unknown condition'
+  }
+
+  // Helper function to get confidence score
+  const getConfidenceScore = () => {
+    // New V4 format
+    if (analysisResult?.skin_analysis?.analysis_confidence) {
+      // Convert from 0-10 scale to 0-100 percentage
+      return Math.round((analysisResult.skin_analysis.analysis_confidence / 10) * 100)
+    }
+    // Legacy V3 format
+    if (analysisResult?.confidence_score) {
+      return analysisResult.confidence_score
+    }
+    return 0
+  }
+
+  // Helper function to get analysis summary
+  const getAnalysisSummary = () => {
+    // New V4 format
+    if (analysisResult?.skin_analysis?.texture) {
+      return `Skin type: ${analysisResult.skin_analysis.texture}. Overall health score: ${analysisResult.skin_analysis.overall_health_score}/10.`
+    }
+    // Legacy V3 format
+    if (analysisResult?.analysis_summary) {
+      return analysisResult.analysis_summary
+    }
+    return "Analysis completed successfully."
+  }
+
+  // Helper function to get detected conditions
+  const getDetectedConditions = () => {
+    // New V4 format
+    if (analysisResult?.skin_analysis?.conditions_detected) {
+      return analysisResult.skin_analysis.conditions_detected
+    }
+    // Legacy V3 format
+    if (analysisResult?.detected_conditions) {
+      return analysisResult.detected_conditions
+    }
+    return []
   }
 
   if (!analysisResult) {
@@ -247,7 +313,7 @@ export default function SuggestionsPage() {
                 <span className="font-semibold">Analysis Confidence</span>
               </div>
               <span className="text-2xl font-bold text-green-500">
-                {analysisResult.confidence_score}%
+                {getConfidenceScore()}%
               </span>
             </div>
             
@@ -281,29 +347,29 @@ export default function SuggestionsPage() {
             )}
           </div>
 
-          {analysisResult.analysis_summary && (
+          {getAnalysisSummary() && (
             <div className="card mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <AlertCircle className="text-blue-500" />
                 <span className="font-semibold">Analysis Summary</span>
               </div>
               <p className="leading-relaxed">
-                {analysisResult.analysis_summary}
+                {getAnalysisSummary()}
               </p>
             </div>
           )}
 
-          {analysisResult.detected_conditions && analysisResult.detected_conditions.length > 0 && (
+          {getDetectedConditions().length > 0 && (
             <div className="card">
               <div className="flex items-center gap-2 mb-4">
                 <AlertCircle className="text-red-500" />
                 <span className="font-semibold">Detected Conditions</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {analysisResult.detected_conditions.map((condition, index) => (
+                {getDetectedConditions().map((condition, index) => (
                   <div key={index} className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm">
                     <div className="font-semibold mb-1 text-red-800 dark:text-red-200">
-                      {condition.name}
+                      {getConditionName(condition)}
                     </div>
                     <div className="text-red-600 dark:text-red-300 text-xs mb-2">
                       {condition.description}
@@ -320,105 +386,59 @@ export default function SuggestionsPage() {
         </div>
 
         {/* Combined Recommendations and Products */}
-        {analysisResult.top_recommendations && analysisResult.top_recommendations.length > 0 && (
+        {getRecommendedProducts().length > 0 && (
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Star className="text-blue-500" />
-              Personalized Recommendations & Products
+              <ShoppingCart className="text-blue-500" />
+              Recommended Products
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {analysisResult.top_recommendations.map((recommendation, index) => {
-                // Find matching product for this recommendation
-                const matchingProduct = getRecommendedProducts().find(product => 
-                  product.match === recommendation || 
-                  recommendation.toLowerCase().includes(product.name.toLowerCase()) ||
-                  product.name.toLowerCase().includes(recommendation.toLowerCase())
-                )
-                
-                return (
-                  <div key={index} className="card-product border-2 border-blue-500 relative">
-                    {matchingProduct && (
-                      <div className="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold z-10">
-                        RECOMMENDED
-                      </div>
-                    )}
-                    
-                    <div className="flex gap-4 mb-4">
-                      {matchingProduct?.image && (
-                        <img
-                          src={matchingProduct.image}
-                          alt={matchingProduct.name}
-                          className="w-20 h-20 object-cover rounded-lg border border-primary"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none'
-                          }}
-                        />
-                      )}
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="text-lg font-semibold">
-                            {matchingProduct ? matchingProduct.name : `Recommendation ${index + 1}`}
-                          </h3>
-                          {matchingProduct && (
-                            <span className="text-xl font-bold text-blue-500">
-                              ${matchingProduct.price.toFixed(2)}
-                            </span>
-                          )}
-                        </div>
-                        
-                        <p className="text-secondary text-sm leading-relaxed">
-                          {recommendation}
-                        </p>
-                        
-                        {matchingProduct && (
-                          <p className="text-secondary text-xs mt-2">
-                            {matchingProduct.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      {matchingProduct && (
-                        <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-xl text-xs capitalize text-blue-800 dark:text-blue-200 font-medium">
-                          {matchingProduct.category}
-                        </span>
-                      )}
-                      
-                      {matchingProduct ? (
-                        <button
-                          onClick={() => addToCart(matchingProduct)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 ${
-                            isAuthenticated 
-                              ? 'bg-blue-500 text-white hover:bg-blue-600' 
-                              : 'bg-blue-300 text-white cursor-not-allowed'
-                          }`}
-                        >
-                          <ShoppingCart />
-                          {isAuthenticated ? 'Add to Cart' : 'Sign In to Add'}
-                        </button>
-                      ) : (
-                        <div className="text-xs text-secondary">
-                          General recommendation
-                        </div>
-                      )}
-                    </div>
+              {getRecommendedProducts().map((product, index) => (
+                <div key={index} className="card hover:shadow-lg transition-shadow">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
+                      {product.category}
+                    </span>
+                    <button
+                      onClick={() => addToCart(product)}
+                      className="text-blue-500 hover:text-blue-600 transition-colors"
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                    </button>
                   </div>
-                )
-              })}
+                  
+                  <h3 className="font-semibold mb-2 text-lg">
+                    {product.name}
+                  </h3>
+                  
+                  <p className="text-secondary text-sm leading-relaxed mb-3">
+                    {product.description}
+                  </p>
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-bold text-green-600">
+                      ${product.price}
+                    </span>
+                    
+                    <p className="text-secondary text-sm leading-relaxed">
+                      {product.match}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
         {/* Additional Recommended Products (if any that weren't matched) */}
         {(() => {
-          const matchedRecommendations = analysisResult.top_recommendations || []
+          const matchedRecommendations = getRecommendedProducts()
           const allRecommendedProducts = getRecommendedProducts()
           const unmatchedProducts = allRecommendedProducts.filter(product => 
             !matchedRecommendations.some(rec => 
-              rec === product.match || 
-              rec.toLowerCase().includes(product.name.toLowerCase()) ||
-              product.name.toLowerCase().includes(rec.toLowerCase())
+              rec.match === product.match || 
+              rec.name.toLowerCase().includes(product.name.toLowerCase()) ||
+              product.name.toLowerCase().includes(rec.match.toLowerCase())
             )
           )
           

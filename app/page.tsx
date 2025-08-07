@@ -240,22 +240,31 @@ export default function SimplifiedSkinAnalysis() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            image_data: imageData
+            image_data: imageData,
+            confidence_threshold: 0.3
           })
         })
         
         if (response.ok) {
           const result = await response.json()
-          if (result.status === 'success') {
-            // Convert pixel coordinates to percentages
+          console.log('🔍 Live face detection result:', result)
+          
+          if (result.success && result.faces && result.faces.length > 0) {
+            // Use the first detected face
+            const face = result.faces[0]
+            
+            // Convert pixel coordinates to percentages for display
+            const videoWidth = videoRef.current.videoWidth
+            const videoHeight = videoRef.current.videoHeight
+            
             setLiveFaceDetection({
-              detected: result.face_detected,
-              confidence: result.confidence,
+              detected: true,
+              confidence: face.confidence,
               face_bounds: {
-                x: result.face_bounds.x,
-                y: result.face_bounds.y,
-                width: result.face_bounds.width,
-                height: result.face_bounds.height
+                x: (face.box[0] / videoWidth) * 100,
+                y: (face.box[1] / videoHeight) * 100,
+                width: (face.box[2] / videoWidth) * 100,
+                height: (face.box[3] / videoHeight) * 100
               }
             })
           } else {
@@ -463,6 +472,17 @@ export default function SimplifiedSkinAnalysis() {
 
     const { face_bounds, confidence } = faceDetection
     const confidencePercent = Math.round(confidence * 100)
+    
+    // Determine confidence level and color
+    let confidenceLevel = 'Low'
+    let confidenceColor = 'text-red-500'
+    if (confidence >= 0.8) {
+      confidenceLevel = 'High'
+      confidenceColor = 'text-green-500'
+    } else if (confidence >= 0.6) {
+      confidenceLevel = 'Medium'
+      confidenceColor = 'text-yellow-500'
+    }
 
     return (
       <div className="face-detection-overlay">
@@ -477,9 +497,14 @@ export default function SimplifiedSkinAnalysis() {
           }}
         />
         
-        {/* Confidence Badge */}
+        {/* Enhanced Confidence Badge */}
         <div className="face-confidence-badge">
-          Face Detected: {confidencePercent}%
+          <div className="flex items-center gap-1">
+            <span>Face Detected:</span>
+            <span className={`font-bold ${confidenceColor}`}>
+              {confidencePercent}% ({confidenceLevel})
+            </span>
+          </div>
         </div>
       </div>
     )
@@ -522,14 +547,23 @@ export default function SimplifiedSkinAnalysis() {
     )
   }
 
+  // Simplified camera implementation - no live face detection
   useEffect(() => {
-    return () => {
-      // Clean up camera resources
-      if (cameraStream) {
-        cameraStream.getTracks().forEach(track => track.stop())
-      }
+    let interval: NodeJS.Timeout | null = null
+    
+    if (cameraActive && showCameraPreview) {
+      // Enable live face detection for camera preview
+      console.log('📹 Camera active, starting live face detection')
+      interval = setInterval(performLiveFaceDetection, 1000) // Check every second
+    } else {
+      // Clear live face detection when camera stops
+      setLiveFaceDetection(null)
     }
-  }, [cameraStream])
+    
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [cameraActive, showCameraPreview])
 
   // Debug video element state
   useEffect(() => {
@@ -552,35 +586,6 @@ export default function SimplifiedSkinAnalysis() {
     }
   }, [showCameraPreview])
 
-  // Live face detection interval
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
-    
-    if (cameraActive && showCameraPreview) {
-      // Perform initial face detection after a short delay
-      const initialDetection = setTimeout(() => {
-        performLiveFaceDetection()
-      }, 1000)
-      
-      // Set up periodic face detection
-      interval = setInterval(() => {
-        performLiveFaceDetection()
-      }, 2000) // Check every 2 seconds
-      
-      return () => {
-        clearTimeout(initialDetection)
-        if (interval) clearInterval(interval)
-      }
-    } else {
-      // Clear live face detection when camera stops
-      setLiveFaceDetection(null)
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval)
-    }
-  }, [cameraActive, showCameraPreview])
-
   return (
     <div className="h-screen bg-primary text-primary font-inter font-light flex flex-col overflow-hidden">
       {/* Header */}
@@ -594,6 +599,9 @@ export default function SimplifiedSkinAnalysis() {
           {/* Camera Preview */}
           {showCameraPreview && (
             <div className="w-full h-full relative">
+              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-md text-xs z-10">
+                📸 Camera Preview - Click "Capture Photo" to take a picture
+              </div>
               <video
                 ref={videoRef}
                 autoPlay
@@ -605,21 +613,16 @@ export default function SimplifiedSkinAnalysis() {
                 onError={(e) => console.error('🎥 Video error in JSX:', e)}
                 className="w-full h-full rounded-md object-cover aspect-[3/4] bg-black block"
               />
-              {/* Live Face Detection Overlay */}
+              {/* Face Detection Overlay for Camera */}
               {liveFaceDetection && <LiveFaceDetectionOverlay faceDetection={liveFaceDetection} />}
               {/* Camera Controls */}
               <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-2 z-10">
                 <button
                   onClick={capturePhoto}
-                  disabled={!liveFaceDetection?.detected || (liveFaceDetection?.confidence || 0) < 0.5}
-                  className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-1 transition-all duration-200 ${
-                    liveFaceDetection?.detected && (liveFaceDetection?.confidence || 0) >= 0.5 
-                      ? 'bg-blue-500 text-white cursor-pointer opacity-100' 
-                      : 'bg-gray-500 text-white cursor-not-allowed opacity-60'
-                  }`}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm font-medium flex items-center gap-1 transition-all duration-200 hover:bg-blue-600 cursor-pointer"
                 >
                   <Camera />
-                  {liveFaceDetection?.detected && (liveFaceDetection?.confidence || 0) >= 0.5 ? 'Capture' : 'No Face'}
+                  Capture Photo
                 </button>
                 <button
                   onClick={() => {
@@ -790,32 +793,59 @@ export default function SimplifiedSkinAnalysis() {
             </div>
           )}
 
-          {/* Submit for Analysis Button */}
-          {userImage && !showCameraPreview && (
-            <div className="flex justify-center mb-1">
-              <button
-                onClick={handleAnalysis}
-                disabled={isAnalyzing}
-                className={`w-full max-w-[280px] p-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300 ${
-                  isAnalyzing 
-                    ? 'bg-secondary text-secondary cursor-not-allowed' 
-                    : 'bg-blue-500 text-white cursor-pointer hover:bg-blue-600 hover:shadow-lg'
-                }`}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <div className="w-3 h-3 border-2 border-transparent border-t-current rounded-full animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles />
-                    Submit for Analysis
-                  </>
-                )}
-              </button>
-            </div>
-          )}
+                     {/* Confidence Indicator and Submit Button */}
+           {userImage && !showCameraPreview && (
+             <div className="flex flex-col items-center gap-2 mb-1">
+               {/* Confidence Indicator */}
+               {faceDetection && (
+                 <div className="bg-secondary rounded-lg p-3 border border-primary max-w-md w-full">
+                   <div className="text-center">
+                     <div className="text-xs text-secondary mb-1">Face Detection Confidence</div>
+                     <div className="flex items-center justify-center gap-2">
+                       <div className={`text-lg font-bold ${
+                         faceDetection.confidence >= 0.8 ? 'text-green-500' :
+                         faceDetection.confidence >= 0.6 ? 'text-yellow-500' : 'text-red-500'
+                       }`}>
+                         {Math.round(faceDetection.confidence * 100)}%
+                       </div>
+                       <div className="text-xs text-secondary">
+                         {faceDetection.confidence >= 0.8 ? 'High' :
+                          faceDetection.confidence >= 0.6 ? 'Medium' : 'Low'}
+                       </div>
+                     </div>
+                     {faceDetection.confidence < 0.6 && (
+                       <div className="text-xs text-red-500 mt-1">
+                         ⚠️ Low confidence - consider retaking photo
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               )}
+               
+               {/* Submit Button */}
+               <button
+                 onClick={handleAnalysis}
+                 disabled={isAnalyzing}
+                 className={`w-full max-w-[280px] p-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300 ${
+                   isAnalyzing 
+                     ? 'bg-secondary text-secondary cursor-not-allowed' 
+                     : 'bg-blue-500 text-white cursor-pointer hover:bg-blue-600 hover:shadow-lg'
+                 }`}
+               >
+                 {isAnalyzing ? (
+                   <>
+                     <div className="w-3 h-3 border-2 border-transparent border-t-current rounded-full animate-spin" />
+                     Analyzing...
+                   </>
+                 ) : (
+                   <>
+                     <Sparkles />
+                     Submit for Analysis
+                   </>
+                 )}
+               </button>
+             </div>
+           )}
         </div>
 
         {/* Footer */}
