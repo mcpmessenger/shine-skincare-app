@@ -84,7 +84,8 @@ export async function POST(request: NextRequest) {
       }
     } catch (fetchError) {
       // If fetch fails (backend not running), provide fallback
-      console.log(`❌ Flask backend connection failed: ${fetchError.message}, using fallback`);
+      const errorMessage = fetchError instanceof Error ? fetchError.message : 'Unknown error';
+      console.log(`❌ Flask backend connection failed: ${errorMessage}, using fallback`);
       console.log(`❌ Error details:`, fetchError);
       console.log(`❌ Backend URL: ${backendUrl}`);
       return NextResponse.json(

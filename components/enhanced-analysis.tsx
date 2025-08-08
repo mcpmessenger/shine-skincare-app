@@ -143,7 +143,7 @@ export function EnhancedAnalysis({ onAnalysisComplete, onError }: EnhancedAnalys
 
         case 'enhanced':
         default:
-          response = await fetch('/api/v3/skin/analyze-enhanced-embeddings', {
+          response = await fetch('/api/v4/skin/analyze-enhanced', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -158,7 +158,7 @@ export function EnhancedAnalysis({ onAnalysisComplete, onError }: EnhancedAnalys
             result = await response.json()
             onAnalysisComplete(result, 'enhanced')
           } else {
-            throw new Error(`Enhanced analysis failed: ${response.statusText}`)
+            throw new Error(`Enhanced ML analysis failed: ${response.statusText}`)
           }
           break
       }

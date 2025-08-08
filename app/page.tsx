@@ -133,16 +133,16 @@ export default function HomePage() {
       tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
       const imageData = tempCanvas.toDataURL('image/jpeg', 0.8);
 
-      try {
-        const response = await fetch('http://localhost:5000/api/v3/face/detect', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            image_data: imageData.split(',')[1]
-          })
-        });
+             try {
+         const response = await fetch('http://localhost:5000/api/v4/face/detect', {
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json',
+           },
+           body: JSON.stringify({
+             image_data: imageData.split(',')[1]
+           })
+         });
 
         if (response.ok) {
           const result = await response.json();
@@ -280,17 +280,17 @@ export default function HomePage() {
   };
 
   const performFaceDetectionOnImage = async (imageData: string) => {
-    try {
-      console.log('Performing face detection on uploaded image...');
-      const response = await fetch('http://localhost:5000/api/v3/face/detect', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image_data: imageData.split(',')[1]
-        })
-      });
+         try {
+       console.log('Performing face detection on uploaded image...');
+       const response = await fetch('http://localhost:5000/api/v4/face/detect', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify({
+           image_data: imageData.split(',')[1]
+         })
+       });
 
       if (response.ok) {
         const result = await response.json();
@@ -321,6 +321,8 @@ export default function HomePage() {
   const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return;
 
+    console.log('📸 Capturing photo...');
+
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -336,19 +338,24 @@ export default function HomePage() {
 
     // Convert canvas to base64
     const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    console.log('📸 Photo captured, image data length:', imageData.length);
 
     // Stop camera
     stopCamera();
 
     // Start analysis
+    console.log('🔍 Starting analysis of captured photo...');
     await analyzeSkin(imageData);
   };
 
   const analyzeSkin = async (imageData: string) => {
     setIsAnalyzing(true);
+    console.log('🔍 Starting skin analysis...');
 
     try {
-      const response = await fetch('http://localhost:5000/api/v3/skin/analyze-real', {
+      // Use the enhanced ML model endpoint
+      console.log('📡 Calling enhanced ML endpoint...');
+      const response = await fetch('/api/v4/skin/analyze-enhanced', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -364,18 +371,32 @@ export default function HomePage() {
         })
       });
 
+      console.log('📊 Response status:', response.status);
+      console.log('📊 Response ok:', response.ok);
+
       if (response.ok) {
         const result = await response.json();
+        console.log('✅ Analysis successful:', result);
         
-        // Navigate to results page with analysis data
-        const analysisParam = encodeURIComponent(JSON.stringify(result));
-        window.location.href = `/suggestions?analysis=${analysisParam}`;
+        // Add enhanced ML metadata
+        result.enhanced_ml = true;
+        result.model_version = 'enhanced_v1.0';
+        result.accuracy = '60.2%';
+        
+        // Store analysis data in sessionStorage instead of URL parameter
+        sessionStorage.setItem('analysisResult', JSON.stringify(result));
+        console.log('💾 Stored analysis result in sessionStorage');
+        window.location.href = '/suggestions';
       } else {
-        throw new Error('Analysis failed');
+        const errorText = await response.text();
+        console.error('❌ Analysis failed with status:', response.status);
+        console.error('❌ Error response:', errorText);
+        throw new Error(`Enhanced ML analysis failed: ${response.status} - ${errorText}`);
       }
     } catch (error) {
-      console.error('Analysis error:', error);
-      alert('Analysis failed. Please try again.');
+      console.error('❌ Enhanced ML analysis error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Enhanced ML analysis failed: ${errorMessage}. Please try again.`);
       setIsAnalyzing(false);
     }
   };
@@ -406,7 +427,8 @@ export default function HomePage() {
             className="w-32 h-32 mx-auto mb-6 animate-pulse"
           />
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-4"></div>
-          <p className="text-secondary font-light">Analyzing your skin...</p>
+          <p className="text-secondary font-light">Analyzing your skin with enhanced ML...</p>
+          <p className="text-xs text-secondary font-light mt-2">This may take up to 60 seconds</p>
         </div>
       </div>
     );
@@ -565,14 +587,17 @@ export default function HomePage() {
                   className="w-full rounded-xl"
                 />
                 
-                {/* Analyze Button */}
-                <button
-                  onClick={() => uploadedImage && analyzeSkin(uploadedImage)}
-                  className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl font-light transition-all bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100"
-                >
-                  <ArrowRight className="w-5 h-5 inline mr-2" />
-                  Analyze Photo
-                </button>
+                                 {/* Analyze Button */}
+                 <button
+                   onClick={() => {
+                     console.log('🔍 Analyze button clicked for uploaded image');
+                     uploadedImage && analyzeSkin(uploadedImage);
+                   }}
+                   className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl font-light transition-all bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100"
+                 >
+                   <ArrowRight className="w-5 h-5 inline mr-2" />
+                   Analyze Photo
+                 </button>
 
                 {/* Close Button */}
                 <button

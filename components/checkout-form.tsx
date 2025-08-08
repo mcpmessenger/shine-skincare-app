@@ -22,16 +22,17 @@ export const CheckoutForm = () => {
 
     setIsProcessing(true)
 
-    const { error, paymentIntent } = await stripe.confirmPayment({
+    const result = await stripe.confirmPayment({
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/success`,
       },
     })
 
-    if (error) {
-      setMessage(error.message || 'An error occurred')
-    } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+    if (result.error) {
+      setMessage(result.error.message || 'An error occurred')
+    } else {
+      // Payment was successful
       setMessage('Payment successful!')
       dispatch({ type: 'CLEAR_CART' })
       router.push('/success')

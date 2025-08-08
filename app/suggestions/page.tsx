@@ -69,6 +69,38 @@ interface AnalysisResult {
     severity_scoring: boolean;
     personalized_recommendations: boolean;
   };
+  // Enhanced ML model properties
+  confidence?: {
+    condition_detection: number;
+    overall: number;
+  };
+  primary_condition?: {
+    condition: string;
+    confidence: number;
+    condition_id: number;
+    all_probabilities: number[];
+  };
+  model_version?: string;
+  enhanced_ml?: boolean;
+  accuracy?: string;
+  summary?: string;
+  recommendations?: string[];
+  severity?: {
+    description: string;
+    level: string;
+  };
+  technical_details?: {
+    attention_mechanisms: boolean;
+    fairness_mitigation: boolean;
+    model_used: string;
+  };
+  frontend_metadata?: {
+    endpoint: string;
+    timestamp: string;
+    enhanced_ml_model: boolean;
+    model_version: string;
+    accuracy: string;
+  };
 }
 
 export default function SuggestionsPage() {
@@ -78,14 +110,38 @@ export default function SuggestionsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const analysisParam = searchParams.get('analysis');
-    if (analysisParam) {
+    console.log('🔍 Suggestions page loading...');
+    // Try to get analysis data from sessionStorage first
+    const storedAnalysis = sessionStorage.getItem('analysisResult');
+    console.log('📦 Stored analysis data:', storedAnalysis ? 'Found' : 'Not found');
+    
+    if (storedAnalysis) {
       try {
-        const decoded = decodeURIComponent(analysisParam);
-        const result = JSON.parse(decoded);
+        const result = JSON.parse(storedAnalysis);
+        console.log('✅ Successfully parsed analysis result:', result);
         setAnalysisResult(result);
+        // Clear the stored data after retrieving it
+        sessionStorage.removeItem('analysisResult');
+        console.log('🗑️ Cleared analysis data from sessionStorage');
       } catch (error) {
-        console.error('Error parsing analysis data:', error);
+        console.error('❌ Error parsing analysis data from sessionStorage:', error);
+      }
+    } else {
+      // Fallback to URL parameter for backward compatibility
+      const analysisParam = searchParams.get('analysis');
+      console.log('🔗 URL analysis parameter:', analysisParam ? 'Found' : 'Not found');
+      
+      if (analysisParam) {
+        try {
+          const decoded = decodeURIComponent(analysisParam);
+          const result = JSON.parse(decoded);
+          console.log('✅ Successfully parsed analysis result from URL:', result);
+          setAnalysisResult(result);
+        } catch (error) {
+          console.error('❌ Error parsing analysis data from URL:', error);
+        }
+      } else {
+        console.log('⚠️ No analysis data found in sessionStorage or URL');
       }
     }
   }, [searchParams]);
@@ -104,7 +160,26 @@ export default function SuggestionsPage() {
     return Math.round(confidence * 100);
   };
 
+  // Enhanced ML model compatibility
+  const getEnhancedConfidence = (): number => {
+    if (analysisResult?.confidence?.overall) {
+      return Math.round(analysisResult.confidence.overall * 100);
+    }
+    if (analysisResult?.confidence?.condition_detection) {
+      return Math.round(analysisResult.confidence.condition_detection * 100);
+    }
+    if (analysisResult?.primary_condition?.confidence) {
+      return Math.round(analysisResult.primary_condition.confidence * 100);
+    }
+    return analysisResult?.confidence_score ? getConfidenceScore(analysisResult.confidence_score) : 0;
+  };
+
   const getConditionProbability = (condition: string): number => {
+    // Enhanced ML model compatibility
+    if (analysisResult?.primary_condition?.condition === condition) {
+      return Math.round((analysisResult.primary_condition.confidence || 0) * 100);
+    }
+    
     if (!analysisResult?.condition_matches) {
       return 0;
     }
@@ -212,7 +287,7 @@ export default function SuggestionsPage() {
     );
   }
 
-  const overallConfidence = getConfidenceScore(analysisResult.confidence_score || 75);
+  const overallConfidence = getEnhancedConfidence();
   const conditions = analysisResult.detected_conditions?.map(condition => condition.name) || [];
   const recommendedProducts = getRecommendedProducts();
 
@@ -262,6 +337,46 @@ export default function SuggestionsPage() {
               <div className="text-sm opacity-75 font-light text-gray-700 dark:text-gray-300">Health Score</div>
             </div>
           </div>
+
+          {/* Enhanced ML Results - For Testing */}
+          {analysisResult.enhanced_ml && (
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+              <h3 className="font-light mb-4 flex items-center text-blue-800 dark:text-blue-200">
+                <Zap className="w-4 h-4 mr-2" />
+                Enhanced ML Results (Testing)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <strong>Model Version:</strong> {analysisResult.model_version || 'N/A'}
+                </div>
+                <div>
+                  <strong>Accuracy:</strong> {analysisResult.accuracy || 'N/A'}
+                </div>
+                <div>
+                  <strong>Primary Condition:</strong> {analysisResult.primary_condition?.condition || 'N/A'}
+                </div>
+                <div>
+                  <strong>Confidence:</strong> {analysisResult.primary_condition?.confidence ? Math.round(analysisResult.primary_condition.confidence * 100) : 0}%
+                </div>
+                <div>
+                  <strong>Summary:</strong> {analysisResult.summary || 'N/A'}
+                </div>
+                <div>
+                  <strong>Severity:</strong> {analysisResult.severity?.level || 'N/A'}
+                </div>
+              </div>
+              {analysisResult.recommendations && (
+                <div className="mt-4">
+                  <strong>Recommendations:</strong>
+                  <ul className="mt-2 list-disc list-inside">
+                    {analysisResult.recommendations.map((rec, index) => (
+                      <li key={index} className="text-sm">{rec}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Condition Probabilities */}
           <div className="mb-6">

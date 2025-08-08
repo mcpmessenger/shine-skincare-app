@@ -235,13 +235,13 @@ class EnhancedMLIntegration:
     def _decode_condition_prediction(self, pred: np.ndarray) -> Dict:
         """Decode condition classification prediction"""
         conditions = ['healthy', 'acne', 'eczema', 'keratosis', 'milia', 'rosacea']
-        condition_idx = np.argmax(pred)
+        condition_idx = int(np.argmax(pred))
         confidence = float(pred[condition_idx])
         
         return {
             'condition': conditions[condition_idx],
             'confidence': confidence,
-            'all_probabilities': pred.tolist(),
+            'all_probabilities': [float(p) for p in pred.tolist()],
             'condition_id': condition_idx
         }
     
@@ -261,7 +261,7 @@ class EnhancedMLIntegration:
     def _decode_gender_prediction(self, pred: np.ndarray) -> Dict:
         """Decode gender classification prediction"""
         genders = ['male', 'female']
-        gender_idx = np.argmax(pred)
+        gender_idx = int(np.argmax(pred))
         confidence = float(pred[gender_idx])
         
         return {
@@ -272,7 +272,7 @@ class EnhancedMLIntegration:
     def _decode_ethnicity_prediction(self, pred: np.ndarray) -> Dict:
         """Decode ethnicity classification prediction"""
         ethnicities = ['white', 'black', 'asian', 'indian', 'hispanic', 'middle_eastern', 'other']
-        ethnicity_idx = np.argmax(pred)
+        ethnicity_idx = int(np.argmax(pred))
         confidence = float(pred[ethnicity_idx])
         
         return {
