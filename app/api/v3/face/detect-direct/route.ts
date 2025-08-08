@@ -88,14 +88,15 @@ export async function POST(request: NextRequest) {
         );
       }
     } catch (fetchError) {
-      console.log(`❌ Direct backend connection failed: ${fetchError.message}`);
+      const errorMessage = fetchError instanceof Error ? fetchError.message : 'Unknown error';
+      console.log(`❌ Direct backend connection failed: ${errorMessage}`);
       console.log(`❌ Error details:`, fetchError);
       console.log(`❌ Backend URL: ${backendUrl}`);
       
       return NextResponse.json(
         { 
           error: 'Direct backend connection failed',
-          error_details: fetchError.message,
+          error_details: errorMessage,
           backend_url: backendUrl,
           fallback_available: true,
           face_detected: false,

@@ -104,10 +104,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   // Load cart from Supabase when user is authenticated
   useEffect(() => {
-    if (authState.isAuthenticated && authState.user) {
-      const loadCart = async () => {
-        try {
-          const cartData = await CartService.getUserCart(authState.user.id)
+            if (authState.isAuthenticated && authState.user) {
+          const loadCart = async () => {
+            try {
+              const cartData = await CartService.getUserCart(authState.user!.id)
           if (cartData && cartData.items.length > 0) {
             dispatch({ type: 'LOAD_CART', payload: cartData })
           }
@@ -124,7 +124,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     if (authState.isAuthenticated && authState.user && state.items.length > 0) {
       const saveCart = async () => {
         try {
-          await CartService.saveCart(authState.user.id, state.items, state.total)
+          await CartService.saveCart(authState.user!.id, state.items, state.total)
         } catch (error) {
           console.error('Error saving cart to Supabase:', error)
         }

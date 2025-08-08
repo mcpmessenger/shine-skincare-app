@@ -24,64 +24,82 @@ interface AnalysisResult {
   status: string;
   timestamp: string;
   analysis_type: string;
-  demographics: any;
   face_detection: {
     detected: boolean;
     confidence: number;
     face_bounds: any;
-    method: string;
-    quality_metrics: any;
+    image_dimensions: number[];
   };
-  skin_analysis: {
-    overall_health_score: number;
-    texture: string;
-    tone: string;
-    conditions_detected: Array<{
-      condition: string;
-      severity: string;
-      confidence: number;
-      location: string;
-      description: string;
-    }>;
-    analysis_confidence: number;
+  confidence_score: number;
+  analysis_summary: string;
+  primary_concerns: string[];
+  detected_conditions: Array<{
+    name: string;
+    confidence: number;
+    severity: string;
+    source: string;
+    description: string;
+  }>;
+  severity_level: string;
+  top_recommendations: string[];
+  immediate_actions: string[];
+  lifestyle_changes: string[];
+  medical_advice: string[];
+  prevention_tips: string[];
+  best_match: {
+    condition: string;
+    similarity_score: number;
+    confidence: number;
+    description: string;
+    symptoms: string[];
+    severity: string;
   };
-  similarity_search: {
-    dataset_used: string;
-    similar_cases: Array<{
-      condition: string;
-      similarity_score: number;
-      dataset_source: string;
-      demographic_match: string;
-      treatment_suggestions: string[];
-    }>;
-    cosine_similarities: {
-      healthy_baseline: {
-        utkface_similarity: number;
-        confidence: number;
-        demographic_match: string;
-      };
-      condition_similarities: {
-        [key: string]: {
-          similarity: number;
-          confidence: number;
-          dataset: string;
-        };
-      };
-      variance_metrics: {
-        similarity_std: number;
-        confidence_range: string;
-        dataset_coverage: string;
-      };
-    };
+  condition_matches: Array<{
+    condition: string;
+    similarity_score: number;
+    confidence: number;
+    description: string;
+    symptoms: string[];
+    severity: string;
+  }>;
+  system_capabilities?: {
+    real_dataset_conditions: number;
+    computer_vision_algorithms: boolean;
+    condition_matching: boolean;
+    severity_scoring: boolean;
+    personalized_recommendations: boolean;
   };
-  recommendations: {
-    immediate_care: string[];
-    long_term_care: string[];
-    professional_consultation: boolean;
+  // Enhanced ML model properties
+  confidence?: {
+    condition_detection: number;
+    overall: number;
   };
-  quality_assessment: {
-    image_quality: string;
-    confidence_reliability: string;
+  primary_condition?: {
+    condition: string;
+    confidence: number;
+    condition_id: number;
+    all_probabilities: number[];
+  };
+  model_version?: string;
+  enhanced_ml?: boolean;
+  accuracy?: string;
+  summary?: string;
+  recommendations?: string[];
+  severity?: {
+    description: string;
+    level: string;
+  };
+  technical_details?: {
+    attention_mechanisms: boolean;
+    fairness_mitigation: boolean;
+    model_used: string;
+  };
+  frontend_metadata?: {
+    endpoint: string;
+    timestamp: string;
+    enhanced_ml_model: boolean;
+    model_version: string;
+    accuracy: string;
   };
 }
 
@@ -92,14 +110,38 @@ export default function SuggestionsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const analysisParam = searchParams.get('analysis');
-    if (analysisParam) {
+    console.log('🔍 Suggestions page loading...');
+    // Try to get analysis data from sessionStorage first
+    const storedAnalysis = sessionStorage.getItem('analysisResult');
+    console.log('📦 Stored analysis data:', storedAnalysis ? 'Found' : 'Not found');
+    
+    if (storedAnalysis) {
       try {
-        const decoded = decodeURIComponent(analysisParam);
-        const result = JSON.parse(decoded);
+        const result = JSON.parse(storedAnalysis);
+        console.log('✅ Successfully parsed analysis result:', result);
         setAnalysisResult(result);
+        // Clear the stored data after retrieving it
+        sessionStorage.removeItem('analysisResult');
+        console.log('🗑️ Cleared analysis data from sessionStorage');
       } catch (error) {
-        console.error('Error parsing analysis data:', error);
+        console.error('❌ Error parsing analysis data from sessionStorage:', error);
+      }
+    } else {
+      // Fallback to URL parameter for backward compatibility
+      const analysisParam = searchParams.get('analysis');
+      console.log('🔗 URL analysis parameter:', analysisParam ? 'Found' : 'Not found');
+      
+      if (analysisParam) {
+        try {
+          const decoded = decodeURIComponent(analysisParam);
+          const result = JSON.parse(decoded);
+          console.log('✅ Successfully parsed analysis result from URL:', result);
+          setAnalysisResult(result);
+        } catch (error) {
+          console.error('❌ Error parsing analysis data from URL:', error);
+        }
+      } else {
+        console.log('⚠️ No analysis data found in sessionStorage or URL');
       }
     }
   }, [searchParams]);
@@ -118,19 +160,34 @@ export default function SuggestionsPage() {
     return Math.round(confidence * 100);
   };
 
+  // Enhanced ML model compatibility
+  const getEnhancedConfidence = (): number => {
+    if (analysisResult?.confidence?.overall) {
+      return Math.round(analysisResult.confidence.overall * 100);
+    }
+    if (analysisResult?.confidence?.condition_detection) {
+      return Math.round(analysisResult.confidence.condition_detection * 100);
+    }
+    if (analysisResult?.primary_condition?.confidence) {
+      return Math.round(analysisResult.primary_condition.confidence * 100);
+    }
+    return analysisResult?.confidence_score ? getConfidenceScore(analysisResult.confidence_score) : 0;
+  };
+
   const getConditionProbability = (condition: string): number => {
-    if (!analysisResult?.similarity_search?.cosine_similarities?.condition_similarities) {
+    // Enhanced ML model compatibility
+    if (analysisResult?.primary_condition?.condition === condition) {
+      return Math.round((analysisResult.primary_condition.confidence || 0) * 100);
+    }
+    
+    if (!analysisResult?.condition_matches) {
       return 0;
     }
     
-    const conditionData = analysisResult.similarity_search.cosine_similarities.condition_similarities[condition];
-    if (!conditionData) return 0;
+    const conditionMatch = analysisResult.condition_matches.find(match => match.condition === condition);
+    if (!conditionMatch) return 0;
     
-    const similarity = Math.abs(conditionData.similarity);
-    const confidence = conditionData.confidence;
-    
-    const probability = Math.min(100, (similarity * 0.7 + confidence * 0.3) * 100);
-    return Math.round(probability);
+    return Math.round(conditionMatch.confidence);
   };
 
   const getConditionSeverity = (probability: number): string => {
@@ -163,7 +220,7 @@ export default function SuggestionsPage() {
     if (!analysisResult) return [];
     
     const recommendedProducts: any[] = [];
-    const conditions = analysisResult.similarity_search.cosine_similarities.condition_similarities;
+    const conditions = analysisResult.detected_conditions?.map(condition => condition.name) || [];
     
     // Map conditions to product categories
     const conditionToCategory: { [key: string]: string[] } = {
@@ -176,7 +233,7 @@ export default function SuggestionsPage() {
     };
 
     // Find products based on detected conditions
-    Object.keys(conditions).forEach(condition => {
+    conditions.forEach(condition => {
       const categories = conditionToCategory[condition] || [];
       categories.forEach(category => {
         const categoryProducts = products.filter(p => p.category === category);
@@ -230,8 +287,8 @@ export default function SuggestionsPage() {
     );
   }
 
-  const overallConfidence = getConfidenceScore(analysisResult.skin_analysis.analysis_confidence);
-  const conditions = Object.keys(analysisResult.similarity_search.cosine_similarities.condition_similarities);
+  const overallConfidence = getEnhancedConfidence();
+  const conditions = analysisResult.detected_conditions?.map(condition => condition.name) || [];
   const recommendedProducts = getRecommendedProducts();
 
   return (
@@ -269,17 +326,57 @@ export default function SuggestionsPage() {
             </div>
             <div className="text-center p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
               <div className="text-xl font-light capitalize text-gray-900 dark:text-white">
-                {analysisResult.skin_analysis.texture}
+                {analysisResult.severity_level || 'healthy'}
               </div>
               <div className="text-sm opacity-75 font-light text-gray-700 dark:text-gray-300">Skin Type</div>
             </div>
             <div className="text-center p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
               <div className="text-xl font-light text-gray-900 dark:text-white">
-                {analysisResult.skin_analysis.overall_health_score}/10
+                {Math.round(analysisResult.confidence_score || 75)}/100
               </div>
               <div className="text-sm opacity-75 font-light text-gray-700 dark:text-gray-300">Health Score</div>
             </div>
           </div>
+
+          {/* Enhanced ML Results - For Testing */}
+          {analysisResult.enhanced_ml && (
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+              <h3 className="font-light mb-4 flex items-center text-blue-800 dark:text-blue-200">
+                <Zap className="w-4 h-4 mr-2" />
+                Enhanced ML Results (Testing)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <strong>Model Version:</strong> {analysisResult.model_version || 'N/A'}
+                </div>
+                <div>
+                  <strong>Accuracy:</strong> {analysisResult.accuracy || 'N/A'}
+                </div>
+                <div>
+                  <strong>Primary Condition:</strong> {analysisResult.primary_condition?.condition || 'N/A'}
+                </div>
+                <div>
+                  <strong>Confidence:</strong> {analysisResult.primary_condition?.confidence ? Math.round(analysisResult.primary_condition.confidence * 100) : 0}%
+                </div>
+                <div>
+                  <strong>Summary:</strong> {analysisResult.summary || 'N/A'}
+                </div>
+                <div>
+                  <strong>Severity:</strong> {analysisResult.severity?.level || 'N/A'}
+                </div>
+              </div>
+              {analysisResult.recommendations && (
+                <div className="mt-4">
+                  <strong>Recommendations:</strong>
+                  <ul className="mt-2 list-disc list-inside">
+                    {analysisResult.recommendations.map((rec, index) => (
+                      <li key={index} className="text-sm">{rec}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Condition Probabilities */}
           <div className="mb-6">
@@ -339,21 +436,21 @@ export default function SuggestionsPage() {
               <div className="mt-4 space-y-4 text-sm">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <span className="opacity-75 font-light text-gray-700 dark:text-gray-300">Healthy Baseline:</span>
+                    <span className="opacity-75 font-light text-gray-700 dark:text-gray-300">Best Match:</span>
                     <div className="font-light text-gray-900 dark:text-white">
-                      {(analysisResult.similarity_search.cosine_similarities.healthy_baseline.utkface_similarity * 100).toFixed(1)}%
+                      {analysisResult.best_match?.condition?.replace('_', ' ') || 'healthy'}
                     </div>
                   </div>
                   <div>
                     <span className="opacity-75 font-light text-gray-700 dark:text-gray-300">Confidence:</span>
                     <div className="font-light text-gray-900 dark:text-white">
-                      {(analysisResult.similarity_search.cosine_similarities.healthy_baseline.confidence * 100).toFixed(1)}%
+                      {Math.round(analysisResult.best_match?.confidence || 0)}%
                     </div>
                   </div>
                   <div>
-                    <span className="opacity-75 font-light text-gray-700 dark:text-gray-300">Coverage:</span>
+                    <span className="opacity-75 font-light text-gray-700 dark:text-gray-300">Conditions:</span>
                     <div className="font-light capitalize text-gray-900 dark:text-white">
-                      {analysisResult.similarity_search.cosine_similarities.variance_metrics.dataset_coverage}
+                      {analysisResult.detected_conditions?.length || 0} detected
                     </div>
                   </div>
                 </div>
@@ -379,10 +476,10 @@ export default function SuggestionsPage() {
               <div>
                 <h4 className="font-light mb-2 text-green-600 dark:text-green-400">Immediate Care</h4>
                 <ul className="space-y-1 text-sm">
-                  {analysisResult.recommendations.immediate_care.map((care, index) => (
+                  {analysisResult.immediate_actions?.map((action: string, index: number) => (
                     <li key={index} className="flex items-start space-x-2">
                       <CheckCircle className="w-3 h-3 text-green-600 mt-0.5 flex-shrink-0" />
-                      <span className="opacity-90 font-light">{care}</span>
+                      <span className="opacity-90 font-light">{action}</span>
                     </li>
                   ))}
                 </ul>
@@ -391,10 +488,10 @@ export default function SuggestionsPage() {
               <div>
                 <h4 className="font-light mb-2 text-blue-600 dark:text-blue-400">Long-term Care</h4>
                 <ul className="space-y-1 text-sm">
-                  {analysisResult.recommendations.long_term_care.map((care, index) => (
+                  {analysisResult.lifestyle_changes?.map((change: string, index: number) => (
                     <li key={index} className="flex items-start space-x-2">
                       <CheckCircle className="w-3 h-3 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <span className="opacity-90 font-light">{care}</span>
+                      <span className="opacity-90 font-light">{change}</span>
                     </li>
                   ))}
                 </ul>

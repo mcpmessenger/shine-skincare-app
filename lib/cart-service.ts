@@ -59,14 +59,14 @@ export class CartService {
         // Update existing cart
         await supabase
           .from('carts')
-          .update(cartData)
-          .eq('id', existingCart.id)
+          .update(cartData as any)
+          .eq('id', existingCart.id as string)
       } else {
         // Create new cart
         cartData.created_at = new Date().toISOString()
         await supabase
           .from('carts')
-          .insert(cartData)
+          .insert(cartData as any)
       }
     } catch (error) {
       console.error('Error saving cart:', error)
@@ -89,7 +89,7 @@ export class CartService {
         .eq('is_abandoned', false)
         .single()
 
-      if (cart && cart.items.length > 0) {
+      if (cart && (cart as any).items && (cart as any).items.length > 0) {
         // Mark cart as abandoned
         await supabase
           .from('carts')
@@ -98,15 +98,15 @@ export class CartService {
             abandoned_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
-          .eq('id', cart.id)
+          .eq('id', cart.id as string)
 
         // Create abandoned cart record
         const abandonedCartData: AbandonedCartData = {
           user_id: userId,
           user_email: userEmail,
           user_name: userName,
-          cart_items: cart.items,
-          cart_total: cart.total,
+          cart_items: (cart as any).items,
+          cart_total: (cart as any).total,
           abandoned_at: new Date().toISOString(),
           email_sent_count: 0,
           is_recovered: false,
@@ -116,7 +116,7 @@ export class CartService {
 
         await supabase
           .from('abandoned_carts')
-          .insert(abandonedCartData)
+          .insert(abandonedCartData as any)
       }
     } catch (error) {
       console.error('Error marking cart as abandoned:', error)
@@ -176,7 +176,7 @@ export class CartService {
         return []
       }
 
-      return data || []
+      return (data as unknown as AbandonedCartData[]) || []
     } catch (error) {
       console.error('Error getting abandoned carts:', error)
       return []
@@ -260,7 +260,7 @@ export class CartService {
         return null
       }
 
-      return data
+      return data as unknown as CartData
     } catch (error) {
       console.error('Error getting user cart:', error)
       return null

@@ -251,15 +251,23 @@ def face_detect():
         result = enhanced_face_detect_endpoint(image_data)
         
         if result['success']:
-            return jsonify({
-                'status': 'success',
-                'face_detected': result['face_detected'],
-                'confidence': result['confidence'],
-                'face_bounds': result['face_bounds'],
-                'quality_metrics': result.get('quality_metrics', {}),
-                'guidance': result.get('guidance', {}),
-                'processing_metadata': result.get('processing_metadata', {})
-            })
+            # Return format expected by frontend
+            if result['face_detected'] and result['face_bounds']:
+                return jsonify({
+                    'faces_detected': 1,
+                    'faces': [{
+                        'bounds': result['face_bounds'],
+                        'confidence': result['confidence']
+                    }],
+                    'success': True
+                })
+            else:
+                return jsonify({
+                    'faces_detected': 0,
+                    'faces': [],
+                    'success': False,
+                    'message': 'No faces detected'
+                })
         else:
             return jsonify({
                 'status': 'error',
