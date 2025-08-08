@@ -1,0 +1,112 @@
+{
+  "datasets": {
+    "face-skin-disease": {
+      "dataset_name": "face-skin-disease",
+      "total_images": 625,
+      "conditions_found": [
+        "acne",
+        "actinic keratosis",
+        "basal cell carcinoma",
+        "eczemaa",
+        "rosacea",
+        "acne",
+        "actinic keratosis",
+        "basal cell carcinoma",
+        "eczemaa",
+        "rosacea"
+      ],
+      "condition_counts": {
+        "acne": 37,
+        "actinic keratosis": 37,
+        "basal cell carcinoma": 37,
+        "eczemaa": 37,
+        "rosacea": 37
+      },
+      "dataset_structure": {
+        "acne": {
+          "path": "data\\real_datasets\\extracted\\face-skin-disease\\DATA\\testing\\Acne",
+          "image_count": 37,
+          "sample_files": [
+            "032839HB.jpg",
+            "032897HB.jpg",
+            "07AcnePittedScars1.jpg",
+            "acne-closed-comedo-8.jpg",
+            "acne-Closed-Comedo.jpg"
+          ]
+        },
+        "actinic keratosis": {
+          "path": "data\\real_datasets\\extracted\\face-skin-disease\\DATA\\testing\\Actinic Keratosis",
+          "image_count": 37,
+          "sample_files": [
+            "actinic-keratosis-5FU-10.jpg",
+            "actinic-keratosis-5FU-15.jpg",
+            "actinic-keratosis-5FU-25.jpg",
+            "actinic-keratosis-5FU-26.jpg",
+            "actinic-keratosis-5FU-32.jpg"
+          ]
+        },
+        "basal cell carcinoma": {
+          "path": "data\\real_datasets\\extracted\\face-skin-disease\\DATA\\testing\\Basal Cell Carcinoma",
+          "image_count": 37,
+          "sample_files": [
+            "basal-cell-carcinoma-face-10.jpg",
+            "basal-cell-carcinoma-face-11.jpg",
+            "basal-cell-carcinoma-face-13.jpg",
+            "basal-cell-carcinoma-face-22.jpg",
+            "basal-cell-carcinoma-face-4.jpg"
+          ]
+        },
+        "eczemaa": {
+          "path": "data\\real_datasets\\extracted\\face-skin-disease\\DATA\\testing\\Eczemaa",
+          "image_count": 37,
+          "sample_files": [
+            "eczem49.jpg",
+            "eczema-acute-20.jpg",
+            "eczema-acute-22.jpg",
+            "eczema-chronic-14.jpg",
+            "eczema-chronic-47.jpg"
+          ]
+        },
+        "rosacea": {
+          "path": "data\\real_datasets\\extracted\\face-skin-disease\\DATA\\testing\\Rosacea",
+          "image_count": 37,
+          "sample_files": [
+            "rosacea-102.jpg",
+            "rosacea-111.jpg",
+            "rosacea-112.jpg",
+            "rosacea-113.jpg",
+            "rosacea-116.jpg"
+          ]
+        }
+      }
+    },
+    "skin-defects": {
+      "dataset_name": "skin-defects",
+      "total_images": 0,
+      "conditions_found": [],
+      "condition_counts": {},
+      "dataset_structure": {}
+    }
+  },
+  "total_images": 625,
+  "conditions_found": [
+    "acne",
+    "actinic keratosis",
+    "basal cell carcinoma",
+    "eczemaa",
+    "rosacea",
+    "acne",
+    "actinic keratosis",
+    "basal cell carcinoma",
+    "eczemaa",
+    "rosacea"
+  ],
+  "condition_counts": {
+    "acne": 37,
+    "actinic keratosis": 37,
+    "basal cell carcinoma": 37,
+    "eczemaa": 37,
+    "rosacea": 37
+  },
+  "dataset_structure": {}
+}

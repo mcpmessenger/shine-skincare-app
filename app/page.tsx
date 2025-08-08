@@ -353,8 +353,8 @@ export default function HomePage() {
     console.log('🔍 Starting skin analysis...');
 
     try {
-      // Use the enhanced ML model endpoint
-      console.log('📡 Calling enhanced ML endpoint...');
+          // Use the fixed ML model endpoint
+    console.log('📡 Calling fixed ML endpoint...');
       const response = await fetch('/api/v4/skin/analyze-enhanced', {
         method: 'POST',
         headers: {
@@ -378,10 +378,10 @@ export default function HomePage() {
         const result = await response.json();
         console.log('✅ Analysis successful:', result);
         
-        // Add enhanced ML metadata
-        result.enhanced_ml = true;
-        result.model_version = 'enhanced_v1.0';
-        result.accuracy = '60.2%';
+        // Add fixed ML metadata
+        result.fixed_ml = true;
+        result.model_version = 'fixed_v1.0';
+        result.accuracy = '62.50%';
         
         // Store analysis data in sessionStorage instead of URL parameter
         sessionStorage.setItem('analysisResult', JSON.stringify(result));
@@ -391,12 +391,12 @@ export default function HomePage() {
         const errorText = await response.text();
         console.error('❌ Analysis failed with status:', response.status);
         console.error('❌ Error response:', errorText);
-        throw new Error(`Enhanced ML analysis failed: ${response.status} - ${errorText}`);
+        throw new Error(`Fixed ML analysis failed: ${response.status} - ${errorText}`);
       }
     } catch (error) {
-      console.error('❌ Enhanced ML analysis error:', error);
+              console.error('❌ Fixed ML analysis error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Enhanced ML analysis failed: ${errorMessage}. Please try again.`);
+      alert(`Fixed ML analysis failed: ${errorMessage}. Please try again.`);
       setIsAnalyzing(false);
     }
   };
@@ -427,7 +427,7 @@ export default function HomePage() {
             className="w-32 h-32 mx-auto mb-6 animate-pulse"
           />
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-4"></div>
-          <p className="text-secondary font-light">Analyzing your skin with enhanced ML...</p>
+          <p className="text-secondary font-light">Analyzing your skin with fixed ML...</p>
           <p className="text-xs text-secondary font-light mt-2">This may take up to 60 seconds</p>
         </div>
       </div>

@@ -1,0 +1,29 @@
+{
+  "utkface": {
+    "raw_images": 23709,
+    "metadata_entries": 23705
+  },
+  "medical_dataset": {
+    "train_counts": {
+      "acne": 88,
+      "actinic keratosis": 88,
+      "basal cell carcinoma": 88,
+      "eczemaa": 88,
+      "rosacea": 88
+    },
+    "total_train": 440,
+    "test_counts": {
+      "acne": 37,
+      "actinic keratosis": 37,
+      "basal cell carcinoma": 37,
+      "eczemaa": 36,
+      "rosacea": 37
+    },
+    "total_test": 184
+  },
+  "facial_skin_diseases": {
+    "conditions": 7,
+    "total_embeddings": 7
+  },
+  "total_images": 24333
+}
