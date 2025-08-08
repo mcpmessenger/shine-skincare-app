@@ -1,0 +1,38 @@
+# Enhanced ML Model Requirements for Shine Skincare App
+# Core ML and Deep Learning
+tensorflow>=2.12.0
+keras>=2.12.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Data Preprocessing and Augmentation
+albumentations>=1.3.0
+Pillow>=9.5.0
+opencv-python>=4.8.0
+scikit-image>=0.21.0
+
+# Machine Learning and Evaluation
+scikit-learn>=1.3.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Data Handling and Utilities
+tqdm>=4.65.0
+requests>=2.31.0
+pathlib2>=2.3.7
+
+# Visualization and Reporting
+plotly>=5.15.0
+wandb>=0.15.0
+
+# Fairness and Bias Detection
+fairlearn>=0.9.0
+aif360>=0.5.0
+
+# Model Optimization
+tensorflow-model-optimization>=0.7.0
+
+# Additional Utilities
+h5py>=3.8.0
+joblib>=1.3.0 
