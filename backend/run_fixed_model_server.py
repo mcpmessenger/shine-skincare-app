@@ -33,20 +33,38 @@ try:
     def analyze_skin_fixed():
         """Analyze skin using the fixed model"""
         try:
-            if 'image' not in request.files:
-                return jsonify({'error': 'No image provided'}), 400
-            
-            image_file = request.files['image']
-            image_data = image_file.read()
-            
-            # Get optional user demographics
-            user_demographics = request.form.get('demographics')
-            if user_demographics:
+            # Handle both file upload and JSON data (same as face detection)
+            if request.content_type and 'multipart/form-data' in request.content_type:
+                # File upload format
+                if 'image' not in request.files:
+                    return jsonify({'error': 'No image provided'}), 400
+                
+                image_file = request.files['image']
+                image_data = image_file.read()
+                
+                # Get optional user demographics
+                user_demographics = request.form.get('demographics')
+                if user_demographics:
+                    try:
+                        import json
+                        user_demographics = json.loads(user_demographics)
+                    except:
+                        user_demographics = None
+            else:
+                # JSON format (from frontend) - same as face detection
+                data = request.get_json()
+                if not data or 'image_data' not in data:
+                    return jsonify({'error': 'No image data provided'}), 400
+                
+                # Decode base64 image
                 try:
-                    import json
-                    user_demographics = json.loads(user_demographics)
-                except:
-                    user_demographics = None
+                    image_data_b64 = data['image_data']
+                    image_data = base64.b64decode(image_data_b64)
+                except Exception as e:
+                    return jsonify({'error': f'Invalid image data: {str(e)}'}), 400
+                
+                # Get user demographics from JSON
+                user_demographics = data.get('user_demographics')
             
             # Analyze with fixed model
             results = fixed_integration.analyze_skin_with_fixed_model(image_data, user_demographics)
