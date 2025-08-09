@@ -283,7 +283,7 @@ export default function HomePage() {
   const performFaceDetectionOnImage = async (imageData: string) => {
          try {
        console.log('Performing face detection on uploaded image...');
-       const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.FACE_DETECT), {
+       const response = await fetch('/api/v4/face/detect', {
          method: 'POST',
          headers: {
            'Content-Type': 'application/json',
@@ -354,9 +354,9 @@ export default function HomePage() {
     console.log('🔍 Starting skin analysis...');
 
     try {
-          // Use the fixed ML model endpoint
+          // Use the fixed ML model endpoint via proxy
     console.log('📡 Calling fixed ML endpoint...');
-      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.SKIN_ANALYZE_FIXED), {
+      const response = await fetch('/api/v5/skin/analyze-fixed', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
