@@ -6,6 +6,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
+    console.log('🔄 Face detection proxy - Backend URL:', BACKEND_URL);
+    console.log('🔄 Face detection proxy - Request body keys:', Object.keys(body));
+    
     const response = await fetch(`${BACKEND_URL}/api/v4/face/detect`, {
       method: 'POST',
       headers: {
@@ -15,6 +18,9 @@ export async function POST(request: NextRequest) {
     });
 
     const data = await response.json();
+    
+    console.log('✅ Face detection proxy - Backend response status:', response.status);
+    console.log('✅ Face detection proxy - Backend response:', data);
     
     return NextResponse.json(data, { 
       status: response.status,
