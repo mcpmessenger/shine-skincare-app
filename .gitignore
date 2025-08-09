@@ -16,32 +16,20 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
-.env.*
-*.env
 
-# IDE and editor files
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
-# OS generated files
+# OS files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
 # Logs
-logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
+logs/
 
 # Runtime data
 pids
@@ -51,7 +39,6 @@ pids
 
 # Coverage directory used by tools like istanbul
 coverage/
-*.lcov
 
 # nyc test coverage
 .nyc_output
@@ -62,15 +49,6 @@ jspm_packages/
 # Optional npm cache directory
 .npm
 
-# Optional eslint cache
-.eslintcache
-
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-
 # Optional REPL history
 .node_repl_history
 
@@ -80,11 +58,10 @@ jspm_packages/
 # Yarn Integrity file
 .yarn-integrity
 
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
+# dotenv environment variables file
+.env
 
-# Next.js build output
+# next.js build output
 .next
 
 # Nuxt.js build / generate output
@@ -109,12 +86,22 @@ __pycache__/
 *$py.class
 *.so
 .Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Distribution / packaging
+.Python
 build/
 develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
+lib/
 lib64/
 parts/
 sdist/
@@ -203,199 +190,31 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
-# AWS DEPLOYMENT FILES (SENSITIVE DATA)
-BundleLogs-*/
-*.zip
-*.tar.gz
-backend-deployment-*.zip
-backend-deploy-*.zip
-backend-deploy-*.tar.gz
-UNICORN_*.zip
-UNICORN_*.tar.gz
-
-# AWS CREDENTIALS AND SENSITIVE DATA
+# Credentials and sensitive data
+kaggle.json
 *.pem
 *.key
-*.crt
-*.p12
-*.pfx
-*credentials*
-*secret*
-*token*
-*password*
-*access_key*
-*secret_key*
-
-# Environment Files
 .env*
-env-*.txt
-local.env
-frontend_env.txt
-env.production
-.env.aws
+secrets.json
+credentials.json
 
-# Temporary and Test Files
-temp-*/
-test-*/
-verify-*/
-diagnose-*/
-create-*-*.ps1
-create-*-*.py
+# Large ML files and datasets - ignore everything in data/
+backend/data/
+backend/results/
+backend/models/*.h5
+backend/models/*.pkl
+backend/models/*.joblib
+*.tfevents
+*.tfevents.*
 
-# Sensitive Documents
-SECURITY_*.md
-GITHUB_PUSH_*.md
-BUG_BOUNTY_*.md
-IMMEDIATE_FIXES_*.md
-CLEANUP_*.md
+# Training artifacts
+backend/logs/
+backend/checkpoints/
+backend/saved_models/
 
-# AWS CLI and Infrastructure
-awscliv2.zip
-aws-utils.sh
-cloudformation-template.yaml
-stack-outputs.json
-
-# Elastic Beanstalk
-.elasticbeanstalk/
-*.ebextensions/
-eb-*.json
-
-# Amplify
-amplify/
-amplify-*.json
-amplify-*.sh
-
-# Deployment Scripts
-deploy-*.ps1
-deploy-*.sh
-create-*-deployment.ps1
-create-*-deployment.sh
-
-# Test Images
-test-image.jpg
-test-image.png
-*.test.jpg
-*.test.png
-
-# Backup Files
-*.bak
-*.backup
-*.old
-*.orig
-
-# Cache Directories
-.cache/
-cache/
-tmp/
-temp/
-
-# IDE Specific
-.vscode/
-.idea/
-*.sublime-*
-.atom/
-
-# OS Specific
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Security
-*.pem
-*.key
-*.crt
-*.p12
-*.pfx
-*secret*
-*token*
-*password*
-
-# Google Service Account Credentials
-shine-466907-994eb9c6926a.json
-shine-466907-b0b2eb862330.json
-shine-466907-*.json
-
-# Operation Right Brain - Sensitive Data
-scin_dataset/raw/
-scin_processed_data.json
-kaggle.json
-~/.kaggle/
-*.credentials
-*.auth
-
-# Kaggle API Credentials
-kaggle.json
-.kaggle/
-backend/kaggle.json
-backend/.kaggle/
-
-# Additional Security Files
-*.env.local
-.env.local
-backend/.env.local
-backend/.env.local.example
-
-# Google Cloud Configuration
-google-cloud-credentials.json
-service-account-*.json
-gcloud-config.json
-
-# SCIN Dataset Files (Large)
-scin_dataset/
-*.parquet
-*.h5
-*.hdf5
-
-# UTKFace Dataset Files (Large - should not be in git)
-backend/data/utkface/
-backend/data/facial_skin_diseases/
-backend/datasets/
-backend/ham10000_local/
-backend/ham10000_local_scaled/
-*.jpg.chip.jpg
-*.csv
-utkface_metadata.csv
-
-# Dataset JSON files (can be large)
-condition_data.json
-dataset_info.json
-metadata.json
-performance_results_*.json
-enhanced_config.json
-
-# Local Development Files
-local_*.py
-test_*.py
-temp_*.py
-debug_*.py
-create_*.py
-check_*.py
-
-# Security Scan Results
-security_scan_*.log
-scan_results_*.txt
-
-# Additional Security Patterns
-*api_key*
-*api_secret*
-*client_secret*
-*client_id*
-*private_key*
-*public_key*
-*access_token*
-*refresh_token*
-*bearer_token*
-*oauth*
-*auth_token*
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# Log files
-*.log
-logs/
+# Model files (keep only the final production model)
+!backend/models/comprehensive_model_final.h5
+!backend/models/fixed_model_final.h5
 
 # Temporary files
 *.tmp
@@ -403,36 +222,18 @@ logs/
 temp/
 tmp/
 
-# Build artifacts
-build/
-dist/
-*.pyc
-*.pyo
-*.pyd
+# AWS deployment specific
+.elasticbeanstalk/
+.ebextensions/
+eb_deploy.log
 
-# Virtual environments
-venv/
-env/
-.venv/
-.env/
+# Amplify
+amplify/
+amplify-build-config.json
+amplify-gradle-config.json
+amplifytools.xcconfig
+.ask-config
+.hypothesis/
 
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS files
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Package files
-*.tgz
-*.tar.gz
-*.zip
-
-# Configuration files with secrets
-config.json
-secrets.json
-credentials.json
+# Local development
+.local/

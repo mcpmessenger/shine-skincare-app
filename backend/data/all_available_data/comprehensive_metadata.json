@@ -1,0 +1,49 @@
+{
+  "dataset_name": "All Available Data Comprehensive Dataset",
+  "description": "Comprehensive dataset using ALL available data: UTKFace normalization + Medical disease dataset",
+  "version": "4.0",
+  "source_datasets": [
+    "UTKFace dataset (23K+ images for normalization)",
+    "Medical disease dataset (440+ labeled face shots)",
+    "Facial skin diseases embeddings"
+  ],
+  "target_conditions": [
+    "acne",
+    "rosacea",
+    "eczema",
+    "actinic_keratosis",
+    "basal_cell_carcinoma",
+    "healthy",
+    "normal"
+  ],
+  "statistics": {
+    "acne": 88,
+    "rosacea": 88,
+    "eczema": 89,
+    "actinic_keratosis": 88,
+    "basal_cell_carcinoma": 88,
+    "healthy": 100,
+    "normal": 0
+  },
+  "dataset_info": {
+    "total_images": 541,
+    "image_size": [
+      224,
+      224
+    ],
+    "format": "JPEG",
+    "quality": 85
+  },
+  "training_splits": {
+    "train": "70%",
+    "validation": "20%",
+    "test": "10%"
+  },
+  "improvements": {
+    "real_data": "Using ALL available real data",
+    "medical_images": "440+ labeled medical face shots",
+    "normalization": "UTKFace dataset for healthy baseline",
+    "face_detection": "Proper face shots as mentioned",
+    "comprehensive": "No synthetic data - all real images"
+  }
+}

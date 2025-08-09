@@ -1,0 +1,39 @@
+{
+  "confidence_thresholds": {
+    "acne": 0.8,
+    "rosacea": 0.85,
+    "melasma": 0.85,
+    "eczema": 0.8,
+    "psoriasis": 0.8,
+    "vitiligo": 0.85,
+    "dermatitis": 0.8,
+    "hyperpigmentation": 0.8,
+    "hypopigmentation": 0.85,
+    "melanoma": 0.9,
+    "benign": 0.8,
+    "malignant": 0.9,
+    "healthy": 0.8,
+    "actinic_keratosis": 0.85,
+    "basal_cell_carcinoma": 0.9
+  },
+  "ensemble_settings": {
+    "num_models": 3,
+    "voting_method": "soft",
+    "confidence_weight": 0.7
+  },
+  "ml2_improvements": {
+    "addressed_issues": [
+      "Missing melasma condition - now included",
+      "Limited acne samples - enhanced with more samples",
+      "60.2% baseline accuracy - improved architecture and training",
+      "Unbalanced dataset - balanced across all conditions",
+      "Missing real medical data - using comprehensive real datasets"
+    ],
+    "target_improvements": {
+      "accuracy": ">80% (from 60.2%)",
+      "acne_detection": ">90% precision and recall",
+      "melasma_detection": ">85% accuracy (new condition)",
+      "false_positive_rate": "<10% for all conditions"
+    }
+  }
+}

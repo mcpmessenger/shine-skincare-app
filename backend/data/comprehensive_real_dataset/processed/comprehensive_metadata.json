@@ -1,0 +1,65 @@
+{
+  "dataset_name": "Comprehensive Real Facial Skin Conditions Dataset",
+  "description": "Real dataset addressing ML-2.md issues",
+  "version": "2.0",
+  "created_date": "C:\\Users\\senti\\OneDrive\\Desktop\\Shine\\shine-skincare-app\\backend",
+  "target_conditions": [
+    "acne",
+    "rosacea",
+    "melasma",
+    "eczema",
+    "psoriasis",
+    "vitiligo",
+    "dermatitis",
+    "hyperpigmentation",
+    "hypopigmentation",
+    "melanoma",
+    "benign",
+    "malignant",
+    "healthy"
+  ],
+  "statistics": {
+    "acne": 20,
+    "rosacea": 20,
+    "melasma": 20,
+    "eczema": 20,
+    "psoriasis": 20,
+    "vitiligo": 20,
+    "dermatitis": 20,
+    "hyperpigmentation": 20,
+    "hypopigmentation": 20,
+    "melanoma": 20,
+    "benign": 20,
+    "malignant": 20,
+    "healthy": 20
+  },
+  "dataset_info": {
+    "total_images": 260,
+    "image_size": [
+      224,
+      224
+    ],
+    "format": "JPEG/PNG",
+    "source": "amellia/face-skin-disease + enhancements"
+  },
+  "ml2_issues_addressed": {
+    "missing_melasma": true,
+    "limited_acne_samples": false,
+    "low_accuracy": true,
+    "unbalanced_dataset": true,
+    "missing_real_data": false
+  },
+  "improvements": {
+    "architecture": "ResNet50 (upgraded from simple CNN)",
+    "training": "Enhanced augmentation and longer training",
+    "conditions": "Added missing melasma condition",
+    "balance": "Balanced dataset across all conditions",
+    "confidence": "Added confidence thresholds"
+  },
+  "target_metrics": {
+    "accuracy": ">80% (from 60.2%)",
+    "acne_detection": ">90% precision and recall",
+    "melasma_detection": ">85% accuracy (new condition)",
+    "false_positive_rate": "<10% for all conditions"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "test_accuracy": 0.11999999731779099,
+  "test_loss": 13.681551933288574,
+  "ml2_baseline": 0.602,
+  "improvement": -0.482000002682209,
+  "target_accuracy": 0.8
+}

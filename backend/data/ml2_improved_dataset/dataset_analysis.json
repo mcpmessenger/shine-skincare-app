@@ -1,0 +1,24 @@
+{
+  "total_images": 0,
+  "conditions_found": [
+    "testing",
+    "train"
+  ],
+  "condition_counts": {
+    "testing": 0,
+    "train": 0
+  },
+  "image_formats": {},
+  "dataset_structure": {
+    "testing": {
+      "path": "data\\real_datasets\\extracted\\face-skin-disease\\DATA\\testing",
+      "image_count": 0,
+      "sample_files": []
+    },
+    "train": {
+      "path": "data\\real_datasets\\extracted\\face-skin-disease\\DATA\\train",
+      "image_count": 0,
+      "sample_files": []
+    }
+  }
+}
