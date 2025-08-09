@@ -101,7 +101,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python lib directories (but keep Next.js lib/)
+# lib/
 lib64/
 parts/
 sdist/
