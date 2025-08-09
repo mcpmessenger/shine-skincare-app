@@ -16,6 +16,8 @@ from datetime import datetime
 import traceback
 from PIL import Image
 import io
+import boto3
+import tempfile
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,14 +26,18 @@ logger = logging.getLogger(__name__)
 class SimpleFixedModelIntegration:
     """Simple integration class for the fixed ML model with improved accuracy"""
     
-    def __init__(self, model_path: str = "models/fixed_model_final.h5"):
+    def __init__(self, model_path: str = "models/fixed_model_final.h5", s3_bucket: str = "muse2025", model_filename: str = "fixed_model_final.h5"):
         """
         Initialize the fixed model integration
         
         Args:
-            model_path: Path to the fixed trained model
+            model_path: Path to the fixed trained model (local fallback)
+            s3_bucket: S3 bucket containing the model
+            model_filename: S3 object key for the model file
         """
         self.model_path = Path(model_path)
+        self.s3_bucket = s3_bucket
+        self.model_filename = model_filename
         self.fixed_model = None
         self.model_metadata = None
         self.class_names = [
@@ -44,29 +50,74 @@ class SimpleFixedModelIntegration:
         
         logger.info("✅ Simple Fixed Model Integration initialized")
     
+    def _download_model_from_s3(self) -> str:
+        """Download model from S3 to a temporary file"""
+        try:
+            logger.info(f"📥 Downloading model from S3: s3://{self.s3_bucket}/{self.model_filename}")
+            
+            # Create S3 client
+            s3_client = boto3.client('s3')
+            
+            # Create temporary file
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.h5')
+            temp_path = temp_file.name
+            temp_file.close()
+            
+            # Download model from S3
+            s3_client.download_file(self.s3_bucket, self.model_filename, temp_path)
+            
+            logger.info(f"✅ Model downloaded to: {temp_path}")
+            return temp_path
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to download model from S3: {e}")
+            raise
+    
     def _load_fixed_model(self):
         """Load the fixed ML model and metadata"""
         try:
-            # Load model with custom_objects to handle focal loss
-            if self.model_path.exists():
-                # Define custom loss function for loading
-                def focal_loss(y_true, y_pred):
-                    # Simple focal loss implementation
-                    alpha = 1.0
-                    gamma = 2.0
-                    y_pred = tf.clip_by_value(y_pred, 1e-7, 1.0)
-                    cross_entropy = -y_true * tf.math.log(y_pred)
-                    focal_loss = alpha * tf.pow(1 - y_pred, gamma) * cross_entropy
-                    return tf.reduce_mean(focal_loss)
-                
-                # Load model with custom objects
+            # Define custom loss function for loading
+            def focal_loss(y_true, y_pred):
+                # Simple focal loss implementation
+                alpha = 1.0
+                gamma = 2.0
+                y_pred = tf.clip_by_value(y_pred, 1e-7, 1.0)
+                cross_entropy = -y_true * tf.math.log(y_pred)
+                focal_loss = alpha * tf.pow(1 - y_pred, gamma) * cross_entropy
+                return tf.reduce_mean(focal_loss)
+            
+            model_loaded = False
+            
+            # Try to download from S3 first
+            try:
+                model_path_to_use = self._download_model_from_s3()
                 self.fixed_model = tf.keras.models.load_model(
-                    str(self.model_path),
+                    model_path_to_use,
                     custom_objects={'focal_loss': focal_loss}
                 )
-                logger.info("✅ Fixed ML model loaded successfully")
+                logger.info("✅ Fixed ML model loaded from S3 successfully")
                 logger.info(f"📊 Model classes: {self.class_names}")
-            else:
+                model_loaded = True
+                
+                # Clean up temporary file
+                os.unlink(model_path_to_use)
+                
+            except Exception as s3_error:
+                logger.warning(f"⚠️ Could not load from S3: {s3_error}")
+                
+                # Fall back to local file
+                if self.model_path.exists():
+                    self.fixed_model = tf.keras.models.load_model(
+                        str(self.model_path),
+                        custom_objects={'focal_loss': focal_loss}
+                    )
+                    logger.info("✅ Fixed ML model loaded from local file")
+                    logger.info(f"📊 Model classes: {self.class_names}")
+                    model_loaded = True
+                else:
+                    logger.error("❌ Fixed model not found locally either!")
+                    
+            if not model_loaded:
                 logger.error("❌ Fixed model not found!")
                 self.fixed_model = None
             

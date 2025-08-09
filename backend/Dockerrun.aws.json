@@ -1,0 +1,23 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "396608803476.dkr.ecr.us-east-1.amazonaws.com/shine-ml-backend:latest",
+    "Update": "true"
+  },
+  "Ports": [
+    {
+      "ContainerPort": 5000,
+      "HostPort": 80
+    }
+  ],
+  "Environment": [
+    {
+      "Name": "FLASK_ENV",
+      "Value": "production"
+    },
+    {
+      "Name": "AWS_REGION",
+      "Value": "us-east-1"
+    }
+  ]
+}

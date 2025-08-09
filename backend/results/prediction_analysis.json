@@ -1,7 +1,0 @@
-{
-  "analysis_results": [
-    {
-      "sample_index": 0,
-      "true_class": "acne",
-      "predicted_class": "rosacea",
-      "confidence": 

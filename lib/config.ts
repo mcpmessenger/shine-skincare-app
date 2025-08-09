@@ -5,7 +5,7 @@
 // Backend API configuration
 export const API_CONFIG = {
   // Backend base URL - use production backend or localhost for development
-  BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://shine-backend-prod.eba-bfx39wvr.us-east-1.elasticbeanstalk.com',
+  BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://13.218.182.177:5000',
   
   // API endpoints
   ENDPOINTS: {

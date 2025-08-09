@@ -185,6 +185,14 @@ try:
             'message': 'Fixed ML model server is running!'
         })
     
+    @app.route('/health', methods=['GET'])
+    def simple_health_check():
+        """Simple health check for ECS"""
+        return jsonify({
+            'status': 'healthy',
+            'model_loaded': fixed_integration.fixed_model is not None
+        })
+    
     @app.route('/', methods=['GET'])
     def root():
         """Root endpoint"""

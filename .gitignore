@@ -237,3 +237,27 @@ amplifytools.xcconfig
 
 # Local development
 .local/
+
+# Additional cleanup for production
+# Documentation cleanup
+*_DEPLOYMENT_*.md
+*_STATUS*.md
+*_GUIDE*.md
+*_CHECKLIST*.md
+*_SUMMARY*.md
+*_STRATEGY*.md
+*_TESTING*.md
+*_STEPS*.md
+*_MIGRATION*.md
+*_SPRINT*.md
+
+# Temporary scripts and configs
+deploy-*.sh
+deploy-*.ps1
+backup_and_migrate.sh
+cleanup_for_deployment.py
+run_smoke_test.sh
+
+# Experimental folders
+Bubbles🫧/
+ML-2folder/
