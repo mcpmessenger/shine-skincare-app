@@ -212,9 +212,8 @@ backend/logs/
 backend/checkpoints/
 backend/saved_models/
 
-# Model files (keep only the final production model)
-!backend/models/comprehensive_model_final.h5
-!backend/models/fixed_model_final.h5
+# Model files - all models stored in S3, not in git
+# Models are downloaded from S3 at runtime
 
 # Temporary files
 *.tmp
