@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  ml-service-simple:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile-simple
+    ports:
+      - "5000:5000"
+    environment:
+      - MODEL_PATH=/app/models/fixed_model_best.h5
+      - FLASK_ENV=development
+    volumes:
+      - ./ml-service/models:/app/models:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  api-gateway-simple:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ML_SERVICE_URL=http://ml-service-simple:5000
+      - FLASK_ENV=development
+    depends_on:
+      ml-service-simple:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped

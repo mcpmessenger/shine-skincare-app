@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     // Get the backend URL from environment or use default
-    const backendUrl = process.env.BACKEND_URL || 'http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://shine-backend-light.eba-ueb7him5.us-east-1.elasticbeanstalk.com';
     
     // Get status from the Flask backend
     const response = await fetch(`${backendUrl}/api/v3/enhanced-embeddings/status`, {

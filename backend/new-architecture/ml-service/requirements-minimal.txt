@@ -1,0 +1,21 @@
+# Shine Skincare App - ML Service MINIMAL Requirements
+# Essential dependencies only - for getting service running first
+
+# Core web framework
+Flask==2.3.3
+Flask-CORS==4.0.0
+
+# WSGI server for production
+gunicorn==21.2.0
+
+# Basic image processing (lighter than OpenCV)
+Pillow==10.0.0
+
+# Scientific computing (lighter than full TensorFlow)
+numpy==1.24.3
+
+# Environment variable management
+python-dotenv==1.0.0
+
+# Basic logging
+structlog==23.1.0

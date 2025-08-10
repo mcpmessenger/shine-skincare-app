@@ -1,0 +1,29 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecs:CreateService",
+                "ecs:UpdateService",
+                "ecs:DeleteService",
+                "ecs:DescribeServices",
+                "ecs:ListServices",
+                "ecs:CreateTaskSet",
+                "ecs:UpdateTaskSet",
+                "ecs:DeleteTaskSet",
+                "ecs:DescribeTaskSets",
+                "ecs:ListTaskSets",
+                "ecs:CreateCluster",
+                "ecs:DeleteCluster",
+                "ecs:DescribeClusters",
+                "ecs:ListClusters",
+                "ecs:RegisterTaskDefinition",
+                "ecs:DeregisterTaskDefinition",
+                "ecs:DescribeTaskDefinition",
+                "ecs:ListTaskDefinitions"
+            ],
+            "Resource": "*"
+        }
+    ]
+}

@@ -1,8 +1,3 @@
-# Force EB to use Docker only
-*.py
-*.txt
-!Dockerrun.aws.json
-
 # Exclude large data files
 data/
 results/

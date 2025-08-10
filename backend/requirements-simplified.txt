@@ -1,0 +1,24 @@
+# Shine Skincare App - Simplified EB Requirements
+# Essential dependencies only - for fast, reliable deployment
+
+# Core web framework
+Flask==2.3.3
+Flask-CORS==4.0.0
+
+# WSGI server for production
+gunicorn==21.2.0
+
+# Basic image processing (lighter than OpenCV)
+Pillow==10.0.1
+
+# Scientific computing (lighter than full ML stack)
+numpy==1.24.3
+
+# Environment variable management
+python-dotenv==1.0.0
+
+# AWS SDK (for future ML model loading from S3)
+boto3==1.34.0
+
+# HTTP requests
+requests==2.31.0

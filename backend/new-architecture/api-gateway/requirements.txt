@@ -1,0 +1,24 @@
+# Shine Skincare App - API Gateway Service Requirements
+# Minimal dependencies for fast startup and high availability
+
+# Core Flask framework
+Flask==2.3.3
+Flask-CORS==4.0.0
+
+# HTTP client for ML service communication
+requests==2.31.0
+
+# WSGI server for production
+gunicorn==21.2.0
+
+# Environment variable management
+python-dotenv==1.0.0
+
+# Logging and monitoring
+structlog==23.1.0
+
+# Health check utilities
+healthcheck==1.3.0
+
+# Production server
+waitress==2.1.2

@@ -1,0 +1,71 @@
+{
+  "family": "shine-api-gateway",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::396608803476:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::396608803476:role/shine-api-gateway-task-role",
+  "containerDefinitions": [
+    {
+      "name": "api-gateway",
+      "image": "396608803476.dkr.ecr.us-east-1.amazonaws.com/shine-api-gateway:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "ML_SERVICE_URL",
+          "value": "http://shine-ml-service:5000"
+        },
+        {
+          "name": "FLASK_ENV",
+          "value": "production"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/shine-api-gateway",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:8080/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 10,
+        "retries": 3,
+        "startPeriod": 10
+      },
+      "ulimits": [
+        {
+          "name": "nofile",
+          "softLimit": 65536,
+          "hardLimit": 65536
+        }
+      ]
+    }
+  ],
+  "tags": [
+    {
+      "key": "Service",
+      "value": "shine-api-gateway"
+    },
+    {
+      "key": "Environment",
+      "value": "production"
+    },
+    {
+      "key": "Architecture",
+      "value": "microservices"
+    }
+  ]
+}
