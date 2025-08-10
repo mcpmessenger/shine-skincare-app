@@ -5,7 +5,7 @@
 // Backend API configuration
 export const API_CONFIG = {
   // Backend base URL - use production backend or localhost for development
-  BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://13.218.182.177:5000',
+  BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000',
   
   // API endpoints
   ENDPOINTS: {
