@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Application Load Balancer for Shine Skincare App ECS Services'
+Description: 'Application Load Balancer for Shine Skincare App ECS Services (HTTP Only - HTTPS Ready)'
 
 Parameters:
   VpcId:
@@ -7,8 +7,8 @@ Parameters:
     Description: VPC ID where the ECS cluster is running
   
   PublicSubnetIds:
-    Type: List<AWS::EC2::Subnet::Id>
-    Description: List of public subnet IDs for the ALB
+    Type: CommaDelimitedList
+    Description: Comma-separated list of public subnet IDs for the ALB
   
   ECSClusterName:
     Type: String
@@ -20,6 +20,19 @@ Parameters:
     Default: production
     AllowedValues: [development, staging, production]
     Description: Environment name
+
+  # SSL Certificate Parameters
+  SSLCertificateArn:
+    Type: String
+    Description: ARN of the SSL certificate from AWS Certificate Manager
+    Default: ''
+    AllowedPattern: '^$|^arn:aws:acm:[a-z0-9-]+:[0-9]{12}:certificate/[a-f0-9-]+$'
+  
+  DomainName:
+    Type: String
+    Description: Domain name for the ALB (e.g., api.shineskincare.com)
+    Default: ''
+    AllowedPattern: '^$|^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'
 
 Resources:
   # Security Group for ALB
@@ -34,7 +47,7 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
-          Description: HTTP access
+          Description: HTTP access (redirects to HTTPS)
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
@@ -104,6 +117,12 @@ Resources:
       Subnets: !Ref PublicSubnetIds
       SecurityGroups:
         - !Ref ALBSecurityGroup
+      # Enable access logs if needed
+      LoadBalancerAttributes:
+        - Key: access_logs.s3.enabled
+          Value: 'false'
+        - Key: idle_timeout.timeout_seconds
+          Value: '60'
       Tags:
         - Key: Name
           Value: !Sub '${Environment}-shine-skincare-alb'
@@ -112,7 +131,7 @@ Resources:
         - Key: Service
           Value: shine-skincare-app
 
-  # HTTP Listener (Port 80) - Redirect to HTTPS
+  # HTTP Listener (Port 80) - Redirect to HTTPS or forward directly
   HTTPListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -131,7 +150,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       LoadBalancerArn: !Ref ApplicationLoadBalancer
-      Protocol: HTTP  # Using HTTP for now, can be updated to HTTPS with certificate
+      Protocol: HTTP
       Port: 443
       DefaultActions:
         - Type: forward
@@ -171,6 +190,11 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
+# Conditions
+Conditions:
+  HasSSLCertificate: !Not [!Equals [!Ref SSLCertificateArn, '']]
+  HasDomainName: !Not [!Equals [!Ref DomainName, '']]
+
 Outputs:
   ALBDNSName:
     Description: DNS name of the Application Load Balancer
@@ -209,3 +233,9 @@ Outputs:
       API Gateway: http://${ApplicationLoadBalancer.DNSName}/
     Export:
       Name: !Sub '${Environment}-shine-service-endpoints'
+
+  HTTPSStatus:
+    Description: HTTPS configuration status
+    Value: "HTTP Only - HTTPS Ready (Certificate Required)"
+    Export:
+      Name: !Sub '${Environment}-shine-https-status'

@@ -88,16 +88,12 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    // Use working Elastic Beanstalk backend URL (HTTP only - no SSL certificate)
-    this.baseUrl = 'http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com';
+    // Use environment variable for backend URL (will be set in Amplify)
+    this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
     
     // Debug: Log the actual URL being used
-    // API Client initialized
-    
-    // Log a clear message about the URL being used
-    console.log('🔒 Using working Elastic Beanstalk backend (HTTP) - FORCE REBUILD');
-    console.log('🚀 BUILD TRIGGER - Backend URL updated for working deployment');
-    console.log('🔧 BACKEND: Using SHINE-env Elastic Beanstalk (HTTP only)');
+    console.log('🔒 Using backend URL from environment variable');
+    console.log('🚀 BACKEND URL:', this.baseUrl);
     console.log('🔄 CACHE BUSTING: Timestamp:', new Date().toISOString());
   }
 
@@ -658,7 +654,7 @@ export const analyzeSelfie = async (file: File): Promise<ApiResponse<{
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/selfie/analyze', {
+    const response = await fetch(`${this.baseUrl || 'http://localhost:5000'}/api/v2/selfie/analyze`, {
       method: 'POST',
       body: formData,
     });
@@ -712,7 +708,7 @@ export const analyzeSkin = async (file: File): Promise<ApiResponse<{
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch('http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/skin/analyze', {
+    const response = await fetch(`${this.baseUrl || 'http://localhost:5000'}/api/v2/skin/analyze`, {
       method: 'POST',
       body: formData,
     });
@@ -775,7 +771,7 @@ export const analyzeMedical = async (file: File, ethnicity?: string, age?: strin
       formData.append('age', age);
     }
 
-    const response = await fetch(`http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/medical/analyze`, {
+    const response = await fetch(`${this.baseUrl || 'http://localhost:5000'}/api/v2/medical/analyze`, {
       method: 'POST',
       body: formData,
     });
@@ -821,7 +817,7 @@ export const getMedicalHistory = async (user_id?: string, limit?: number): Promi
     if (user_id) params.append('user_id', user_id);
     if (limit) params.append('limit', limit.toString());
 
-    const response = await fetch(`http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/medical/history?${params}`);
+    const response = await fetch(`${this.baseUrl || 'http://localhost:5000'}/api/v2/medical/history?${params}`);
     const data = await response.json();
     
     return { 
@@ -850,7 +846,7 @@ export const getMedicalAnalysisDetails = async (analysis_id: string): Promise<Ap
   analysis_details: any;
 }>> => {
   try {
-    const response = await fetch(`http://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/medical/analysis/${analysis_id}`);
+    const response = await fetch(`${this.baseUrl || 'http://localhost:5000'}/api/v2/medical/analysis/${analysis_id}`);
     const data = await response.json();
     
     return { 
@@ -963,7 +959,7 @@ export async function processImageLightweight(imageFile: File): Promise<any> {
     const formData = new FormData();
     formData.append('image', imageFile);
     
-    const response = await fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/image/process-lightweight', {
+    const response = await fetch(`${this.baseUrl || 'http://localhost:5000'}/api/v2/image/process-lightweight`, {
       method: 'POST',
       body: formData,
     });
@@ -1085,9 +1081,9 @@ export async function checkBackendHealth(): Promise<any> {
     console.log('🏥 Checking backend health...');
     
     const healthChecks = await Promise.allSettled([
-          fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/ai/health'),
-fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/v2/image/process-lightweight'),
-fetch('https://SHINE-env.eba-azwgu4dc.us-east-1.elasticbeanstalk.com/api/health')
+                fetch(`${this.baseUrl || 'http://localhost:5000'}/api/v2/ai/health`),
+      fetch(`${this.baseUrl || 'http://localhost:5000'}/api/v2/image/process-lightweight`),
+      fetch(`${this.baseUrl || 'http://localhost:5000'}/api/health`)
     ]);
     
     const results = healthChecks.map((result, index) => {
