@@ -1,0 +1,269 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Application Load Balancer for Shine Skincare App ECS Services with HTTPS Support'
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID where the ECS cluster is running
+  
+  PublicSubnetIds:
+    Type: CommaDelimitedList
+    Description: Comma-separated list of public subnet IDs for the ALB
+  
+  ECSClusterName:
+    Type: String
+    Default: shine-ml-cluster
+    Description: Name of the ECS cluster
+  
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: [development, staging, production]
+    Description: Environment name
+
+  # SSL Certificate Parameters
+  SSLCertificateArn:
+    Type: String
+    Description: ARN of the SSL certificate from AWS Certificate Manager
+    Default: ''
+    AllowedPattern: '^$|^arn:aws:acm:[a-z0-9-]+:[0-9]{12}:certificate/[a-f0-9-]+$'
+  
+  DomainName:
+    Type: String
+    Description: Domain name for the ALB (e.g., api.shineskincare.com)
+    Default: ''
+    AllowedPattern: '^$|^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'
+
+Resources:
+  # Security Group for ALB
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${Environment}-shine-alb-sg'
+      GroupDescription: Security group for Shine Skincare App Load Balancer
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP access (redirects to HTTPS)
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS access
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-shine-alb-sg'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: shine-skincare-app
+
+  # Target Group for ML Service
+  MLServiceTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${Environment}-shine-ml-service-tg'
+      Protocol: HTTP
+      Port: 5000
+      VpcId: !Ref VpcId
+      TargetType: ip
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      HealthCheckProtocol: HTTP
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-shine-ml-service-tg'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: shine-ml-service
+
+  # Target Group for API Gateway
+  APIGatewayTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${Environment}-shine-api-gateway-tg'
+      Protocol: HTTP
+      Port: 8080
+      VpcId: !Ref VpcId
+      TargetType: ip
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      HealthCheckProtocol: HTTP
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-shine-api-gateway-tg'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: shine-api-gateway
+
+  # Application Load Balancer
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${Environment}-shine-skincare-alb'
+      Scheme: internet-facing
+      Type: application
+      Subnets: !Ref PublicSubnetIds
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      # Enable access logs if needed
+      LoadBalancerAttributes:
+        - Key: access_logs.s3.enabled
+          Value: 'false'
+        - Key: idle_timeout.timeout_seconds
+          Value: '60'
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-shine-skincare-alb'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: shine-skincare-app
+
+  # HTTP Listener (Port 80) - Redirect to HTTPS or forward directly
+  HTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions: !If
+        - HasSSLCertificate
+        - 
+          - Type: redirect
+            RedirectConfig:
+              Protocol: HTTPS
+              Port: '443'
+              StatusCode: HTTP_301
+        - 
+          - Type: forward
+            TargetGroupArn: !Ref APIGatewayTargetGroup
+
+  # HTTPS Listener (Port 443) - Default to API Gateway
+  HTTPSListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Protocol: !If 
+        - HasSSLCertificate
+        - HTTPS
+        - HTTP
+      Port: !If 
+        - HasSSLCertificate
+        - 443
+        - 80
+      SslPolicy: !If 
+        - HasSSLCertificate
+        - ELBSecurityPolicy-TLS-1-2-2017-01
+        - !Ref 'AWS::NoValue'
+      Certificates: !If 
+        - HasSSLCertificate
+        - 
+          - CertificateArn: !Ref SSLCertificateArn
+        - !Ref 'AWS::NoValue'
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref APIGatewayTargetGroup
+
+  # Listener Rule for ML Service (/ml/* -> ML Service)
+  MLServiceListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref HTTPSListener
+      Priority: 100
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /ml/*
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref MLServiceTargetGroup
+
+  # IAM Role for ALB (if needed for logging)
+  ALBServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${Environment}-shine-alb-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: elasticloadbalancing.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-shine-alb-role'
+        - Key: Environment
+          Value: !Ref Environment
+
+# Conditions
+Conditions:
+  HasSSLCertificate: !Not [!Equals [!Ref SSLCertificateArn, '']]
+  HasDomainName: !Not [!Equals [!Ref DomainName, '']]
+
+Outputs:
+  ALBDNSName:
+    Description: DNS name of the Application Load Balancer
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Export:
+      Name: !Sub '${Environment}-shine-alb-dns'
+
+  ALBArn:
+    Description: ARN of the Application Load Balancer
+    Value: !Ref ApplicationLoadBalancer
+    Export:
+      Name: !Sub '${Environment}-shine-alb-arn'
+
+  MLServiceTargetGroupArn:
+    Description: ARN of the ML Service Target Group
+    Value: !Ref MLServiceTargetGroup
+    Export:
+      Name: !Sub '${Environment}-shine-ml-service-tg-arn'
+
+  APIGatewayTargetGroupArn:
+    Description: ARN of the API Gateway Target Group
+    Value: !Ref APIGatewayTargetGroup
+    Export:
+      Name: !Sub '${Environment}-shine-api-gateway-tg-arn'
+
+  ALBSecurityGroupId:
+    Description: ID of the ALB Security Group
+    Value: !Ref ALBSecurityGroup
+    Export:
+      Name: !Sub '${Environment}-shine-alb-sg-id'
+
+  ServiceEndpoints:
+    Description: Service endpoints for testing
+    Value: !If
+      - HasSSLCertificate
+      - !Sub |
+        ML Service: https://${ApplicationLoadBalancer.DNSName}/ml/
+        API Gateway: https://${ApplicationLoadBalancer.DNSName}/
+      - !Sub |
+        ML Service: http://${ApplicationLoadBalancer.DNSName}/ml/
+        API Gateway: http://${ApplicationLoadBalancer.DNSName}/
+    Export:
+      Name: !Sub '${Environment}-shine-service-endpoints'
+
+  HTTPSStatus:
+    Description: HTTPS configuration status
+    Value: !If 
+      - HasSSLCertificate
+      - "HTTPS Enabled with SSL Certificate"
+      - "HTTPS Enabled (No SSL Certificate - Using ALB Default)"
+    Export:
+      Name: !Sub '${Environment}-shine-https-status'

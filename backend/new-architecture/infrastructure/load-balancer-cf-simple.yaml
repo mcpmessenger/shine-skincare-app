@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Application Load Balancer for Shine Skincare App ECS Services with HTTPS Support'
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID where the ECS cluster is running
+  
+  PublicSubnetIds:
+    Type: CommaDelimitedList
+    Description: Comma-separated list of public subnet IDs for the ALB
+  
+  ECSClusterName:
+    Type: String
+    Default: shine-ml-cluster
+    Description: Name of the ECS cluster
+
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: [development, staging, production]
+    Description: Environment name
+
+Resources:
+  # Security Group for ALB
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${Environment}-shine-alb-sg'
+      GroupDescription: Security group for Shine Skincare App Load Balancer
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP access
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS access
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-shine-alb-sg'
+        - Key: Environment
+          Value: !Ref Environment
