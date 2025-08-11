@@ -35,22 +35,8 @@ PORT = int(os.getenv('PORT', 8000))
 
 # Initialize S3 client with error handling
 try:
-    # Try different initialization methods for boto3 compatibility
-    try:
-        s3_client = boto3.client('s3')
-        logger.info("S3 client initialized successfully with standard method")
-    except TypeError as e:
-        if "aws_account_id" in str(e):
-            # Fallback for boto3 version compatibility issues
-            import boto3.session
-            session = boto3.session.Session()
-            s3_client = session.client('s3')
-            logger.info("S3 client initialized successfully with session fallback")
-        else:
-            raise e
-    except Exception as e:
-        logger.error(f"Failed to initialize S3 client: {e}")
-        s3_client = None
+    s3_client = boto3.client('s3')
+    logger.info("S3 client initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize S3 client: {e}")
     s3_client = None
