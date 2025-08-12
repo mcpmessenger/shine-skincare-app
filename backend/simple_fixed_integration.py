@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class SimpleFixedModelIntegration:
     """Simple integration class for the fixed ML model with improved accuracy"""
     
-    def __init__(self, model_path: str = "models/fixed_model_final.h5", s3_bucket: str = "muse2025", model_filename: str = "fixed_model_final.h5"):
+    def __init__(self, model_path: str = "models/fixed_model_best.h5", s3_bucket: str = "muse2025", model_filename: str = "fixed_model_best.h5"):
         """
         Initialize the fixed model integration
         
@@ -574,5 +574,5 @@ if __name__ == "__main__":
     
     print("\n✅ Simple fixed model integration ready!")
     print("🚀 Use the Flask endpoints to analyze skin with improved accuracy!")
-    print("📁 Model: models/fixed_model_final.h5")
+    print("📁 Model: models/fixed_model_best.h5")
     print("📊 Results: results/fixed_training_results.json")

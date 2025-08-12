@@ -1,0 +1,29 @@
+# 🐇 HARE RUN V6 PYTHON 3.11 COMPATIBLE REQUIREMENTS
+# Ultra-fast, aggressive training for maximum accuracy
+# Optimized for Python 3.11 and AWS deployment
+
+# Core ML Framework (Python 3.11 compatible)
+tensorflow>=2.13.0
+keras>=2.13.0
+
+# Data Processing (Python 3.11 compatible)
+numpy>=1.24.0
+Pillow>=10.0.0
+opencv-python-headless>=4.8.0
+
+# Machine Learning (Python 3.11 compatible)
+scikit-learn>=1.3.0
+pandas>=2.0.0
+
+# Visualization (AWS-compatible)
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Utilities (Essential only)
+pathlib2>=2.3.7
+
+# AWS-Specific Optimizations
+# - No GPU dependencies (CPU-first)
+# - No heavy augmentation libraries
+# - Memory-efficient versions
+# - Compatible with Python 3.11

@@ -1,0 +1,43 @@
+# 🐇 HARE RUN V6 TRAINING SYSTEM REQUIREMENTS
+# Ultra-fast, aggressive training for maximum accuracy
+
+# Core ML Framework
+tensorflow>=2.12.0
+keras>=2.12.0
+
+# Data Processing
+numpy>=1.21.0
+Pillow>=9.0.0
+opencv-python>=4.7.0
+scikit-image>=0.19.0
+
+# Machine Learning
+scikit-learn>=1.2.0
+pandas>=1.5.0
+
+# Visualization
+matplotlib>=3.6.0
+seaborn>=0.12.0
+
+# Utilities
+pathlib2>=2.3.7
+tqdm>=4.64.0
+
+# Performance Optimization
+tensorflow-gpu>=2.12.0  # If GPU available
+tensorflow-addons>=0.20.0  # For advanced augmentation
+
+# Data Augmentation (Advanced)
+albumentations>=1.3.0  # For MixUp and CutMix
+imgaug>=0.4.0  # For advanced augmentation
+
+# Monitoring and Logging
+wandb>=0.15.0  # Optional: for experiment tracking
+tensorboard>=2.12.0  # For training visualization
+
+# Memory Optimization
+psutil>=5.9.0  # For memory monitoring
+memory-profiler>=0.60.0  # For memory profiling
+
+# Fast Data Loading
+tfds-nightly  # For fast dataset loading
