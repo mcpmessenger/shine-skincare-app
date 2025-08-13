@@ -45,6 +45,9 @@ export function Header({ showProductsTab = true, title }: HeaderProps) {
               Products
             </Link>
           )}
+          <Link href="/training-dashboard" className="text-secondary no-underline text-sm font-medium p-3 rounded-xl transition-all duration-200 bg-secondary hover:bg-hover shadow-sm">
+            Training
+          </Link>
         </nav>
 
         {/* Right Side Controls */}

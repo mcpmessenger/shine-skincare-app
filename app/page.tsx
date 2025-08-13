@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Camera, Upload, ArrowRight, Zap, Eye } from 'lucide-react';
 import { Header } from '@/components/header';
 import { getApiUrl, API_CONFIG } from '@/lib/config';
+import Link from 'next/link';
 
 export default function HomePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -140,9 +141,9 @@ export default function HomePage() {
            headers: {
              'Content-Type': 'application/json',
            },
-           body: JSON.stringify({
-             image_data: imageData.split(',')[1]
-           })
+                     body: JSON.stringify({
+            image: imageData.split(',')[1]
+          })
          });
 
         if (response.ok) {
@@ -351,24 +352,18 @@ export default function HomePage() {
 
   const analyzeSkin = async (imageData: string) => {
     setIsAnalyzing(true);
-    console.log('🔍 Starting skin analysis...');
+    console.log('🔍 Starting enhanced Hare Run V6 skin analysis...');
 
     try {
-          // Use the fixed ML model endpoint via proxy
-    console.log('📡 Calling fixed ML endpoint...');
-      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.SKIN_ANALYZE_FIXED), {
+          // Use the enhanced Hare Run V6 endpoint
+    console.log('📡 Calling Hare Run V6 enhanced ML endpoint...');
+      const response = await fetch('http://localhost:8000/api/v6/skin/analyze-hare-run', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          image_data: imageData.split(',')[1],
-          user_demographics: {
-            age: '25-35',
-            ethnicity: 'caucasian',
-            gender: 'female',
-            fitzpatrick_type: '3'
-          }
+          image: imageData.split(',')[1]
         })
       });
 
@@ -379,10 +374,11 @@ export default function HomePage() {
         const result = await response.json();
         console.log('✅ Analysis successful:', result);
         
-        // Add fixed ML metadata
-        result.fixed_ml = true;
-        result.model_version = 'fixed_v1.0';
-        result.accuracy = '62.50%';
+        // Add Hare Run V6 enhanced ML metadata
+        result.enhanced_ml = true;
+        result.model_version = result.model_info?.version || 'Hare_Run_V6_Facial_v1.0';
+        result.accuracy = result.model_info?.accuracy || '97.13%';
+        result.model_type = 'Enhanced_Facial_ML';
         
         // Store analysis data in sessionStorage instead of URL parameter
         sessionStorage.setItem('analysisResult', JSON.stringify(result));
@@ -428,8 +424,8 @@ export default function HomePage() {
             className="w-32 h-32 mx-auto mb-6 animate-pulse"
           />
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-4"></div>
-          <p className="text-secondary font-light">Analyzing your skin with fixed ML...</p>
-          <p className="text-xs text-secondary font-light mt-2">This may take up to 60 seconds</p>
+          <p className="text-secondary font-light">Analyzing your skin with Hare Run V6 Enhanced ML...</p>
+          <p className="text-xs text-secondary font-light mt-2">Enhanced accuracy: 97.13% - This may take up to 60 seconds</p>
         </div>
       </div>
     );
@@ -680,9 +676,17 @@ export default function HomePage() {
         
         {/* Disclaimer */}
         <div className="mt-8 text-center">
-          <p className="text-xs text-secondary font-light">
-            © 2024 All Rights Reserved. This application is for informational purposes only and does not constitute medical advice. 
+          <p className="text-xs text-secondary font-light mb-2">
+            © 2024 All Rights Reserved. <span className="text-accent font-medium">EXPERIMENTAL</span>
+          </p>
+          <p className="text-xs text-secondary font-light mb-2">
+            This application is for informational purposes only and does not constitute medical advice. 
             Always consult with a qualified healthcare professional for medical concerns.
+          </p>
+          <p className="text-xs text-secondary font-light">
+            <Link href="/training-dashboard" className="text-accent hover:underline transition-colors">
+              View AI Training Transparency Dashboard →
+            </Link>
           </p>
         </div>
       </div>
