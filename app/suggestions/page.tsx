@@ -121,6 +121,12 @@ interface AnalysisResult {
   all_predictions?: {
     [key: string]: number;
   };
+  result?: {
+    health_score: number;
+    primary_concerns: string[];
+    severity_levels: { [key: string]: string };
+    conditions: { [key: string]: { confidence: number; severity: string; description?: string } };
+  };
 }
 
 function SuggestionsPageContent() {
@@ -133,6 +139,20 @@ function SuggestionsPageContent() {
   // Debug logging
   useEffect(() => {
     console.log('🛒 Cart items:', cartItems);
+    console.log('🔍 Analysis result:', analysisResult);
+    console.log('🔍 Hare Run V6 data structure:', {
+      hasResult: !!analysisResult?.result,
+      healthScore: analysisResult?.result?.health_score,
+      primaryConcerns: analysisResult?.result?.primary_concerns,
+      conditions: analysisResult?.result?.conditions,
+      severityLevels: analysisResult?.result?.severity_levels
+    });
+    console.log('🔍 Extracted data:', {
+      primaryCondition: getPrimaryCondition(),
+      detectedConditions: getDetectedConditions(),
+      analysisSummary: getAnalysisSummary(),
+      severityAssessment: getSeverityAssessment()
+    });
     console.log('🛒 Recommended products:', getRecommendedProducts());
   }, [cartItems, analysisResult]);
 
@@ -205,7 +225,69 @@ function SuggestionsPageContent() {
     if (analysisResult?.primary_condition?.confidence) {
       return Math.round(analysisResult.primary_condition.confidence * 100);
     }
+    // NEW: Handle Hare Run V6 enhanced analyzer response
+    if (analysisResult?.result?.health_score) {
+      return Math.round(analysisResult.result.health_score);
+    }
     return analysisResult?.confidence_score ? getConfidenceScore(analysisResult.confidence_score) : 0;
+  };
+
+  // NEW: Extract primary condition from Hare Run V6 response
+  const getPrimaryCondition = () => {
+    if (analysisResult?.result?.primary_concerns && analysisResult.result.primary_concerns.length > 0) {
+      const primary = analysisResult.result.primary_concerns[0];
+      return {
+        name: primary,
+        confidence: analysisResult.result.health_score || 0,
+        severity: analysisResult.result.severity_levels?.[primary] || 'moderate'
+      };
+    }
+    return null;
+  };
+
+  // NEW: Extract detected conditions from Hare Run V6 response
+  const getDetectedConditions = () => {
+    if (analysisResult?.result?.conditions) {
+      const conditions = [];
+      for (const [condition, data] of Object.entries(analysisResult.result.conditions)) {
+        if (data && typeof data === 'object' && 'severity' in data) {
+          conditions.push({
+            name: condition,
+            confidence: data.confidence || 0,
+            severity: data.severity || 'moderate',
+            description: data.description || `Detected ${condition}`
+          });
+        }
+      }
+      return conditions;
+    }
+    return [];
+  };
+
+  // NEW: Generate analysis summary from Hare Run V6 response
+  const getAnalysisSummary = () => {
+    if (analysisResult?.result?.primary_concerns && analysisResult.result.health_score) {
+      const concerns = analysisResult.result.primary_concerns.join(', ');
+      return `Analysis detected: ${concerns}. Overall health score: ${analysisResult.result.health_score}/100`;
+    }
+    return analysisResult?.analysis_summary || 'Analysis completed successfully';
+  };
+
+  // NEW: Get severity assessment from Hare Run V6 response
+  const getSeverityAssessment = () => {
+    if (analysisResult?.result?.severity_levels) {
+      const levels = analysisResult.result.severity_levels;
+      const overallSeverity = Object.values(levels).reduce((max, current) => {
+        const severityOrder: { [key: string]: number } = { 'none': 0, 'minimal': 1, 'low': 2, 'moderate': 3, 'severe': 4 };
+        return severityOrder[current] > severityOrder[max] ? current : max;
+      }, 'none');
+      
+      return {
+        level: overallSeverity,
+        description: `Overall severity: ${overallSeverity}`
+      };
+    }
+    return { level: 'unknown', description: 'Severity assessment unavailable' };
   };
 
   const getConditionProbability = (condition: string): number => {
@@ -422,12 +504,15 @@ function SuggestionsPageContent() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-xl font-medium capitalize">
-                      {typeof analysisResult.primary_condition === 'string' 
+                      {getPrimaryCondition()?.name || 
+                       (typeof analysisResult.primary_condition === 'string' 
                         ? analysisResult.primary_condition 
-                        : analysisResult.primary_condition?.condition || 'Healthy'}
+                        : analysisResult.primary_condition?.condition || 'Healthy')}
                     </h4>
                     <p className="text-secondary text-sm mt-1">
-                      {analysisResult.summary || 'Your skin appears to be in good condition.'}
+                      {getAnalysisSummary() || 
+                       analysisResult.summary || 
+                       'Your skin appears to be in good condition.'}
                     </p>
                   </div>
                   <div className="text-right">
@@ -477,6 +562,42 @@ function SuggestionsPageContent() {
                     {typeof analysisResult.severity === 'string' ? analysisResult.severity : analysisResult.severity.level} Severity
                   </span>
                 </div>
+              </div>
+            )}
+
+            {/* NEW: Hare Run V6 Detected Conditions */}
+            {getDetectedConditions().length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-light mb-3">Detected Conditions</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {getDetectedConditions().map((condition, index) => (
+                    <div key={index} className="bg-primary/5 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium capitalize">
+                          {condition.name.replace('_', ' ')}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded-full ${getSeverityColor(condition.severity)}`}>
+                          {condition.severity}
+                        </span>
+                      </div>
+                      <p className="text-xs text-secondary">{condition.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* NEW: Hare Run V6 Severity Assessment */}
+            {getSeverityAssessment().level !== 'unknown' && (
+              <div className="mb-6">
+                <h3 className="text-lg font-light mb-2">Overall Severity Assessment</h3>
+                <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${getSeverityColor(getSeverityAssessment().level)}`}>
+                  {getSeverityIcon(getSeverityAssessment().level)}
+                  <span className="ml-2 capitalize">
+                    {getSeverityAssessment().level} Severity
+                  </span>
+                </div>
+                <p className="text-sm text-secondary mt-2">{getSeverityAssessment().description}</p>
               </div>
             )}
             {cartItems.length > 0 && (
