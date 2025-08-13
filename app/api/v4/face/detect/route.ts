@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the backend URL from environment or use default
-    // Updated to use port 8000 for production backend
-    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://shineskincollective.com:8000';
+    // Use standard HTTPS port for production backend
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://shineskincollective.com';
     
     try {
       // First try to forward the request to the Flask backend
