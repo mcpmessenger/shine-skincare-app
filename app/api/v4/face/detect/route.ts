@@ -7,11 +7,12 @@ export async function POST(request: NextRequest) {
     // Get the request body as JSON
     const requestBody = await request.json();
     
-    // Check if image_data is provided
-    if (!requestBody.image_data) {
+    // Check if image data is provided (accept both field names)
+    const imageData = requestBody.image_data || requestBody.image;
+    if (!imageData) {
       return NextResponse.json(
         { 
-          error: 'Missing image_data',
+          error: 'Missing image data (image_data or image field required)',
           fallback_available: true
         },
         { status: 400 }
@@ -26,13 +27,18 @@ export async function POST(request: NextRequest) {
       // First try to forward the request to the Flask backend
       console.log(`🔍 Attempting to connect to Flask backend at: ${backendUrl}/api/v4/face/detect`);
       
+      // Prepare request body for backend (use image_data field)
+      const backendRequestBody = {
+        image_data: imageData
+      };
+      
       const response = await fetch(`${backendUrl}/api/v4/face/detect`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(backendRequestBody),
         // Add timeout and better error handling
         signal: AbortSignal.timeout(10000) // 10 second timeout
       });
