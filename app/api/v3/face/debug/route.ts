@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     };
     
     // Test backend connectivity
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elb.amazonaws.com';
     let backendStatus = 'unknown';
     let backendResponse = null;
     

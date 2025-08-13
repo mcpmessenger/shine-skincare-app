@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the backend URL from environment or use default
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elb.amazonaws.com';
     
     console.log(`🔍 Direct connection to backend at: ${backendUrl}/api/v3/face/detect`);
     
