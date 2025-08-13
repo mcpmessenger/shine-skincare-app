@@ -654,7 +654,7 @@ export const analyzeSelfie = async (file: File): Promise<ApiResponse<{
     const formData = new FormData();
     formData.append('image', file);
 
-            const response = await fetch(`${this.baseUrl || 'https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elb.amazonaws.com'}/api/v2/selfie/analyze`, {
+            const response = await fetch(`${this.baseUrl || 'https://shineskincollective.com'}/api/v2/selfie/analyze`, {
       method: 'POST',
       body: formData,
     });
@@ -708,7 +708,7 @@ export const analyzeSkin = async (file: File): Promise<ApiResponse<{
     const formData = new FormData();
     formData.append('image', file);
 
-            const response = await fetch(`${this.baseUrl || 'https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elb.amazonaws.com'}/api/v2/skin/analyze`, {
+            const response = await fetch(`${this.baseUrl || 'https://shineskincollective.com'}/api/v2/skin/analyze`, {
       method: 'POST',
       body: formData,
     });
@@ -771,7 +771,7 @@ export const analyzeMedical = async (file: File, ethnicity?: string, age?: strin
       formData.append('age', age);
     }
 
-            const response = await fetch(`${this.baseUrl || 'https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elb.amazonaws.com'}/api/v2/medical/analyze`, {
+            const response = await fetch(`${this.baseUrl || 'https://shineskincollective.com'}/api/v2/medical/analyze`, {
       method: 'POST',
       body: formData,
     });
@@ -817,7 +817,7 @@ export const getMedicalHistory = async (user_id?: string, limit?: number): Promi
     if (user_id) params.append('user_id', user_id);
     if (limit) params.append('limit', limit.toString());
 
-            const response = await fetch(`${this.baseUrl || 'https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elb.amazonaws.com'}/api/v2/medical/history?${params}`);
+            const response = await fetch(`${this.baseUrl || 'https://shineskincollective.com'}/api/v2/medical/history?${params}`);
     const data = await response.json();
     
     return { 
@@ -846,7 +846,7 @@ export const getMedicalAnalysisDetails = async (analysis_id: string): Promise<Ap
   analysis_details: any;
 }>> => {
   try {
-            const response = await fetch(`${this.baseUrl || 'https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elb.amazonaws.com'}/api/v2/medical/analysis/${analysis_id}`);
+            const response = await fetch(`${this.baseUrl || 'https://shineskincollective.com'}/api/v2/medical/analysis/${analysis_id}`);
     const data = await response.json();
     
     return { 
@@ -959,7 +959,7 @@ export async function processImageLightweight(imageFile: File): Promise<any> {
     const formData = new FormData();
     formData.append('image', imageFile);
     
-            const response = await fetch(`${this.baseUrl || 'https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elb.amazonaws.com'}/api/v2/image/process-lightweight`, {
+            const response = await fetch(`${this.baseUrl || 'https://shineskincollective.com'}/api/v2/image/process-lightweight`, {
       method: 'POST',
       body: formData,
     });
@@ -1081,9 +1081,9 @@ export async function checkBackendHealth(): Promise<any> {
     console.log('🏥 Checking backend health...');
     
     const healthChecks = await Promise.allSettled([
-                        fetch(`${this.baseUrl || 'https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elb.amazonaws.com'}/api/v2/ai/health`),
-        fetch(`${this.baseUrl || 'https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elb.amazonaws.com'}/api/v2/image/process-lightweight`),
-        fetch(`${this.baseUrl || 'https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elb.amazonaws.com'}/api/health`)
+                        fetch(`${this.baseUrl || 'https://shineskincollective.com'}/api/v2/ai/health`),
+fetch(`${this.baseUrl || 'https://shineskincollective.com'}/api/v2/image/process-lightweight`),
+fetch(`${this.baseUrl || 'https://shineskincollective.com'}/api/health`)
     ]);
     
     const results = healthChecks.map((result, index) => {

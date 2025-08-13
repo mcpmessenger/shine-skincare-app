@@ -1,7 +1,7 @@
 // Direct Backend Communication Utility
 // This bypasses the Next.js API routes to communicate directly with the Flask backend
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elb.amazonaws.com';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://shineskincollective.com';
 
 export interface BackendResponse<T = any> {
   success: boolean;
