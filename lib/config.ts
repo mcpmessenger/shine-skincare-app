@@ -5,7 +5,7 @@
 // Backend API configuration
 export const API_CONFIG = {
   // Backend base URL - use production backend or localhost for development
-  BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elb.amazonaws.com',
+  BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://shineskincollective.com',
   
   // API endpoints
   ENDPOINTS: {
