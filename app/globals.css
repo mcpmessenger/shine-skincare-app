@@ -654,3 +654,100 @@ body[data-theme="dark"] .theme-toggle:hover .theme-toggle-thumb {
   font-weight: 500;
   text-align: center;
 }
+
+/* Training Dashboard Theme Classes */
+.bg-primary {
+  background-color: var(--light-bg-primary);
+  color: var(--light-text-primary);
+}
+
+.bg-secondary {
+  background-color: var(--light-bg-secondary);
+  border-color: var(--light-border);
+}
+
+.bg-hover {
+  background-color: var(--light-hover);
+}
+
+.border-border {
+  border-color: var(--light-border);
+}
+
+.text-primary {
+  color: var(--light-text-primary);
+}
+
+.text-secondary {
+  color: var(--light-text-secondary);
+}
+
+.text-tertiary {
+  color: var(--light-text-tertiary);
+}
+
+.text-accent {
+  color: var(--accent-color);
+}
+
+/* Dark Mode Overrides */
+body[data-theme="dark"] .bg-primary {
+  background-color: var(--dark-bg-primary);
+  color: var(--dark-text-primary);
+}
+
+body[data-theme="dark"] .bg-secondary {
+  background-color: var(--dark-bg-secondary);
+  border-color: var(--dark-border);
+}
+
+body[data-theme="dark"] .bg-hover {
+  background-color: var(--dark-hover);
+}
+
+body[data-theme="dark"] .border-border {
+  border-color: var(--dark-border);
+}
+
+body[data-theme="dark"] .text-primary {
+  color: var(--dark-text-primary);
+}
+
+body[data-theme="dark"] .text-secondary {
+  color: var(--dark-text-secondary);
+}
+
+body[data-theme="dark"] .text-tertiary {
+  color: var(--dark-text-tertiary);
+}
+
+/* Training Dashboard Specific Styles */
+.training-progress-bar {
+  transition: width var(--transition-normal);
+}
+
+.training-metric-card {
+  transition: all var(--transition-normal);
+}
+
+.training-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .training-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .training-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .training-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
