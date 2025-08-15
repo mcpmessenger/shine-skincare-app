@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the backend URL from environment or use default
-    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://shineskincollective.com';
+         const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.shineskincollective.com';
     
     console.log(`🔍 Direct connection to backend at: ${backendUrl}/api/v3/face/detect`);
     

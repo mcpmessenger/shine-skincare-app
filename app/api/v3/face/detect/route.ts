@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     // Get the backend URL from environment or use default
     // Force use port 5000 since backend is running there
-    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://shineskincollective.com';
+         const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.shineskincollective.com';
     
     try {
       // First try to forward the request to the Flask backend
