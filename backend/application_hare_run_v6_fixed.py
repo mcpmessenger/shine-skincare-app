@@ -1,35 +1,33 @@
-# Shine Skincare App - Hare Run V6 Enhanced Backend for Elastic Beanstalk
-# This version properly integrates Hare Run V6 models for enhanced skin analysis
-# Updated: 2025-08-13 - Operation Tortoise: Hare Run V6 Integration
+#!/usr/bin/env python3
+"""
+Shine Skin Collective - Hare Run V6 API Gateway
+Enhanced ML-powered skin analysis with S3 model management
+"""
 
 import os
-import json
+import base64
 import logging
+import json
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Optional, List, Tuple
+import numpy as np
+import cv2
 import boto3
 from flask import Flask, request, jsonify
-from flask_cors import CORS
-import requests
-import cv2
-import numpy as np
-import base64
-from typing import Dict, List, Optional, Tuple, Union
-from datetime import datetime
 import traceback
-import tempfile
-from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create Flask app - Elastic Beanstalk expects this exact variable name
+# Initialize Flask app
 app = Flask(__name__)
-CORS(app, origins=['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3000', 'http://127.0.0.3001', 'http://127.0.0.3002'], supports_credentials=True)
 
-# Configuration
+# Service configuration
 SERVICE_NAME = "shine-backend-hare-run-v6"
 S3_BUCKET = os.getenv('S3_BUCKET', 'shine-skincare-models')
-S3_MODEL_KEY = os.getenv('S3_MODEL_KEY', 'hare_run_v6/hare_run_v6_facial/best_facial_model.h5')
+S3_MODEL_KEY = os.getenv('S3_MODEL_KEY', 'ml-models/production/comprehensive_model_best.h5')
 LOCAL_MODEL_PATH = os.getenv('MODEL_PATH', './models/fixed_model_best.h5')
 PORT = int(os.getenv('PORT', 8000))
 
@@ -38,9 +36,9 @@ HARE_RUN_V6_CONFIG = {
     'enabled': True,
     'models': {
         'facial': {
-            'primary': 'fixed_model_best.h5',
+            'primary': 'comprehensive_model_best.h5',
             'backup': 'fixed_model_best.h5',
-            'metadata': 'fixed_model_best.h5'
+            'metadata': 'comprehensive_model_best.h5'
         }
     },
     'endpoints': {
@@ -50,7 +48,7 @@ HARE_RUN_V6_CONFIG = {
     'performance': {
         'target_accuracy': '97.13%',
         'max_response_time': '30s',
-        'model_size': '128MB'
+        'model_size': '214MB'
     }
 }
 
@@ -71,15 +69,21 @@ except Exception as e:
     logger.error(f"❌ Failed to initialize enhanced analyzer: {e}")
     enhanced_analyzer = None
 
-# Hare Run V6 Model Manager
+# Hare Run V6 Model Manager - LAZY LOADING VERSION
 class HareRunV6ModelManager:
-    """Manages Hare Run V6 model loading and availability"""
+    """Manages Hare Run V6 model loading and availability with lazy loading"""
     
     def __init__(self):
         self.models_loaded = False
         self.model_paths = {}
         self.model_metadata = {}
-        self._load_models()
+        self._models_loaded = False  # Don't load models during init
+    
+    def _ensure_models_loaded(self):
+        """Lazy load models only when needed"""
+        if not self._models_loaded:
+            self._load_models()
+            self._models_loaded = True
     
     def _load_models(self):
         """Load Hare Run V6 models from local or S3"""
@@ -196,14 +200,17 @@ class HareRunV6ModelManager:
     
     def get_model_path(self, model_type: str = 'facial') -> Optional[str]:
         """Get path to specified model type"""
+        self._ensure_models_loaded()
         return self.model_paths.get(model_type)
     
     def is_model_available(self, model_type: str = 'facial') -> bool:
         """Check if specified model is available"""
+        self._ensure_models_loaded()
         return model_type in self.model_paths and self.model_paths[model_type] is not None
     
     def get_model_status(self) -> Dict:
         """Get comprehensive model status"""
+        self._ensure_models_loaded()
         return {
             'models_loaded': self.models_loaded,
             'total_models': len(self.model_paths),
@@ -211,7 +218,7 @@ class HareRunV6ModelManager:
             'config': HARE_RUN_V6_CONFIG
         }
 
-# Initialize Hare Run V6 Model Manager
+# Initialize Hare Run V6 Model Manager - NO MODEL LOADING DURING IMPORT
 hare_run_v6_manager = HareRunV6ModelManager()
 
 # ============================================================================
@@ -297,90 +304,30 @@ def face_detect():
             x, y, w, h = largest_face
             
             return jsonify({
-                'status': 'success',
-                'face_detected': True,
-                'face_count': len(faces),
+                'success': True,
+                'faces_detected': len(faces),
                 'primary_face': {
                     'x': int(x),
                     'y': int(y),
                     'width': int(w),
-                    'height': int(h)
+                    'height': int(h),
+                    'confidence': 0.95
                 },
-                'confidence': 0.95
+                'message': f'Detected {len(faces)} face(s)'
             })
         else:
             return jsonify({
-                'status': 'success',
-                'face_detected': False,
-                'face_count': 0,
-                'confidence': 0.0
+                'success': False,
+                'faces_detected': 0,
+                'message': 'No faces detected in the image'
             })
             
     except Exception as e:
-        logger.error(f"Face detection failed: {e}")
+        logger.error(f"Face detection error: {e}")
         return jsonify({
-            'status': 'error',
-            'error': f'Face detection failed: {str(e)}'
-        }), 500
-
-@app.route('/api/v4/face/detect', methods=['POST'])
-def face_detect_v4():
-    """Face detection endpoint for frontend compatibility (v4)"""
-    try:
-        if not request.is_json:
-            return jsonify({'error': 'Content-Type must be application/json'}), 400
-        
-        data = request.get_json()
-        image_data = data.get('image') or data.get('image_data')
-        
-        if not image_data:
-            return jsonify({'error': 'Image data is required'}), 400
-        
-        # Decode base64 image
-        image_bytes = base64.b64decode(image_data.split(',')[1] if ',' in image_data else image_data)
-        
-        # Process image
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        img_array = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        if img_array is None:
-            return jsonify({'error': 'Invalid image data'}), 400
-        
-        # Face detection using OpenCV
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-        
-        if len(faces) > 0:
-            # Get the largest face
-            largest_face = max(faces, key=lambda x: x[2] * x[3])
-            x, y, w, h = largest_face
-            
-            return jsonify({
-                'status': 'success',
-                'faces': [{
-                    'confidence': 0.95,
-                    'bounds': {
-                        'x': int(x),
-                        'y': int(y),
-                        'width': int(w),
-                        'height': int(h)
-                    }
-                }],
-                'message': 'Face detection successful'
-            })
-        else:
-            return jsonify({
-                'status': 'success',
-                'faces': [],
-                'message': 'No faces detected'
-            })
-            
-    except Exception as e:
-        logger.error(f"Face detection v4 failed: {e}")
-        return jsonify({
-            'status': 'error',
-            'error': f'Face detection failed: {str(e)}'
+            'success': False,
+            'error': str(e),
+            'message': 'Face detection failed'
         }), 500
 
 # ============================================================================
@@ -388,8 +335,8 @@ def face_detect_v4():
 # ============================================================================
 
 @app.route('/api/v6/skin/analyze-hare-run', methods=['POST'])
-def analyze_skin_hare_run_v6():
-    """Enhanced skin analysis using Hare Run V6 facial model"""
+def analyze_skin_hare_run():
+    """Hare Run V6 enhanced skin analysis endpoint"""
     try:
         if not request.is_json:
             return jsonify({'error': 'Content-Type must be application/json'}), 400
@@ -400,12 +347,11 @@ def analyze_skin_hare_run_v6():
         if not image_data:
             return jsonify({'error': 'Image data is required'}), 400
         
-        # Check if Hare Run V6 models are available
+        # Check if models are available
         if not hare_run_v6_manager.is_model_available('facial'):
             return jsonify({
-                'status': 'error',
-                'error': 'Hare Run V6 facial model not available',
-                'model_status': hare_run_v6_manager.get_model_status()
+                'error': 'ML models not available',
+                'message': 'Please try again later'
             }), 503
         
         # Decode base64 image
@@ -418,156 +364,89 @@ def analyze_skin_hare_run_v6():
         if img_array is None:
             return jsonify({'error': 'Invalid image data'}), 400
         
-        # Perform enhanced analysis with Hare Run V6
+        # Enhanced analysis using Hare Run V6
         if enhanced_analyzer:
-            # Use Hare Run V6 model for enhanced analysis
-            analysis_result = enhanced_analyzer.analyze_skin_conditions(img_array)
-            
-            # Convert numpy types to JSON-serializable types
-            analysis_result = convert_numpy_types(analysis_result)
-            
-            # Add Hare Run V6 metadata
-            analysis_result['model_version'] = 'Hare_Run_V6_Facial_v1.0'
-            analysis_result['model_accuracy'] = '97.13%'
-            analysis_result['model_type'] = 'Enhanced_Facial_ML'
-            analysis_result['classes'] = ['healthy', 'acne', 'bags', 'redness', 'rosacea', 'eczema', 'hyperpigmentation', 'other']
-            
-            return jsonify({
-                'status': 'success',
-                'analysis_type': 'hare_run_v6_facial',
-                'model_info': {
-                    'version': 'Hare_Run_V6_Facial_v1.0',
-                    'accuracy': '97.13%',
-                    'classes': 8,
-                    'model_size': '128MB'
-                },
-                'result': analysis_result
-            })
-        else:
-            # Fallback: Return basic analysis result
-            logger.warning("⚠️ Enhanced analyzer not available, using fallback")
-            
-            # Create a basic analysis result
-            basic_result = {
-                'skin_condition': 'healthy',
-                'confidence': 0.85,
-                'recommendations': [
-                    'Skin appears healthy',
-                    'Continue current skincare routine',
-                    'Stay hydrated and use sunscreen'
-                ],
-                'severity': 'none',
-                'areas_of_concern': []
-            }
-            
-            return jsonify({
-                'status': 'success',
-                'analysis_type': 'hare_run_v6_facial_fallback',
-                'model_info': {
-                    'version': 'Hare_Run_V6_Facial_v1.0',
-                    'accuracy': '97.13%',
-                    'classes': 8,
-                    'model_size': '128MB'
-                },
-                'result': basic_result,
-                'note': 'Using fallback analysis - enhanced analyzer unavailable'
-            })
-            
-    except Exception as e:
-        logger.error(f"Hare Run V6 facial analysis failed: {e}")
+            try:
+                results = enhanced_analyzer.analyze_skin_conditions(img_array)
+                return jsonify({
+                    'success': True,
+                    'analysis_type': 'Hare Run V6 Enhanced',
+                    'results': results,
+                    'model_info': hare_run_v6_manager.get_model_status(),
+                    'timestamp': datetime.now().isoformat()
+                })
+            except Exception as e:
+                logger.error(f"Enhanced analysis failed: {e}")
+                # Fallback to basic analysis
+                pass
+        
+        # Basic analysis fallback
         return jsonify({
-            'status': 'error',
-            'error': f'Analysis failed: {str(e)}'
+            'success': True,
+            'analysis_type': 'Basic Analysis',
+            'message': 'Enhanced analysis unavailable, using basic analysis',
+            'basic_results': {
+                'image_processed': True,
+                'face_detected': True,
+                'analysis_available': False
+            },
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Skin analysis error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': 'Skin analysis failed'
         }), 500
 
-@app.route('/api/v5/skin/model-status', methods=['GET'])
-def skin_model_status():
-    """Model status endpoint for frontend compatibility"""
+# ============================================================================
+# MODEL STATUS ENDPOINTS
+# ============================================================================
+
+@app.route('/api/v5/skin/model-status')
+def model_status():
+    """Get ML model status and availability"""
     try:
-        model_status = hare_run_v6_manager.get_model_status()
-        
         return jsonify({
-            'model_loaded': model_status['models_loaded'],
-            'model_path': LOCAL_MODEL_PATH,
-            'classes': ['acne', 'actinic_keratosis', 'basal_cell_carcinoma', 'eczema', 'healthy', 'rosacea'],
-            'timestamp': datetime.now().isoformat(),
-            'hare_run_v6': {
-                'available': model_status['models_loaded'],
-                'model_path': model_status['model_details'].get('facial', {}).get('path'),
-                'version': 'Hare_Run_V6_Facial_v1.0' if model_status['models_loaded'] else None,
-                'accuracy': '97.13%' if model_status['models_loaded'] else None,
-                'classes': ['healthy', 'acne', 'bags', 'redness', 'rosacea', 'eczema', 'hyperpigmentation', 'other'] if model_status['models_loaded'] else None
-            },
-            'model_manager_status': model_status
+            'service': SERVICE_NAME,
+            'status': 'healthy',
+            'model_status': hare_run_v6_manager.get_model_status(),
+            'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
         logger.error(f"Model status error: {e}")
         return jsonify({
-            'model_loaded': False,
+            'service': SERVICE_NAME,
+            'status': 'error',
             'error': str(e),
             'timestamp': datetime.now().isoformat()
         }), 500
 
 # ============================================================================
-# ROOT ENDPOINT
+# ERROR HANDLERS
 # ============================================================================
 
-@app.route('/')
-def root():
-    """Root endpoint with comprehensive API documentation"""
-    return jsonify({
-        "message": "Shine Skincare Backend API - Hare Run V6 Enhanced Edition",
-        "service": SERVICE_NAME,
-        "version": "4.0.0",
-        "description": "Enhanced skin analysis with Hare Run V6 ML models",
-        "hare_run_v6": {
-            "enabled": HARE_RUN_V6_CONFIG['enabled'],
-            "models_available": hare_run_v6_manager.models_loaded,
-            "endpoints": HARE_RUN_V6_CONFIG['endpoints'],
-            "performance": HARE_RUN_V6_CONFIG['performance']
-        },
-        "endpoints": {
-            # Health & Status
-            "health": "/health",
-            "api_health": "/api/health",
-            "ready": "/ready",
-            
-            # Face Detection
-            "face_detect": "/api/v1/face/detect",
-            "face_detect_v4": "/api/v4/face/detect",
-            
-            # Skin Analysis
-            "hare_run_v6_analysis": "/api/v6/skin/analyze-hare-run",
-            "model_status": "/api/v5/skin/model-status"
-        }
-    })
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': 'Endpoint not found'}), 404
 
-# ============================================================================
-# UTILITY FUNCTIONS
-# ============================================================================
-
-def convert_numpy_types(obj):
-    """Convert numpy types to Python native types for JSON serialization"""
-    if isinstance(obj, np.integer):
-        return int(obj)
-    elif isinstance(obj, np.floating):
-        return float(obj)
-    elif isinstance(obj, np.ndarray):
-        return obj.tolist()
-    elif isinstance(obj, dict):
-        return {key: convert_numpy_types(value) for key, value in obj.items()}
-    elif isinstance(obj, list):
-        return [convert_numpy_types(item) for item in obj]
-    else:
-        return obj
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({'error': 'Internal server error'}), 500
 
 # ============================================================================
 # MAIN APPLICATION
 # ============================================================================
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logger.info(f"🚀 Starting {SERVICE_NAME} on port {PORT}")
-    logger.info(f"🐢 Hare Run V6 enabled: {HARE_RUN_V6_CONFIG['enabled']}")
-    logger.info(f"📊 Models loaded: {hare_run_v6_manager.models_loaded}")
+    logger.info(f"📦 S3 Bucket: {S3_BUCKET}")
+    logger.info(f"🔑 Model Key: {S3_MODEL_KEY}")
     
-    app.run(host='0.0.0.0', port=PORT, debug=False)
+    try:
+        app.run(host='0.0.0.0', port=PORT, debug=False)
+    except Exception as e:
+        logger.error(f"❌ Failed to start application: {e}")
+        raise

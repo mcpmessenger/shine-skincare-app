@@ -5,14 +5,17 @@
 This folder contains all backend-related documentation for the Shine Skincare App.
 
 ### **🏗️ Architecture & Deployment**
-- **[DEPLOYMENTDOC.md](./DEPLOYMENTDOC.md)** - Comprehensive deployment documentation
-- **[DEPLOYMENT_SUMMARY.md](./DEPLOYMENT_SUMMARY.md)** - Deployment status and summary
-- **[HYBRID_DEPLOYMENT_STRATEGY.md](./HYBRID_DEPLOYMENT_STRATEGY.md)** - Multi-service deployment approach
-- **[VPC Public IP Assignment Issue.md](./VPC%20Public%20IP%20Assignment%20Issue.md)** - Network configuration solutions
+- **[COMPREHENSIVE_DEPLOYMENT_STRATEGY_REVIEW.md](./COMPREHENSIVE_DEPLOYMENT_STRATEGY_REVIEW.md)** - Complete infrastructure analysis and diagnosis
+- **[IAC_STRATEGY_DETAILED_ANALYSIS.md](./IAC_STRATEGY_DETAILED_ANALYSIS.md)** - Infrastructure as Code implementation strategy
+- **[IAC_COST_ANALYSIS.md](./IAC_COST_ANALYSIS.md)** - Solo developer cost-benefit analysis with AI assistance
+- **[SOLO_DEVELOPER_AI_ASSISTED_IAC_PLAN.md](./SOLO_DEVELOPER_AI_ASSISTED_IAC_PLAN.md)** - 3-week implementation plan for solo developers
+- **[FRESH_CHAT_NOTES_ALB_CONFIGURATION_COMPLETE.md](./FRESH_CHAT_NOTES_ALB_CONFIGURATION_COMPLETE.md)** - ALB configuration status
+- **[FRESH_CHAT_NOTES_PRODUCTION_FACE_DETECTION.md](./FRESH_CHAT_NOTES_PRODUCTION_FACE_DETECTION.md)** - Production face detection issues
+- **[PRODUCTION_FACE_DETECTION_ISSUE_ANALYSIS.md](./PRODUCTION_FACE_DETECTION_ISSUE_ANALYSIS.md)** - Face detection problem analysis
 
 ### **🧠 Machine Learning & Training**
 - **[OPERATION_HARE_RUN.md](./OPERATION_HARE_RUN.md)** - 🐇 Hare Run V6 training system documentation
-- **[COMPREHENSIVE_TRAINING_SUMMARY.md](./COMPREHENSIVE_TRAINING_SUMMARY.md)** - Complete ML training overview
+- **[HARE_RUN_V6_TRAINING_SUMMARY.md](./HARE_RUN_V6_TRAINING_SUMMARY.md)** - Complete ML training overview
 - **[ML2_DATASET_SOLUTION_SUMMARY.md](./ML2_DATASET_SOLUTION_SUMMARY.md)** - Dataset acquisition strategies
 - **[TRAINING_SOLUTION_SUMMARY.md](./TRAINING_SOLUTION_SUMMARY.md)** - Training pipeline solutions
 - **[REAL_DATASET_SOLUTION_SUMMARY.md](./REAL_DATASET_SOLUTION_SUMMARY.md)** - Real-world dataset integration
@@ -42,11 +45,55 @@ This folder contains all backend-related documentation for the Shine Skincare Ap
 
 ---
 
+## 🎯 **CURRENT STATUS: INFRASTRUCTURE MODERNIZATION**
+
+### **🚨 Critical Issue Identified**
+The production face detection infrastructure is experiencing **network connectivity issues** between the ALB and ECS container, resulting in:
+- ❌ Public endpoint failures
+- ❌ ALB target health: unhealthy with timeout errors
+- ❌ Core face detection functionality unavailable
+
+### **🏗️ Root Cause Analysis**
+- **Infrastructure misalignment**: Domain points to wrong ALB
+- **Network configuration gaps**: ALB cannot communicate with ECS
+- **Deployment strategy fragmentation**: Multiple overlapping infrastructure components
+
+### **🚀 Solution: Infrastructure as Code (IaC)**
+**Recommended Approach**: Implement Terraform-based IaC to solve current issues and establish sustainable infrastructure management.
+
+**Key Benefits**:
+- ✅ **Immediate problem resolution** - Fix ALB-ECS connectivity
+- ✅ **Massive cost savings** - $80K+ annually for solo developer
+- ✅ **Professional infrastructure** - Enterprise-grade reliability
+- ✅ **AI-assisted implementation** - 3 weeks to production deployment
+
+---
+
+## 🚀 **QUICK START: SOLO DEVELOPER IaC IMPLEMENTATION**
+
+### **📋 Implementation Plan**
+1. **Week 1**: Foundation & Learning (Terraform setup, basic modules)
+2. **Week 2**: Core Development (ALB, ECS, integration)
+3. **Week 3**: Production Migration (blue-green deployment)
+
+### **💰 Financial Impact**
+- **Implementation Cost**: $5,038.38 (with AI assistance)
+- **Annual Savings**: $80,594.40
+- **Break-even Point**: 2 weeks
+- **3-Year ROI**: 4,700%
+
+### **🤖 AI Agent Integration**
+- **Development Speed**: 40-60% faster with AI assistance
+- **Cost Reduction**: 30.4% savings through AI tools
+- **Recommended Tools**: Claude/GPT-4, GitHub Copilot, Cursor
+
+---
+
 ## 🎯 **Backend Architecture Overview**
 
 The Shine Skincare App backend consists of:
 - **API Gateway** - Flask-based REST API service
-- **ML Service** - TensorFlow/Keras skin analysis models
+- **ML Service** - TensorFlow/Keras skin analysis models (Hare Run V6)
 - **ECS Containers** - AWS containerized deployment
 - **S3 Storage** - Model and data storage
 - **VPC Networking** - Secure network configuration
@@ -55,7 +102,7 @@ The Shine Skincare App backend consists of:
 
 1. **Local Development**: `python app.py` (API Gateway)
 2. **ML Training**: `python hare_run_v6_aws_compatible.py`
-3. **Health Check**: `curl http://localhost:5000/health`
+3. **Health Check**: `curl http://localhost:8000/health`
 4. **Deploy**: Use ECS task definitions
 
 ## 📚 **Related Documentation**
@@ -68,10 +115,11 @@ The Shine Skincare App backend consists of:
 ## 🏆 **Current Status**
 
 - **🐌 Snail Trail**: ✅ **COMPLETED** - Backend service deployed and running
-- **🐢 Tortoise**: 🔄 **IN PROGRESS** - Frontend enhancement and ML training
+- **🐢 Tortoise**: 🔄 **IN PROGRESS** - Infrastructure modernization with IaC
 - **🐇 Hare Run**: 🚀 **READY** - V6 training system prepared
+- **🏗️ Infrastructure**: 🔴 **CRITICAL** - ALB-ECS connectivity issues requiring IaC solution
 
 ---
 
-*Last Updated: August 12, 2025*
-*Status: 🟢 Active Development* 
+*Last Updated: August 15, 2025*
+*Status: 🔴 Infrastructure Modernization Required - IaC Implementation Recommended* 

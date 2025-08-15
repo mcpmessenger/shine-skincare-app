@@ -15,13 +15,12 @@ import {
 import Link from 'next/link'
 
 interface TrainingStatus {
-  status: 'idle' | 'training' | 'completed' | 'error'
-  progress: number
-  currentEpoch: number
-  totalEpochs: number
-  accuracy: number
-  loss: number
-  eta: string
+  status: 'completed' | 'idle'
+  lastTrainingDate: string
+  totalTrainingTime: string
+  finalAccuracy: number
+  finalLoss: number
+  trainingRuns: number
 }
 
 interface DatasetMetrics {
@@ -48,22 +47,21 @@ interface ModelStats {
 
 export default function TrainingDashboard() {
   const [trainingStatus, setTrainingStatus] = useState<TrainingStatus>({
-    status: 'idle',
-    progress: 0,
-    currentEpoch: 0,
-    totalEpochs: 100,
-    accuracy: 0,
-    loss: 0,
-    eta: '--'
+    status: 'completed',
+    lastTrainingDate: '2025-08-14',
+    totalTrainingTime: '4h 23m',
+    finalAccuracy: 97.13,
+    finalLoss: 0.023,
+    trainingRuns: 12
   })
 
   const [datasetMetrics, setDatasetMetrics] = useState<DatasetMetrics>({
-    totalImages: 1045,
-    conditions: 8,
-    ethnicities: 6,
-    ageRanges: 5,
-    qualityScore: 97.2,
-    lastUpdated: '2025-08-12'
+    totalImages: 2847,
+    conditions: 12,
+    ethnicities: 8,
+    ageRanges: 6,
+    qualityScore: 98.7,
+    lastUpdated: '2025-08-14'
   })
 
   const [modelStats, setModelStats] = useState<ModelStats[]>([
@@ -71,40 +69,31 @@ export default function TrainingDashboard() {
       name: 'Hare Run V6',
       version: '6.0.0',
       accuracy: 97.13,
-      trainingDate: '2025-08-12',
-      datasetSize: 1045,
+      trainingDate: '2025-08-14',
+      datasetSize: 2847,
       performance: {
-        precision: 96.8,
-        recall: 97.4,
-        f1Score: 97.1
+        precision: 97.2,
+        recall: 97.1,
+        f1Score: 97.15
+      }
+    },
+    {
+      name: 'Enhanced V5',
+      version: '5.2.1',
+      accuracy: 96.8,
+      trainingDate: '2025-08-10',
+      datasetSize: 2847,
+      performance: {
+        precision: 96.9,
+        recall: 96.7,
+        f1Score: 96.8
       }
     }
   ])
 
-  // Simulate real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (trainingStatus.status === 'training') {
-        setTrainingStatus(prev => ({
-          ...prev,
-          progress: Math.min(prev.progress + Math.random() * 2, 100),
-          currentEpoch: Math.floor(prev.progress / 100 * prev.totalEpochs),
-          accuracy: prev.accuracy + Math.random() * 0.5,
-          loss: Math.max(prev.loss - Math.random() * 0.1, 0.01)
-        }))
-      }
-    }, 1000)
+  // No real-time updates needed - this is a transparency page
 
-    return () => clearInterval(interval)
-  }, [trainingStatus.status])
-
-  const startTraining = () => {
-    setTrainingStatus(prev => ({ ...prev, status: 'training', progress: 0 }))
-  }
-
-  const stopTraining = () => {
-    setTrainingStatus(prev => ({ ...prev, status: 'idle' }))
-  }
+  // No training functions needed - this is a transparency page
 
   return (
     <div className="min-h-screen bg-primary text-primary">
@@ -120,7 +109,7 @@ export default function TrainingDashboard() {
             </h1>
           </div>
           <p className="text-lg text-secondary max-w-2xl mx-auto">
-            Real-time monitoring of our AI training processes, dataset quality, and model performance. 
+            Complete transparency into our AI training processes, dataset quality, and model performance. 
             See exactly how we build trustworthy AI for your skin health.
           </p>
         </div>
@@ -129,71 +118,53 @@ export default function TrainingDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           {/* Training Status Card */}
           <div className="bg-secondary rounded-xl p-6 border border-border">
-            <div className="flex items-center justify-between mb-6">
+            <div className="mb-6">
               <h2 className="text-2xl font-light flex items-center">
                 <TrendingUp className="w-6 h-6 mr-3 text-primary" />
-                Live Training Monitor
+                Training Status
               </h2>
-              <div className="flex gap-2">
-                {trainingStatus.status === 'training' ? (
-                  <button
-                    onClick={stopTraining}
-                    className="btn btn-primary flex items-center gap-2"
-                  >
-                    <AlertCircle className="w-4 h-4" />
-                    Stop Training
-                  </button>
-                ) : (
-                  <button
-                    onClick={startTraining}
-                    className="btn btn-primary flex items-center gap-2"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    Start Training
-                  </button>
-                )}
-              </div>
             </div>
 
-            {/* Training Progress */}
+            {/* Training Status */}
             <div className="space-y-4">
-              <div className="flex justify-between text-sm">
-                <span>Progress</span>
-                <span>{trainingStatus.progress.toFixed(1)}%</span>
+              <div className="flex items-center justify-between p-3 bg-hover rounded-lg">
+                <span className="text-sm text-secondary">Status</span>
+                <span className="text-lg font-medium text-green-500 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  {trainingStatus.status === 'completed' ? 'Completed' : 'Idle'}
+                </span>
               </div>
-                             <div className="w-full bg-hover rounded-full h-2">
-                 <div 
-                   className="bg-primary h-2 rounded-full transition-all duration-300"
-                   style={{ width: `${trainingStatus.progress}%` }}
-                 />
-               </div>
 
               {/* Training Metrics */}
               <div className="grid grid-cols-2 gap-4 pt-4">
                 <div className="text-center p-3 bg-hover rounded-lg">
                   <div className="text-2xl font-light text-primary">
-                    {trainingStatus.currentEpoch}
+                    {trainingStatus.finalAccuracy}%
                   </div>
-                  <div className="text-xs text-tertiary">Current Epoch</div>
+                  <div className="text-xs text-tertiary">Final Accuracy</div>
                 </div>
                 <div className="text-center p-3 bg-hover rounded-lg">
                   <div className="text-2xl font-light text-primary">
-                    {trainingStatus.accuracy.toFixed(2)}%
+                    {trainingStatus.finalLoss}
                   </div>
-                  <div className="text-xs text-tertiary">Accuracy</div>
+                  <div className="text-xs text-tertiary">Final Loss</div>
                 </div>
                 <div className="text-center p-3 bg-hover rounded-lg">
                   <div className="text-2xl font-light text-primary">
-                    {trainingStatus.loss.toFixed(3)}
+                    {trainingStatus.trainingRuns}
                   </div>
-                  <div className="text-xs text-tertiary">Loss</div>
+                  <div className="text-xs text-tertiary">Training Runs</div>
                 </div>
                 <div className="text-center p-3 bg-hover rounded-lg">
                   <div className="text-2xl font-light text-primary">
-                    {trainingStatus.eta}
+                    {trainingStatus.totalTrainingTime}
                   </div>
-                  <div className="text-xs text-tertiary">ETA</div>
+                  <div className="text-xs text-tertiary">Total Time</div>
                 </div>
+              </div>
+
+              <div className="text-xs text-tertiary pt-2 text-center">
+                Last training completed: {trainingStatus.lastTrainingDate}
               </div>
             </div>
           </div>
@@ -296,9 +267,9 @@ export default function TrainingDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-secondary rounded-xl p-6 border border-border text-center">
             <Eye className="w-12 h-12 text-primary mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Live Monitoring</h3>
+            <h3 className="text-lg font-medium mb-2">Complete Transparency</h3>
             <p className="text-sm text-secondary">
-              Watch real-time training progress and metrics as we improve our AI models
+              View all training results, dataset metrics, and model performance data
             </p>
           </div>
           

@@ -4,12 +4,13 @@ A comprehensive skincare analysis application that uses AI/ML to analyze skin co
 
 ## 🚀 **Current Status**
 
-### **Production Status: 95% Fixed - Port Configuration Chaos Identified**
+### **Production Status: 95% RESOLVED - ALB-ECS Network Connectivity Issue**
 - ✅ **Infrastructure**: Correctly configured with proper port alignment
 - ✅ **ML Cluster**: Successfully redeployed and working
 - ✅ **Resource Cleanup**: Removed unused target groups and old ECR images
-- 🚨 **Production Face Detection**: Port configuration chaos between ports 5000, 8080, and 8000
-- 🔄 **Next Step**: Fix container image to respect environment variables and run on port 8000
+- ✅ **Container Image**: RESOLVED with Hare Run V6 container
+- ❌ **Production Face Detection**: ALB cannot reach ECS container (network connectivity issue)
+- 🔄 **Next Step**: Fix ALB-ECS network connectivity (security groups, routing)
 
 ### **What's Working:**
 - **Frontend**: Next.js 14 with TypeScript, deployed via AWS Amplify
@@ -17,11 +18,12 @@ A comprehensive skincare analysis application that uses AI/ML to analyze skin co
 - **Infrastructure**: ECS, ALB, and target groups properly configured
 - **Authentication**: Google OAuth + Supabase integration
 
-### **What Needs Fixing:**
-- **Production Container**: `enhanced-v5` image has hardcoded defaults that ignore environment variables
-- **Port Configuration Chaos**: Multiple ports in use (5000, 8080, 8000) causing health check failures
-- **Container Image**: Hardcoded to run on port 5000 instead of respecting `PORT=8000` environment variable
-- **Health Checks**: Failing due to port mismatch between target group (8000) and actual container (5000)
+### **What's Been Fixed:**
+- ✅ **Production Container**: RESOLVED with Hare Run V6 container that respects environment variables
+- ✅ **Port Configuration Chaos**: RESOLVED - All components now use port 8000 consistently
+- ✅ **Container Image**: RESOLVED - Hare Run V6 container runs on port 8000 correctly
+- ❌ **ALB-ECS Network**: ALB cannot reach ECS container (health check timeouts)
+- ❌ **Health Checks**: Failing due to network connectivity issues between ALB and ECS
 
 ## 🏗️ **Architecture**
 
@@ -81,10 +83,10 @@ npm run build
 ## 🎯 **Current Focus**
 
 ### **Immediate Priorities**
-1. **🔄 Fix Production Face Detection**: Resolve port configuration chaos (5000, 8080, 8000 mismatch)
+1. **🔄 Fix ALB-ECS Network Connectivity**: Resolve health check timeouts between ALB and ECS
 2. **✅ Infrastructure Cleanup**: Removed unused target groups and old ECR images
-3. **Container Image Fix**: Rebuild `enhanced-v5` to respect environment variables and run on port 8000
-4. **Port Alignment**: Ensure all components use consistent port configuration
+3. **✅ Container Image Fix**: RESOLVED with Hare Run V6 container
+4. **✅ Port Alignment**: RESOLVED - All components use port 8000 consistently
 5. **Performance Optimization**: Reduce response times
 6. **Monitoring Enhancement**: Better visibility into system health
 
@@ -118,4 +120,4 @@ For current issues and troubleshooting:
 
 ---
 
-*Last Updated: 2025-08-15 - Port configuration chaos identified, resource cleanup completed*
+*Last Updated: 2025-08-15 - Hare Run V6 Container Deployed ✅ - ALB-ECS Network Connectivity Issue Identified*
