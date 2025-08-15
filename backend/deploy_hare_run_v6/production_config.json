@@ -1,0 +1,21 @@
+{
+  "hare_run_v6": {
+    "enabled": true,
+    "models": {
+      "facial": {
+        "primary": "s3://shine-ml-models-2025/hare_run_v6/hare_run_v6_facial/best_facial_model.h5",
+        "backup": "s3://shine-ml-models-2025/hare_run_v6/hare_run_v6_facial/final_facial_model.h5",
+        "metadata": "s3://shine-ml-models-2025/hare_run_v6/hare_run_v6_facial/facial_results.json"
+      }
+    },
+    "endpoints": {
+      "skin_analysis": "/api/v6/skin/analyze-hare-run",
+      "model_status": "/api/v5/skin/model-status"
+    },
+    "performance": {
+      "target_accuracy": "97.13%",
+      "max_response_time": "30s",
+      "model_size": "128MB"
+    }
+  }
+}

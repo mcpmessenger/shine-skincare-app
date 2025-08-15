@@ -1,0 +1,14 @@
+{
+  "operation": "Operation Tortoise - Face-Aware Embedding Conversion",
+  "status": "success",
+  "face_detection": "confirmed_working",
+  "target_size": "128x128",
+  "scientific_approach": "Face-ROI analysis for improved accuracy",
+  "creation_date": "2025-08-13T19:27:32.001642",
+  "model_source": "results/hare_run_v6_facial/best_facial_model.h5",
+  "face_roi_size": [
+    128,
+    128
+  ],
+  "optimized_for_face": true
+}

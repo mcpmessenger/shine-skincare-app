@@ -1,0 +1,22 @@
+{
+  "original_model": "results\\hare_run_v6_facial\\best_facial_model.h5",
+  "embedding_layer": "dense",
+  "weights_shape": [
+    3328,
+    512
+  ],
+  "bias_shape": [
+    512
+  ],
+  "input_shape": [
+    null,
+    3328
+  ],
+  "output_shape": [
+    null,
+    512
+  ],
+  "classes": 8,
+  "creation_date": "2025-08-13T19:00:58.865505",
+  "operation": "Operation Tortoise - Embedding Conversion"
+}

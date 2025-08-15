@@ -1,0 +1,21 @@
+{
+  "deployment_date": "2025-08-13T18:16:42.040545",
+  "models_deployed": [
+    "hare_run_v6_facial/best_facial_model.h5",
+    "hare_run_v6_facial/final_facial_model.h5",
+    "hare_run_v6_facial/facial_results.json"
+  ],
+  "total_size_mb": 255.24,
+  "version": "Hare_Run_V6_Facial_v1.0",
+  "accuracy": "97.13%",
+  "classes": [
+    "healthy",
+    "acne",
+    "bags",
+    "redness",
+    "rosacea",
+    "eczema",
+    "hyperpigmentation",
+    "other"
+  ]
+}

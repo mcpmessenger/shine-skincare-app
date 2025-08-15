@@ -1,0 +1,9 @@
+{
+  "name": "Shine Skincare App",
+  "short_name": "Shine",
+  "description": "AI-powered skincare analysis and recommendations",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000"
+} 

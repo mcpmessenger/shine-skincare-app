@@ -1,0 +1,54 @@
+venv/
+.env
+.env.*
+__pycache__/
+*.pyc
+*.pkl
+*.index
+vector_cache/
+instance/
+.google-vision-key.json
+shine-466907-09b8909d49ec.json
+credentials.json
+service-account.json
+*.log
+*.bak
+*.db
+
+# Ignore Elastic Beanstalk config except YAML
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
+
+# Temporary and build files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Docker build artifacts
+.dockerignore
+docker-compose.override.yml
+
+# AWS CLI and temporary files
+*.zip
+*.tar.gz
+awscliv2.zip
+
+# Model files (large, should be downloaded from S3)
+models/*.h5
+models/*.pkl
+models/*.joblib
+
+# Logs and debugging
+logs/
+debug/
+*.debug

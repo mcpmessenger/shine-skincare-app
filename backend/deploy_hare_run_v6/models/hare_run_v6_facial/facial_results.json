@@ -1,0 +1,82 @@
+{
+  "accuracy": 0.9712918660287081,
+  "precision": 0.9434078890135299,
+  "recall": 0.9712918660287081,
+  "f1_score": 0.9571468388535327,
+  "classification_report": {
+    "healthy": {
+      "precision": 0.9712918660287081,
+      "recall": 1.0,
+      "f1-score": 0.9854368932038834,
+      "support": 203.0
+    },
+    "acne": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 2.0
+    },
+    "redness": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "other": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 3.0
+    },
+    "accuracy": 0.9712918660287081,
+    "macro avg": {
+      "precision": 0.24282296650717702,
+      "recall": 0.25,
+      "f1-score": 0.24635922330097085,
+      "support": 209.0
+    },
+    "weighted avg": {
+      "precision": 0.9434078890135299,
+      "recall": 0.9712918660287081,
+      "f1-score": 0.9571468388535327,
+      "support": 209.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      203,
+      0,
+      0,
+      0
+    ],
+    [
+      2,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      0,
+      0,
+      0
+    ],
+    [
+      3,
+      0,
+      0,
+      0
+    ]
+  ],
+  "class_names": [
+    "healthy",
+    "acne",
+    "bags",
+    "redness",
+    "rosacea",
+    "eczema",
+    "hyperpigmentation",
+    "other"
+  ],
+  "timestamp": "2025-08-12T06:30:38.480984"
+}

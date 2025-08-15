@@ -1,0 +1,75 @@
+# Elastic Beanstalk Ignore File
+# Exclude large files to keep deployment package under 512MB
+
+# ML Models and Results (too large for deployment)
+results/
+*.h5
+*.pkl
+*.joblib
+*.pb
+*.onnx
+
+# Training Data
+data/
+datasets/
+*.csv
+*.json
+*.npy
+*.npz
+
+# Cache and Temporary Files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+bin/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+
+# Development Files
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Model Cache (will be downloaded from S3)
+model_cache/
+deploy_hare_run_v6/
+
+# Keep only essential files
+!application*.py
+!requirements*.txt
+!.ebextensions/
+!.elasticbeanstalk/
+!wsgi.py
+!config.py
