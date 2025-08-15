@@ -5,7 +5,7 @@
 // Backend API configuration
 export const API_CONFIG = {
   // Backend base URL - use production backend or localhost for development
-  BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://shineskincollective.com',
+  BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.shineskincollective.com',
   
   // API endpoints
   ENDPOINTS: {

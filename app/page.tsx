@@ -357,7 +357,7 @@ export default function HomePage() {
     try {
           // Use the enhanced Hare Run V6 endpoint
     console.log('📡 Calling Hare Run V6 enhanced ML endpoint...');
-              const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://shineskincollective.com'}/api/v6/skin/analyze-hare-run`, {
+              const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.shineskincollective.com'}/api/v6/skin/analyze-hare-run`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

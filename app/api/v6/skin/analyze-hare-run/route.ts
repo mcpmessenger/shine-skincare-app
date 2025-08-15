@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     // Get the backend URL from environment or use default
     // Use standard HTTPS port for production backend
-    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://shineskincollective.com';
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.shineskincollective.com';
     
     try {
       // Forward the request to the Flask backend Hare Run V6 endpoint

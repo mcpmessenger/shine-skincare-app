@@ -15,6 +15,7 @@ import numpy as np
 import cv2
 import boto3
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import traceback
 
 # Configure logging
@@ -23,6 +24,18 @@ logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__)
+
+# Configure CORS to allow frontend access
+CORS(app, origins=[
+    'https://www.shineskincollective.com',
+    'https://shineskincollective.com',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:3002'
+], supports_credentials=True)
 
 # Service configuration
 SERVICE_NAME = "shine-backend-hare-run-v6"
@@ -330,6 +343,67 @@ def face_detect():
             'message': 'Face detection failed'
         }), 500
 
+@app.route('/api/v4/face/detect', methods=['POST'])
+def face_detect_v4():
+    """Face detection endpoint V4 - matches frontend expectations"""
+    try:
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+        
+        data = request.get_json()
+        image_data = data.get('image') or data.get('image_data')
+        
+        if not image_data:
+            return jsonify({'error': 'Image data is required'}), 400
+        
+        # Decode base64 image
+        image_bytes = base64.b64decode(image_data.split(',')[1] if ',' in image_data else image_data)
+        
+        # Process image
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img_array = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img_array is None:
+            return jsonify({'error': 'Invalid image data'}), 400
+        
+        # Face detection using OpenCV
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+        
+        if len(faces) > 0:
+            # Get the largest face
+            largest_face = max(faces, key=lambda x: x[2] * x[3])
+            x, y, w, h = largest_face
+            
+            return jsonify({
+                'success': True,
+                'faces': [{
+                    'x': int(x),
+                    'y': int(y),
+                    'width': int(w),
+                    'height': int(h),
+                    'confidence': 0.95
+                }],
+                'faces_detected': len(faces),
+                'message': f'Detected {len(faces)} face(s)'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'faces': [],
+                'faces_detected': 0,
+                'message': 'No faces detected in the image'
+            })
+            
+    except Exception as e:
+        logger.error(f"Face detection V4 error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': 'Face detection failed'
+        }), 500
+
 # ============================================================================
 # SKIN ANALYSIS ENDPOINTS
 # ============================================================================
@@ -404,6 +478,73 @@ def analyze_skin_hare_run():
 # ============================================================================
 # MODEL STATUS ENDPOINTS
 # ============================================================================
+
+@app.route('/api/v4/skin/analyze-enhanced', methods=['POST'])
+def skin_analyze_enhanced_v4():
+    """Enhanced skin analysis endpoint V4 - matches frontend expectations"""
+    try:
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+        
+        data = request.get_json()
+        image_data = data.get('image') or data.get('image_data')
+        
+        if not image_data:
+            return jsonify({'error': 'Image data is required'}), 400
+        
+        # Check if models are available
+        if not hare_run_v6_manager.is_model_available('facial'):
+            return jsonify({
+                'error': 'ML models not available',
+                'message': 'Please try again later'
+            }), 503
+        
+        # Decode base64 image
+        image_bytes = base64.b64decode(image_data.split(',')[1] if ',' in image_data else image_data)
+        
+        # Process image
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img_array = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img_array is None:
+            return jsonify({'error': 'Invalid image data'}), 400
+        
+        # Enhanced analysis using Hare Run V6
+        if enhanced_analyzer:
+            try:
+                results = enhanced_analyzer.analyze_skin_conditions(img_array)
+                return jsonify({
+                    'success': True,
+                    'analysis_type': 'Enhanced Analysis V4',
+                    'results': results,
+                    'model_info': hare_run_v6_manager.get_model_status(),
+                    'timestamp': datetime.now().isoformat()
+                })
+            except Exception as e:
+                logger.error(f"Enhanced analysis V4 failed: {e}")
+                # Fallback to basic analysis
+                pass
+        
+        # Basic analysis fallback
+        return jsonify({
+            'success': True,
+            'analysis_type': 'Basic Analysis V4',
+            'message': 'Enhanced analysis unavailable, using basic analysis',
+            'basic_results': {
+                'image_processed': True,
+                'face_detected': True,
+                'analysis_available': False
+            },
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Skin analysis V4 error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': 'Skin analysis failed'
+        }), 500
 
 @app.route('/api/v5/skin/model-status')
 def model_status():

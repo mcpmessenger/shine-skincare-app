@@ -654,7 +654,7 @@ export const analyzeSelfie = async (file: File): Promise<ApiResponse<{
     const formData = new FormData();
     formData.append('image', file);
 
-            const response = await fetch(`${this.baseUrl || 'https://shineskincollective.com'}/api/v2/selfie/analyze`, {
+            const response = await fetch(`${this.baseUrl || 'https://api.shineskincollective.com'}/api/v2/selfie/analyze`, {
       method: 'POST',
       body: formData,
     });
@@ -708,7 +708,7 @@ export const analyzeSkin = async (file: File): Promise<ApiResponse<{
     const formData = new FormData();
     formData.append('image', file);
 
-            const response = await fetch(`${this.baseUrl || 'https://shineskincollective.com'}/api/v2/skin/analyze`, {
+            const response = await fetch(`${this.baseUrl || 'https://api.shineskincollective.com'}/api/v2/skin/analyze`, {
       method: 'POST',
       body: formData,
     });
