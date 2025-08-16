@@ -19,20 +19,12 @@ frontend:
         - cat .env.production
         - npm run build
         - echo "Build completed successfully"
-        - echo "Verifying file structure..."
-        - ls -la
-        - echo "Checking public folder contents..."
-        - ls -la public/
-        - echo "Checking .next folder contents..."
-        - ls -la .next/
+        - echo "Copying public folder to .next for static file serving..."
+        - cp -r public .next/
   artifacts:
-    baseDirectory: .
+    baseDirectory: .next
     files:
-      - .next/**/*
-      - public/**/*
-      - package.json
-      - next.config.mjs
-      - node_modules/**/*
+      - '**/*'
   cache:
     paths:
       - node_modules/**/*
