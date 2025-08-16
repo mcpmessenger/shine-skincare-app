@@ -14,8 +14,8 @@ export const API_CONFIG = {
     SKIN_MODEL_STATUS: '/api/v5/skin/model-status',
     SKIN_HEALTH: '/api/v5/skin/health',
     
-    // V4 endpoints
-    FACE_DETECT: '/api/v4/face/detect',
+    // V4 endpoints - use local routes for face detection to avoid CORS
+    FACE_DETECT: '/api/v4/face/detect', // Use working backend face detection for local testing
     SKIN_ANALYZE_ENHANCED: '/api/v4/skin/analyze-enhanced',
     
     // V3 endpoints (legacy)
@@ -36,7 +36,15 @@ export const API_CONFIG = {
  * Get full URL for an API endpoint
  */
 export function getApiUrl(endpoint: string): string {
-  return `${API_CONFIG.BACKEND_URL}${endpoint}`;
+  // For face detection, route to backend for real OpenCV detection
+  // For other local API routes, use relative paths
+  if (endpoint === '/api/v4/face/detect') {
+    return `${API_CONFIG.BACKEND_URL}${endpoint}`; // Route to backend for real face detection
+  } else if (endpoint.startsWith('/api/')) {
+    return endpoint; // Other local routes - use relative path
+  } else {
+    return `${API_CONFIG.BACKEND_URL}${endpoint}`; // External backend
+  }
 }
 
 /**

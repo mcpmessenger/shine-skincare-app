@@ -19,8 +19,7 @@ frontend:
         - cat .env.production
         - npm run build
         - echo "Build completed successfully"
-        - echo "Copying public folder to .next for static file serving..."
-        - cp -r public .next/
+        - echo "Product images will be served via API route /api/images/"
   artifacts:
     baseDirectory: .next
     files:

@@ -9,7 +9,8 @@ import Link from 'next/link';
 export default function HomePage() {
   // DEBUG: Log config values to see what's happening
   console.log('🔍 DEBUG: API_CONFIG loaded:', API_CONFIG);
-  console.log('🔍 DEBUG: getApiUrl test:', getApiUrl('/api/v4/face/detect'));
+  console.log('🔍 DEBUG: FACE_DETECT endpoint:', API_CONFIG.ENDPOINTS.FACE_DETECT);
+  console.log('🔍 DEBUG: getApiUrl test:', getApiUrl(API_CONFIG.ENDPOINTS.FACE_DETECT));
   console.log('🔍 DEBUG: process.env.NEXT_PUBLIC_BACKEND_URL:', typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_BACKEND_URL : 'process not available in browser');
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -52,6 +53,15 @@ export default function HomePage() {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         setIsCameraLoading(false);
+        
+        // Clear any existing canvas overlays
+        if (canvasRef.current) {
+          const ctx = canvasRef.current.getContext('2d');
+          if (ctx) {
+            ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+            console.log('Canvas cleared when starting camera');
+          }
+        }
         
         // Wait for video to load and play
         videoRef.current.onloadedmetadata = () => {
@@ -100,6 +110,15 @@ export default function HomePage() {
     setFaceDetected(false);
     setFaceConfidence(0);
     setIsVideoPlaying(false);
+    
+    // Clear any canvas overlays
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        console.log('Canvas cleared when stopping camera');
+      }
+    }
   };
 
   const performLiveFaceDetection = async () => {
@@ -155,17 +174,36 @@ export default function HomePage() {
           const result = await response.json();
           console.log('Live face detection result:', result);
           
+          // Handle both response formats: external backend (faces array) and local API (direct properties)
+          let faceDetected = false;
+          let faceConfidence = 0;
+          let faceBounds = null;
+          
           if (result.faces && result.faces.length > 0) {
+            // External backend format
             const face = result.faces[0];
-            setFaceDetected(true);
-            setFaceConfidence(face.confidence || 0);
-            
+            faceDetected = true;
+            faceConfidence = face.confidence || 0;
+            faceBounds = face.bounds;
             console.log('FACE DETECTED! Face data:', face);
             console.log('Face bounds:', face.bounds);
             console.log('Face confidence:', face.confidence);
+          } else if (result.face_detected) {
+            // Local API format
+            faceDetected = true;
+            faceConfidence = result.confidence || 0;
+            faceBounds = result.face_bounds;
+            console.log('FACE DETECTED! (Local API) Face data:', result);
+            console.log('Face bounds:', result.face_bounds);
+            console.log('Face confidence:', result.confidence);
+          }
+          
+          if (faceDetected && faceBounds) {
+            setFaceDetected(true);
+            setFaceConfidence(faceConfidence);
             
             // Draw face detection overlay
-            const { x, y, width, height } = face.bounds;
+            const { x, y, width, height } = faceBounds;
             
             // Scale coordinates to match canvas display size
             const videoElement = videoRef.current;
@@ -238,95 +276,118 @@ export default function HomePage() {
               ctx.lineTo(scaledX + scaledWidth, scaledY + scaledHeight - markerSize);
               ctx.stroke();
               
-              // Draw confidence text with background
-              const confidenceText = `${Math.round(face.confidence * 100)}%`;
-              const textWidth = ctx.measureText(confidenceText).width;
-              
-              // Draw background for text
-              ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-              ctx.fillRect(scaledX, scaledY - 25, textWidth + 10, 20);
-              
-              // Draw confidence text
-              ctx.fillStyle = '#00FF00';
-              ctx.font = 'bold 14px Arial';
-              ctx.fillText(confidenceText, scaledX + 5, scaledY - 10);
+                          // Draw confidence text with background
+            const confidenceText = `${Math.round(faceConfidence * 100)}%`;
+            const textWidth = ctx.measureText(confidenceText).width;
+            
+            // Draw background for text
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(scaledX, scaledY - 25, textWidth + 10, 20);
+            
+            // Draw confidence text
+            ctx.fillStyle = '#00FF00';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText(confidenceText, scaledX + 5, scaledY - 10);
               
               console.log('Drew simple overlay over detected face');
             }
             
-            console.log('Face detected with confidence:', face.confidence);
-          } else {
-            setFaceDetected(false);
-            setFaceConfidence(0);
-            console.log('No faces detected in live mode');
-            
-            // Draw a test oval in the center to verify oval drawing works
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const radiusX = 100;
-            const radiusY = 150;
-            
-            ctx.strokeStyle = '#00FF00';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
-            ctx.stroke();
-            
-            console.log('Drew test oval in center - no face detected');
-          }
+            console.log('Face detected with confidence:', faceConfidence);
+                     } else {
+             setFaceDetected(false);
+             setFaceConfidence(0);
+             console.log('No faces detected in live mode');
+             
+             // Clear any previous overlays when no face is detected
+             if (canvas && ctx) {
+               ctx.clearRect(0, 0, canvas.width, canvas.height);
+               console.log('Canvas cleared - no face detected');
+             }
+           }
         }
       } catch (error) {
         console.error('Live face detection error:', error);
       }
     }
 
-    // Continue detection
-    if (showCamera) {
-      setTimeout(performLiveFaceDetection, 1000);
+    // Continue detection with a longer delay to prevent rapid flickering
+    // Only continue if camera is still active and no face is currently detected
+    if (showCamera && !faceDetected) {
+      setTimeout(performLiveFaceDetection, 3000); // 3 second delay when no face detected
+    } else if (showCamera && faceDetected) {
+      // If face is detected, check less frequently to maintain stability
+      setTimeout(performLiveFaceDetection, 5000); // 5 second delay when face is detected
     }
   };
 
   const performFaceDetectionOnImage = async (imageData: string) => {
-         try {
-       console.log('Performing face detection on uploaded image...');
-       const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.FACE_DETECT), {
-         method: 'POST',
-         headers: {
-           'Content-Type': 'application/json',
-         },
-         body: JSON.stringify({
-           image_data: imageData.split(',')[1]
-         })
-       });
+    try {
+      console.log('🔍 Performing face detection on uploaded image...');
+      console.log('📡 Calling face detection API:', getApiUrl(API_CONFIG.ENDPOINTS.FACE_DETECT));
+      
+      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.FACE_DETECT), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image_data: imageData.split(',')[1]
+        })
+      });
+
+      console.log('📊 Face detection response status:', response.status);
+      console.log('📊 Face detection response ok:', response.ok);
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Face detection result:', result);
+        console.log('✅ Face detection result:', result);
         
+        // Handle both response formats: external backend (faces array) and local API (direct properties)
         if (result.faces && result.faces.length > 0) {
+          // External backend format
           const face = result.faces[0];
           setFaceDetected(true);
           setFaceConfidence(face.confidence || 0);
-          console.log('Face detected with confidence:', face.confidence);
+          console.log('✅ Face detected with confidence:', face.confidence);
+        } else if (result.face_detected) {
+          // Local API format
+          setFaceDetected(true);
+          setFaceConfidence(result.confidence || 0);
+          console.log('✅ Face detected with confidence:', result.confidence);
         } else {
           setFaceDetected(false);
           setFaceConfidence(0);
-          console.log('No faces detected');
+          console.log('⚠️ No faces detected in image');
         }
       } else {
-        console.error('Face detection failed:', response.status);
+        const errorText = await response.text();
+        console.error('❌ Face detection failed with status:', response.status);
+        console.error('❌ Error response:', errorText);
         setFaceDetected(false);
         setFaceConfidence(0);
+        
+        // Face detection failed - analysis cannot proceed
+        console.log('❌ Face detection failed - analysis blocked');
       }
     } catch (error) {
-      console.error('Face detection error:', error);
+      console.error('❌ Face detection error:', error);
       setFaceDetected(false);
       setFaceConfidence(0);
+      
+      // Face detection error - analysis cannot proceed
+      console.log('❌ Face detection error - analysis blocked');
     }
   };
 
   const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return;
+
+    // ENFORCE FACE DETECTION REQUIREMENT FOR CAMERA
+    if (!faceDetected) {
+      console.error('❌ Face detection required before capturing photo');
+      alert('Please wait for face detection to complete before capturing your photo.');
+      return;
+    }
 
     console.log('📸 Capturing photo...');
 
@@ -356,13 +417,26 @@ export default function HomePage() {
   };
 
   const analyzeSkin = async (imageData: string) => {
+    // ENFORCE FACE DETECTION REQUIREMENT
+    if (!faceDetected) {
+      console.error('❌ Face detection required before analysis');
+      alert('Please wait for face detection to complete before analyzing your photo.');
+      return;
+    }
+
     setIsAnalyzing(true);
     console.log('🔍 Starting enhanced Hare Run V6 skin analysis...');
+    console.log('📊 Face detection status before analysis:', { faceDetected, faceConfidence });
+    console.log('📊 Image data length:', imageData.length);
 
     try {
-          // Use the enhanced Hare Run V6 endpoint
-    console.log('📡 Calling Hare Run V6 enhanced ML endpoint...');
-              const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.shineskincollective.com'}/api/v6/skin/analyze-hare-run`, {
+      // Use the local Hare Run V6 endpoint to avoid CORS issues
+      const endpoint = '/api/v6/skin/analyze-hare-run';
+      
+      console.log('📡 Calling local Hare Run V6 enhanced ML endpoint...');
+      console.log('🔗 Local endpoint:', endpoint);
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -378,6 +452,7 @@ export default function HomePage() {
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Analysis successful:', result);
+        console.log('📊 Analysis result structure:', Object.keys(result));
         
         // Add Hare Run V6 enhanced ML metadata
         result.enhanced_ml = true;
@@ -388,17 +463,31 @@ export default function HomePage() {
         // Store analysis data in sessionStorage instead of URL parameter
         sessionStorage.setItem('analysisResult', JSON.stringify(result));
         console.log('💾 Stored analysis result in sessionStorage');
+        console.log('🔗 Navigating to suggestions page...');
         window.location.href = '/suggestions';
       } else {
         const errorText = await response.text();
         console.error('❌ Analysis failed with status:', response.status);
         console.error('❌ Error response:', errorText);
-        throw new Error(`Fixed ML analysis failed: ${response.status} - ${errorText}`);
+        console.error('❌ Response headers:', Object.fromEntries(response.headers.entries()));
+        throw new Error(`Hare Run V6 analysis failed: ${response.status} - ${errorText}`);
       }
     } catch (error) {
-              console.error('❌ Fixed ML analysis error:', error);
+      console.error('❌ Hare Run V6 analysis error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Fixed ML analysis failed: ${errorMessage}. Please try again.`);
+      console.error('❌ Full error details:', error);
+      
+      // More user-friendly error message
+      let userMessage = 'Analysis failed. Please try again.';
+      if (errorMessage.includes('Failed to fetch')) {
+        userMessage = 'Cannot connect to analysis service. Please check your internet connection and try again.';
+      } else if (errorMessage.includes('timeout')) {
+        userMessage = 'Analysis timed out. Please try again with a clearer image.';
+      } else if (errorMessage.includes('500')) {
+        userMessage = 'Server error. Please try again later.';
+      }
+      
+      alert(`Analysis Error: ${userMessage}\n\nTechnical details: ${errorMessage}`);
       setIsAnalyzing(false);
     }
   };
@@ -412,6 +501,15 @@ export default function HomePage() {
       const imageData = e.target?.result as string;
       setUploadedImage(imageData);
       setShowImagePreview(true);
+      
+      // Clear any existing canvas overlays
+      if (canvasRef.current) {
+        const ctx = canvasRef.current.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+          console.log('Canvas cleared when uploading image');
+        }
+      }
       
       // Perform face detection on uploaded image
       await performFaceDetectionOnImage(imageData);
@@ -525,15 +623,17 @@ export default function HomePage() {
                   </div>
                 )}
                 
-                {/* Camera Instructions */}
-                <div className="absolute top-4 left-4">
-                  <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
-                    <Camera className="w-4 h-4" />
-                    <span className="text-sm font-light">
-                      Position your face and tap Capture
-                    </span>
-                  </div>
-                </div>
+                                 {/* Camera Instructions */}
+                 <div className="absolute top-4 left-4">
+                   <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+                     <Camera className="w-4 h-4" />
+                     <span className="text-sm font-light">
+                       Position your face and tap Capture
+                     </span>
+                   </div>
+                 </div>
+                 
+                 
                 
                 {/* Camera Status */}
                 <div className="absolute top-4 right-16">
@@ -545,30 +645,35 @@ export default function HomePage() {
                   </div>
                 </div>
                 
-                {/* Face Detection Status */}
-                <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
-                  <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
-                    faceDetected 
-                      ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' 
-                      : 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200'
-                  }`}>
-                    <div className={`w-2 h-2 rounded-full ${
-                      faceDetected ? 'bg-green-500' : 'bg-red-500'
-                    } animate-pulse`}></div>
-                    <span className="text-sm font-light">
-                      {faceDetected ? 'Face Detected' : 'No Face'}
-                    </span>
-                  </div>
-                </div>
+                                 {/* Face Detection Status */}
+                 <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
+                   <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
+                     faceDetected 
+                       ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' 
+                       : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
+                   }`}>
+                     <div className={`w-2 h-2 rounded-full ${
+                       faceDetected ? 'bg-green-500' : 'bg-gray-500'
+                     } animate-pulse`}></div>
+                     <span className="text-sm font-light">
+                       {faceDetected ? 'Face Detected' : 'Detecting Face...'}
+                     </span>
+                   </div>
+                 </div>
 
-                {/* Capture Button */}
-                <button
-                  onClick={capturePhoto}
-                  className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl font-light transition-all bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100"
-                >
-                  <Camera className="w-5 h-5 inline mr-2" />
-                  Capture Photo
-                </button>
+                                 {/* Capture Button */}
+                 <button
+                   onClick={capturePhoto}
+                   disabled={!faceDetected}
+                   className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl font-light transition-all ${
+                     faceDetected 
+                       ? 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 cursor-pointer' 
+                       : 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed'
+                   }`}
+                 >
+                   <Camera className="w-5 h-5 inline mr-2" />
+                   {faceDetected ? 'Capture Photo' : 'Waiting for Face...'}
+                 </button>
 
                 {/* Close Camera Button */}
                 <button
@@ -589,16 +694,51 @@ export default function HomePage() {
                   className="w-full rounded-xl"
                 />
                 
+                                 {/* Face Detection Status */}
+                 <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
+                   <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
+                     faceDetected 
+                       ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' 
+                       : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
+                   }`}>
+                     <div className={`w-2 h-2 rounded-full ${
+                       faceDetected ? 'bg-green-500' : 'bg-gray-500'
+                     } animate-pulse`}></div>
+                     <span className="text-sm font-light">
+                       {faceDetected ? 'Face Detected' : 'Detecting Face...'}
+                     </span>
+                   </div>
+                 </div>
+                
+                                 
+                 
+                 
+                
                                  {/* Analyze Button */}
                  <button
                    onClick={() => {
                      console.log('🔍 Analyze button clicked for uploaded image');
-                     uploadedImage && analyzeSkin(uploadedImage);
+                     if (uploadedImage) {
+                       if (faceDetected) {
+                         console.log('✅ Face detected, starting analysis');
+                         analyzeSkin(uploadedImage);
+                                               } else {
+                          console.log('❌ Face not detected, cannot analyze');
+                          alert('Please wait for face detection to complete before analyzing your photo.');
+                        }
+                     } else {
+                       console.error('❌ No uploaded image available');
+                     }
                    }}
-                   className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl font-light transition-all bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100"
+                   disabled={!faceDetected}
+                   className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl font-light transition-all ${
+                     faceDetected 
+                       ? 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 cursor-pointer' 
+                       : 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed'
+                   }`}
                  >
                    <ArrowRight className="w-5 h-5 inline mr-2" />
-                   Analyze Photo
+                   {faceDetected ? 'Analyze Photo' : 'Waiting for Face...'}
                  </button>
 
                 {/* Close Button */}

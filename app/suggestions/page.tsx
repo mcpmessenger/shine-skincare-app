@@ -139,6 +139,17 @@ interface AnalysisResult {
   };
 }
 
+interface RecommendedProduct {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  image: string;
+  score: number;
+  matchReason: string;
+}
+
 function SuggestionsPageContent() {
   
   const searchParams = useSearchParams();
@@ -163,9 +174,8 @@ function SuggestionsPageContent() {
         const result = JSON.parse(storedAnalysis);
         console.log('✅ Successfully parsed analysis result:', result);
         setAnalysisResult(result);
-        // Clear the stored data after retrieving it
-        sessionStorage.removeItem('analysisResult');
-        console.log('🗑️ Cleared analysis data from sessionStorage');
+        // Don't clear the stored data - keep it for other pages to use
+        console.log('💾 Keeping analysis data in sessionStorage for other pages');
       } catch (error) {
         console.error('❌ Error parsing analysis data from sessionStorage:', error);
       }
@@ -194,6 +204,22 @@ function SuggestionsPageContent() {
     setTimeout(() => {
       setIsLoading(false);
     }, 1000); // Show logo for 1 second
+  }, []);
+
+  // Clean up analysis data when user leaves the page
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      console.log('🚪 User leaving page, clearing analysis data');
+      sessionStorage.removeItem('analysisResult');
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Only clear if user is actually navigating away, not just component unmounting
+      console.log('🔄 Component unmounting, keeping analysis data for navigation');
+    };
   }, []);
 
   const getConfidenceScore = (confidence: number): number => {
@@ -343,162 +369,342 @@ function SuggestionsPageContent() {
     });
   };
 
-  const getRecommendedProducts = () => {
-    if (!analysisResult) return [];
+  // Generate intelligent recommendations based on analysis data
+  const generateIntelligentRecommendations = (data: AnalysisResult): RecommendedProduct[] => {
+    console.log('🧠 Starting enhanced recommendation generation for data:', data)
+    console.log('🔍 Full data object keys:', Object.keys(data))
     
-    const recommendedProducts: any[] = [];
+    // Extract data from the nested structure
+    const conditions = data.result?.conditions || data.detected_conditions || data.primary_concerns || []
+    const healthScore = data.result?.health_score || 50
+    const primaryConcerns = data.result?.primary_concerns || data.primary_concerns || []
+    const severityLevels = data.result?.severity_levels || {}
     
-    // PRIORITY 1: Handle Hare Run V6 detected_conditions array (actual data structure)
-    if (analysisResult.detected_conditions && analysisResult.detected_conditions.length > 0) {
-      // Map conditions to product categories
-      const conditionToCategory: { [key: string]: string[] } = {
-        acne: ['cleanser', 'treatment', 'moisturizer'],
-        rosacea: ['cleanser', 'moisturizer', 'sunscreen'],
-        eczema: ['moisturizer', 'treatment'],
-        actinic_keratosis: ['sunscreen', 'treatment'],
-        basal_cell_carcinoma: ['sunscreen', 'treatment'],
-        healthy: ['cleanser', 'moisturizer', 'sunscreen'],
-        // Add more condition mappings as needed
-        'skin_cancer': ['sunscreen', 'treatment'],
-        'melanoma': ['sunscreen', 'treatment'],
-        'dermatitis': ['moisturizer', 'treatment'],
-        'psoriasis': ['moisturizer', 'treatment'],
-        'hyperpigmentation': ['treatment', 'sunscreen'],
-        'aging': ['moisturizer', 'treatment', 'sunscreen'],
-        'dark_spots': ['treatment', 'sunscreen'],
-        'pores': ['cleanser', 'treatment'],
-        'wrinkles': ['moisturizer', 'treatment'],
-        'bags': ['treatment', 'moisturizer'],
-        'redness': ['cleanser', 'moisturizer', 'sunscreen']
-      };
-
-      // Process each detected condition from the array
-      analysisResult.detected_conditions.forEach((conditionData) => {
-        if (conditionData && conditionData.name && conditionData.confidence) {
-          const conditionName = conditionData.name.toLowerCase();
-          const confidence = conditionData.confidence || 0;
-          const severity = conditionData.severity || 'moderate';
-          
-          // Only recommend products for conditions with reasonable confidence
-          if (confidence > 0.1) { // 10% confidence threshold
-            const categories = conditionToCategory[conditionName] || [];
-            categories.forEach((category: string) => {
-              const categoryProducts = products.filter(p => p.category === category);
-              if (categoryProducts.length > 0) {
-                recommendedProducts.push({
-                  ...categoryProducts[0],
-                  match: conditionName,
-                  reason: `Recommended for ${conditionName.replace('_', ' ')} (${Math.round(confidence * 100)}% confidence)`,
-                  confidence: confidence,
-                  severity: severity
-                });
-              }
-            });
-          }
-        }
-      });
+    console.log('📊 Extracted conditions:', conditions)
+    console.log('📊 Extracted health score:', healthScore)
+    console.log('📊 Primary concerns:', primaryConcerns)
+    console.log('📊 Severity levels:', severityLevels)
+    console.log('📊 Data.result exists:', !!data.result)
+    
+    if (!conditions || (Object.keys(conditions).length === 0 && primaryConcerns.length === 0)) {
+      console.log('⚠️ No conditions found, cannot generate recommendations')
+      console.log('🔍 Available data for debugging:', {
+        result_conditions: data.result?.conditions,
+        detected_conditions: data.detected_conditions,
+        primary_concerns: data.primary_concerns,
+        full_data: data
+      })
+      return []
     }
     
-    // PRIORITY 2: Handle Hare Run V6 result.conditions (alternative structure)
-    if (recommendedProducts.length === 0 && analysisResult.result?.conditions) {
-      // Map conditions to product categories
-      const conditionToCategory: { [key: string]: string[] } = {
-        acne: ['cleanser', 'treatment', 'moisturizer'],
-        rosacea: ['cleanser', 'moisturizer', 'sunscreen'],
-        eczema: ['moisturizer', 'treatment'],
-        actinic_keratosis: ['sunscreen', 'treatment'],
-        basal_cell_carcinoma: ['sunscreen', 'treatment'],
-        healthy: ['cleanser', 'moisturizer', 'sunscreen'],
-        'skin_cancer': ['sunscreen', 'treatment'],
-        'melanoma': ['sunscreen', 'treatment'],
-        'dermatitis': ['moisturizer', 'treatment'],
-        'psoriasis': ['moisturizer', 'treatment'],
-        'hyperpigmentation': ['treatment', 'sunscreen'],
-        'aging': ['moisturizer', 'treatment', 'sunscreen']
-      };
-
-      // Process each detected condition
-      Object.entries(analysisResult.result.conditions).forEach(([condition, data]) => {
-        if (data && typeof data === 'object' && 'confidence' in data) {
-          const conditionName = condition.toLowerCase();
-          const confidence = data.confidence || 0;
-          const severity = data.severity || 'moderate';
-          
-          // Only recommend products for conditions with reasonable confidence
-          if (confidence > 0.1) { // 10% confidence threshold
-            const categories = conditionToCategory[conditionName] || [];
-            categories.forEach((category: string) => {
-              const categoryProducts = products.filter(p => p.category === category);
-              if (categoryProducts.length > 0) {
-                recommendedProducts.push({
-                  ...categoryProducts[0],
-                  match: conditionName,
-                  reason: `Recommended for ${conditionName.replace('_', ' ')} (${Math.round(confidence * 100)}% confidence)`,
-                  confidence: confidence,
-                  severity: severity
-                });
-              }
-            });
-          }
-        }
-      });
-    }
+    console.log('✅ Conditions found, proceeding with intelligent scoring...')
+    console.log('📦 Total products to score:', products.length)
     
-    // PRIORITY 3: Handle new fixed model format (fallback)
-    if (recommendedProducts.length === 0 && analysisResult.primary_condition) {
-      let condition: string;
-      
-      // Handle both string and object formats
-      if (typeof analysisResult.primary_condition === 'string') {
-        condition = analysisResult.primary_condition;
-      } else if (analysisResult.primary_condition.condition) {
-        condition = analysisResult.primary_condition.condition;
+    // Enhanced scoring system with better condition matching
+    const scoredProducts = products.map(product => {
+      let score = 0
+      let reasons: string[] = []
+
+      // Score based on health score (more nuanced)
+      if (healthScore < 30) {
+        // Very low health score needs intensive treatment
+        if (product.category === 'treatment' || product.category === 'serum') {
+          score += 10
+          reasons.push('Intensive treatment for significant skin concerns')
+        }
+        if (product.category === 'cleanser') {
+          score += 6
+          reasons.push('Gentle cleansing for sensitive skin')
+        }
+      } else if (healthScore < 50) {
+        // Low health score needs treatment + maintenance
+        if (product.category === 'treatment' || product.category === 'serum') {
+          score += 8
+          reasons.push('Treatment for skin concerns')
+        }
+        if (product.category === 'moisturizer') {
+          score += 6
+          reasons.push('Moisturizing for compromised skin barrier')
+        }
+      } else if (healthScore < 70) {
+        // Moderate health score - balanced approach
+        if (product.category === 'moisturizer' || product.category === 'sunscreen') {
+          score += 7
+          reasons.push('Maintenance and protection for moderate skin health')
+        }
+        if (product.category === 'serum') {
+          score += 5
+          reasons.push('Targeted improvement for moderate concerns')
+        }
       } else {
-        return recommendedProducts;
+        // High health score - maintenance and enhancement
+        if (product.category === 'sunscreen') {
+          score += 8
+          reasons.push('Protection for healthy skin')
+        }
+        if (product.category === 'moisturizer') {
+          score += 6
+          reasons.push('Maintenance for healthy skin')
+        }
+      }
+
+      // Enhanced condition-based scoring using the new data structure
+      if (data.result?.conditions) {
+        // New structure: conditions object with severity levels
+        Object.entries(data.result.conditions).forEach(([conditionKey, conditionData]) => {
+          const conditionLower = conditionKey.toLowerCase()
+          console.log(`🔍 Scoring product "${product.name}" for condition: ${conditionKey}`)
+          
+          // Acne-related conditions
+          if (conditionLower.includes('acne')) {
+            if (product.category === 'cleanser') {
+              score += 9
+              reasons.push('Gentle cleansing for acne-prone skin')
+              console.log(`✅ ${product.name} scored +9 for acne condition (cleanser)`)
+            }
+            if (product.category === 'treatment' && product.description.toLowerCase().includes('salicylic')) {
+              score += 10
+              reasons.push('Salicylic acid treatment for acne')
+              console.log(`✅ ${product.name} scored +10 for acne condition (salicylic acid)`)
+            }
+            if (product.description.toLowerCase().includes('gentle') || product.description.toLowerCase().includes('non-comedogenic')) {
+              score += 4
+              reasons.push('Non-irritating for acne-prone skin')
+              console.log(`✅ ${product.name} scored +4 for acne condition (gentle/non-comedogenic)`)
+            }
+          }
+          
+          // Dark spots and hyperpigmentation
+          if (conditionLower.includes('dark_spot') || conditionLower.includes('pigmentation')) {
+            if (product.category === 'treatment' && (product.description.toLowerCase().includes('vitamin c') || product.description.toLowerCase().includes('niacinamide'))) {
+              score += 10
+              reasons.push('Targets hyperpigmentation with proven ingredients')
+              console.log(`✅ ${product.name} scored +10 for dark spots (vitamin c/niacinamide)`)
+            }
+            if (product.category === 'serum' && product.description.toLowerCase().includes('brightening')) {
+              score += 8
+              reasons.push('Brightening serum for uneven skin tone')
+              console.log(`✅ ${product.name} scored +8 for dark spots (brightening serum)`)
+            }
+          }
+          
+          // Pores
+          if (conditionLower.includes('pore')) {
+            if (product.category === 'cleanser' && product.description.toLowerCase().includes('deep')) {
+              score += 8
+              reasons.push('Deep cleansing for enlarged pores')
+              console.log(`✅ ${product.name} scored +8 for pores (deep cleansing)`)
+            }
+            if (product.description.toLowerCase().includes('pore') || product.description.toLowerCase().includes('refining')) {
+              score += 7
+              reasons.push('Pore-refining treatment')
+              console.log(`✅ ${product.name} scored +7 for pores (pore-refining)`)
+            }
+          }
+          
+          // Redness and rosacea
+          if (conditionLower.includes('redness') || conditionLower.includes('rosacea')) {
+            if (product.description.toLowerCase().includes('calming') || product.description.toLowerCase().includes('soothing')) {
+              score += 9
+              reasons.push('Calming and soothing for redness')
+              console.log(`✅ ${product.name} scored +9 for redness (calming/soothing)`)
+            }
+            if (product.description.toLowerCase().includes('gentle') || product.description.toLowerCase().includes('fragrance-free')) {
+              score += 6
+              reasons.push('Gentle and fragrance-free for sensitive skin')
+              console.log(`✅ ${product.name} scored +6 for redness (gentle/fragrance-free)`)
+            }
+          }
+          
+          // Wrinkles and aging
+          if (conditionLower.includes('wrinkle') || conditionLower.includes('aging')) {
+            if (product.category === 'serum' && product.description.toLowerCase().includes('retinol')) {
+              score += 10
+              reasons.push('Retinol for anti-aging benefits')
+              console.log(`✅ ${product.name} scored +10 for wrinkles (retinol)`)
+            }
+            if (product.category === 'moisturizer' && product.description.toLowerCase().includes('anti-aging')) {
+              score += 8
+              reasons.push('Anti-aging moisturizer')
+              console.log(`✅ ${product.name} scored +8 for wrinkles (anti-aging moisturizer)`)
+            }
+          }
+        })
+      } else {
+        // Fallback to old structure: conditions array
+        if (Array.isArray(conditions)) {
+          conditions.forEach(condition => {
+            // Handle both string and object conditions
+            let conditionName: string;
+            if (typeof condition === 'string') {
+              conditionName = condition;
+            } else if (condition && typeof condition === 'object' && 'name' in condition) {
+              conditionName = condition.name;
+            } else {
+              return; // Skip invalid conditions
+            }
+            
+            const conditionLower = conditionName.toLowerCase()
+            console.log(`🔍 Scoring product "${product.name}" for condition: ${conditionName}`)
+            
+            // Acne-related conditions
+            if (conditionLower.includes('acne') || conditionLower.includes('breakout')) {
+              if (product.category === 'cleanser') {
+                score += 9
+                reasons.push('Gentle cleansing for acne-prone skin')
+                console.log(`✅ ${product.name} scored +9 for acne condition (cleanser)`)
+              }
+              if (product.category === 'treatment' && product.description.toLowerCase().includes('salicylic')) {
+                score += 10
+                reasons.push('Salicylic acid treatment for acne')
+                console.log(`✅ ${product.name} scored +10 for acne condition (salicylic acid)`)
+              }
+              if (product.description.toLowerCase().includes('gentle') || product.description.toLowerCase().includes('non-comedogenic')) {
+                score += 4
+                reasons.push('Non-irritating for acne-prone skin')
+                console.log(`✅ ${product.name} scored +4 for acne condition (gentle/non-comedogenic)`)
+              }
+            }
+            
+            // Hyperpigmentation and dark spots
+            if (conditionLower.includes('hyperpigmentation') || conditionLower.includes('dark spot') || conditionLower.includes('melasma')) {
+              if (product.category === 'treatment' && (product.description.toLowerCase().includes('vitamin c') || product.description.toLowerCase().includes('niacinamide'))) {
+                score += 10
+                reasons.push('Targets hyperpigmentation with proven ingredients')
+                console.log(`✅ ${product.name} scored +10 for hyperpigmentation (vitamin c/niacinamide)`)
+              }
+              if (product.category === 'serum' && product.description.toLowerCase().includes('brightening')) {
+                score += 8
+                reasons.push('Brightening serum for uneven skin tone')
+                console.log(`✅ ${product.name} scored +8 for hyperpigmentation (brightening serum)`)
+              }
+            }
+            
+            // Dryness and dehydration
+            if (conditionLower.includes('dry') || conditionLower.includes('dehydrated') || conditionLower.includes('flaky')) {
+              if (product.category === 'moisturizer' && product.description.toLowerCase().includes('hydrating')) {
+                score += 9
+                reasons.push('Hydrating moisturizer for dry skin')
+                console.log(`✅ ${product.name} scored +9 for dryness (hydrating moisturizer)`)
+              }
+              if (product.category === 'serum' && product.description.toLowerCase().includes('hyaluronic')) {
+                score += 8
+                reasons.push('Hyaluronic acid for hydration')
+                console.log(`✅ ${product.name} scored +8 for dryness (hyaluronic acid)`)
+              }
+            }
+            
+            // Sensitivity and redness
+            if (conditionLower.includes('sensitive') || conditionLower.includes('redness') || conditionLower.includes('irritated')) {
+              if (product.description.toLowerCase().includes('gentle') || product.description.toLowerCase().includes('calming')) {
+                score += 8
+                reasons.push('Gentle and calming for sensitive skin')
+                console.log(`✅ ${product.name} scored +8 for sensitivity (gentle/calming)`)
+              }
+              if (product.description.toLowerCase().includes('fragrance-free') || product.description.toLowerCase().includes('hypoallergenic')) {
+                score += 6
+                reasons.push('Fragrance-free for sensitive skin')
+                console.log(`✅ ${product.name} scored +6 for sensitivity (fragrance-free/hypoallergenic)`)
+              }
+            }
+            
+            // Aging and fine lines
+            if (conditionLower.includes('aging') || conditionLower.includes('fine line') || conditionLower.includes('wrinkle')) {
+              if (product.category === 'serum' && product.description.toLowerCase().includes('retinol')) {
+                score += 9
+                reasons.push('Retinol for anti-aging benefits')
+                console.log(`✅ ${product.name} scored +9 for aging (retinol)`)
+              }
+              if (product.category === 'moisturizer' && product.description.toLowerCase().includes('anti-aging')) {
+                score += 7
+                reasons.push('Anti-aging moisturizer')
+                console.log(`✅ ${product.name} scored +7 for aging (anti-aging moisturizer)`)
+              }
+            }
+            
+            // Sun damage
+            if (conditionLower.includes('sun damage') || conditionLower.includes('uv damage')) {
+              if (product.category === 'sunscreen') {
+                score += 10
+                reasons.push('Essential protection for sun-damaged skin')
+                console.log(`✅ ${product.name} scored +10 for sun damage (sunscreen)`)
+              }
+              if (product.description.toLowerCase().includes('repair') || product.description.toLowerCase().includes('recovery')) {
+                score += 6
+                reasons.push('Repair and recovery for sun damage')
+                console.log(`✅ ${product.name} scored +6 for sun damage (repair/recovery)`)
+              }
+            }
+          })
+        }
+      }
+
+      // Category balance and essential products
+      if (product.category === 'cleanser') score += 3
+      if (product.category === 'sunscreen') score += 4
+      if (product.category === 'moisturizer') score += 2
+      
+      // Brand reputation and quality indicators
+      if (product.description.toLowerCase().includes('clinical') || product.description.toLowerCase().includes('medical-grade')) {
+        score += 2
+        reasons.push('Medical-grade formulation')
       }
       
-      // Map conditions to product categories
-      const conditionToCategory: { [key: string]: string[] } = {
-        acne: ['cleanser', 'treatment', 'moisturizer'],
-        rosacea: ['cleanser', 'moisturizer', 'sunscreen'],
-        eczema: ['moisturizer', 'treatment'],
-        actinic_keratosis: ['sunscreen', 'treatment'],
-        basal_cell_carcinoma: ['sunscreen', 'treatment'],
-        healthy: ['cleanser', 'moisturizer', 'sunscreen']
-      };
+      // Price consideration (affordability bonus)
+      if (product.price < 50) score += 1
 
-      const categories = conditionToCategory[condition] || [];
-      categories.forEach((category: string) => {
-        const categoryProducts = products.filter(p => p.category === category);
-        if (categoryProducts.length > 0) {
-          recommendedProducts.push({
-            ...categoryProducts[0],
-            match: condition,
-            reason: `Recommended for ${condition.replace('_', ' ')}`
-          });
-        }
-      });
-    }
+      console.log(`📊 ${product.name} final score: ${score}, reasons: ${reasons.join(', ')}`)
 
-    // Remove duplicates and limit to 6 products
-    const unique = recommendedProducts.filter((product, index, self) =>
-      index === self.findIndex(p => p.id === product.id)
-    );
-
-    // FALLBACK: If no specific recommendations, show general products
-    if (unique.length === 0) {
-      const generalProducts = products.slice(0, 6).map(product => ({
+      return {
         ...product,
-        match: 'general',
-        reason: 'General skincare recommendation',
-        confidence: 0.5,
-        severity: 'moderate'
-      }));
-      return generalProducts;
-    }
+        score,
+        matchReason: reasons.length > 0 ? reasons.join('; ') : 'Recommended for your skin profile'
+      }
+    })
 
-    return unique.slice(0, 6);
-  };
+    console.log('🎯 Enhanced scored products:', scoredProducts.map(p => ({ 
+      name: p.name, 
+      score: p.score, 
+      reason: p.matchReason,
+      category: p.category 
+    })))
+
+    // Sort by score and return top recommendations with category diversity
+    const sortedByScore = scoredProducts.sort((a, b) => b.score - a.score)
+    console.log('📊 Top 10 scored products:', sortedByScore.slice(0, 10).map(p => ({ name: p.name, score: p.score, category: p.category })))
+    
+    // Ensure we have a good mix of categories
+    const topRecommendations = []
+    const categoryCounts = { cleanser: 0, treatment: 0, serum: 0, moisturizer: 0, sunscreen: 0 }
+    
+    for (const product of sortedByScore) {
+      if (topRecommendations.length >= 6) break
+      
+      const category = product.category as keyof typeof categoryCounts
+      if (categoryCounts[category] < 2) { // Max 2 products per category
+        topRecommendations.push(product)
+        categoryCounts[category]++
+        console.log(`✅ Added ${product.name} (${category}) to recommendations`)
+      }
+    }
+    
+    // Fill remaining slots with highest scoring products
+    for (const product of sortedByScore) {
+      if (topRecommendations.length >= 6) break
+      if (!topRecommendations.find(p => p.id === product.id)) {
+        topRecommendations.push(product)
+        console.log(`✅ Added ${product.name} (${product.category}) to fill remaining slot`)
+      }
+    }
+    
+    console.log('🎯 Final enhanced recommendations:', topRecommendations.map(p => ({ 
+      name: p.name, 
+      score: p.score, 
+      category: p.category 
+    })))
+    
+    return topRecommendations
+  }
 
   if (!analysisResult) {
     return (
@@ -534,7 +740,7 @@ function SuggestionsPageContent() {
 
   const overallConfidence = getEnhancedConfidence();
   const conditions = analysisResult.detected_conditions?.map(condition => condition.name) || [];
-  const recommendedProducts = getRecommendedProducts();
+  const recommendedProducts = generateIntelligentRecommendations(analysisResult);
 
   return (
     <div className="min-h-screen bg-transparent text-primary">
@@ -824,27 +1030,17 @@ function SuggestionsPageContent() {
                              <p className="text-sm text-secondary line-clamp-2">{product.description}</p>
                              
                              {/* Hare Run V6 Analysis Info */}
-                             {product.match && product.match !== 'general' && (
+                             {product.matchReason && (
                                <div className="mt-2 space-y-1">
                                  <div className="flex items-center justify-between text-xs">
-                                   <span className="text-secondary">Condition:</span>
-                                   <span className="font-medium capitalize text-primary">
-                                     {product.match.replace('_', ' ')}
-                                   </span>
+                                   <span className="text-secondary">Reason:</span>
+                                   <span className="font-medium text-primary">{product.matchReason}</span>
                                  </div>
-                                 {product.confidence && (
+                                 {product.score && (
                                    <div className="flex items-center justify-between text-xs">
-                                     <span className="text-secondary">Confidence:</span>
+                                     <span className="text-secondary">Score:</span>
                                      <span className="font-medium text-primary">
-                                       {Math.round(product.confidence * 100)}%
-                                     </span>
-                                   </div>
-                                 )}
-                                 {product.severity && (
-                                   <div className="flex items-center justify-between text-xs">
-                                     <span className="text-secondary">Severity:</span>
-                                     <span className={`font-medium capitalize px-2 py-1 rounded-full text-xs ${getSeverityColor(product.severity)}`}>
-                                       {product.severity}
+                                       {product.score}
                                      </span>
                                    </div>
                                  )}
@@ -899,13 +1095,21 @@ function SuggestionsPageContent() {
             
 
           {/* Back Button */}
-          <div className="text-center">
+          <div className="text-center space-x-4">
             <Link 
               href="/"
               className="inline-flex items-center px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary/80 transition-colors"
             >
               <ArrowLeft className="w-5 h-5 mr-2" />
               Back to Analysis
+            </Link>
+            
+            <Link 
+              href="/catalog"
+              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+            >
+              <ShoppingCart className="w-5 h-5 mr-2" />
+              View Full Catalog
             </Link>
           </div>
         </div>
