@@ -15,6 +15,7 @@ const nextConfig = {
   // Remove hardcoded environment variable fallbacks that override code changes
   // Let the code handle its own defaults for better control
   // FORCE DEPLOYMENT: This comment ensures Amplify detects the change
+  // TRIGGER NEW BUILD: Adding timestamp to force Amplify rebuild - August 15, 2025 8:45 PM
   experimental: {
     // Remove invalid option
   },
