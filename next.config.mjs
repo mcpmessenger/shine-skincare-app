@@ -9,7 +9,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    domains: ['localhost', 'your-backend-domain.com'],
+    // Remove domains config - not needed for local public folder images
     unoptimized: true,
   },
   // Remove hardcoded environment variable fallbacks that override code changes
