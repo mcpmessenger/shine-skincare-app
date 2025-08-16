@@ -332,3 +332,57 @@ We've now fixed **ALL 8 files** with hardcoded wrong URLs:
 **Last Updated**: August 15, 2025  
 **Next Action**: Deploy fix and verify production functionality  
 **Bounty Status**: **TIER 1 & 2 ACHIEVED** - $150 earned, $50 pending verification
+
+---
+
+## 🚨 **CRITICAL UPDATE: Issue Persists After Successful Deployment**
+
+### **Deployment Status: August 15, 2025 - 19:45 UTC**
+- ✅ **Deployment 42**: Successfully deployed at 7:45 PM
+- ✅ **Build**: Completed in 2 minutes 39 seconds
+- ✅ **Deploy**: Completed in 22 seconds
+- ✅ **Commit**: "CRITICAL FIX: Remove ALL hard..." (our latest fix)
+- ❌ **Production Site**: **STILL SHOWS OLD BEHAVIOR**
+
+### **Evidence: Issue Persists After Deployment**
+**Console Logs from Production Site (8/16/2025 00:53 UTC)**:
+```json
+{
+  "error": "Backend service unavailable",
+  "frontend_metadata": {
+    "endpoint": "/api/v4/face/detect",
+    "proxy_to_backend": false,  // ❌ Still using old frontend logic
+    "fallback_used": true       // ❌ Still using fallback instead of real API
+  }
+}
+```
+
+**Additional Errors**:
+- ❌ `Failed to load resource: the server responded with a status of 504 ()`
+- ❌ `Analysis failed with status: 504`
+- ❌ `Fixed ML analysis error:`
+
+### **What This Means**
+1. ✅ **Our Fix is Committed**: GitHub has the latest code
+2. ✅ **Our Fix is Deployed**: Amplify reports successful deployment
+3. ❌ **Our Fix is NOT Working**: Production site still shows old behavior
+4. 🚨 **Deeper Problem**: There's something we haven't identified yet
+
+### **Updated Investigation Status**
+- **Root Cause**: ✅ **PARTIALLY IDENTIFIED** - Hardcoded URLs fixed
+- **Solution**: ✅ **IMPLEMENTED** - All wrong URLs removed
+- **Deployment**: ✅ **SUCCESSFUL** - Amplify reports deployment complete
+- **Production**: ❌ **STILL BROKEN** - Site uses old URLs despite deployment
+
+### **Next Investigation Steps**
+1. **Verify Build Artifacts**: Check if the deployed JavaScript actually contains our fixes
+2. **Check CDN Caching**: Investigate if old JavaScript bundles are cached
+3. **Environment Variables**: Verify Amplify environment variable configuration
+4. **Build Process**: Investigate if Next.js build process is ignoring our changes
+
+---
+
+**Status**: 🔴 **RE-OPENED** - Issue persists after successful deployment  
+**Last Updated**: August 16, 2025  
+**Next Action**: Investigate why deployment didn't fix the issue  
+**Bounty Status**: **TIER 1 & 2 ACHIEVED** - $150 earned, $50 pending verification
