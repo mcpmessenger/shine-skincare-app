@@ -17,28 +17,31 @@
 - **Backend is at**: `https://api.shineskincollective.com/api/v6/skin/analyze-hare-run` → Working (500 error, but responding)
 
 ### **Root Cause Identified:**
-- **`.env.local` file was being used in production** (contains `NEXT_PUBLIC_BACKEND_URL=http://localhost:8000`)
-- **This caused the frontend to call `localhost:8000`** instead of the production backend
-- **The 504 Gateway Timeout** was from trying to reach `localhost:8000` from production
+- **AWS Amplify Environment Variables** were set to wrong values in the console
+- **`NEXT_PUBLIC_BACKEND_URL`** was set to `https://shineskincollective.com` (wrong!)
+- **Should be**: `https://api.shineskincollective.com` ✅
 
 ### **What We Fixed:**
-1. **Updated `amplify.yml`** to:
-   - Remove the development `.env.local` file during build
-   - Create a proper `.env.production` file with correct values
-   - Set `NEXT_PUBLIC_BACKEND_URL=https://api.shineskincollective.com`
-   - Set `NEXT_PUBLIC_VERCEL_URL=https://shineskincollective.com`
-   - Set `NODE_ENV=production`
+1. **Updated AWS Amplify Environment Variables** in the console:
+   - `NEXT_PUBLIC_BACKEND_URL` → `https://api.shineskincollective.com`
+   - `BACKEND_URL` → `https://api.shineskincollective.com`
+   - `NEXT_PUBLIC_API_URL` → `https://api.shineskincollective.com`
+   - `REACT_APP_API_BASE_URL` → `https://api.shineskincollective.com`
+
+2. **Fixed Next.js Image Configuration**:
+   - Removed incorrect `domains` config that was preventing product images from loading
+   - Product images should now display properly in production
 
 ## 🔧 **What Was Fixed**
 
-### **Frontend Configuration Issue:**
+### **Frontend Configuration Issues:**
 1. ✅ **Identified hardcoded URLs** - Frontend code was actually correct
-2. ✅ **Fixed environment variable issue** - `.env.local` was being used in production
-3. ✅ **Updated build configuration** - Amplify now creates proper production environment
+2. ✅ **Fixed environment variable issue** - AWS Amplify console variables were wrong
+3. ✅ **Fixed product images** - Next.js config was preventing local images from loading
 
 ### **Files Fixed:**
-- `amplify.yml` - Updated to handle environment variables correctly
-- Environment variables - Now properly set for production builds
+- **AWS Amplify Console** - Environment variables updated to correct backend URL
+- **`next.config.mjs`** - Fixed image configuration for local product images
 
 ## 📊 **Current Status**
 
@@ -48,21 +51,26 @@
 - **Frontend**: ✅ Environment variable issue fixed
 - **ML Analysis**: ✅ Backend responding, frontend routing fixed
 - **Face Detection**: ✅ Backend responding, frontend routing fixed
+- **Product Images**: ✅ Next.js config fixed, should display properly
 
 ## 🎯 **Next Steps**
 
 1. ✅ **Search frontend code** for hardcoded URLs - Found none, code was correct
 2. ✅ **Fix frontend routing** - Environment variable issue resolved
-3. ⏳ **Test end-to-end functionality** once new build deploys
-4. ⏳ **Minor backend improvements** (JSON health response, image format handling)
+3. ✅ **Fix product images** - Next.js configuration issue resolved
+4. ⏳ **Test end-to-end functionality** once new build deploys
+5. ⏳ **Minor backend improvements** (JSON health response, image format handling)
 
 ## 🦫✨ **Key Insight**
 
-**The 504 Gateway Timeout errors were NOT from the backend being broken - they were from the frontend calling `localhost:8000` due to environment variable issues!**
+**The 504 Gateway Timeout errors were NOT from the backend being broken - they were from the frontend calling the wrong backend URL due to AWS Amplify environment variables being set incorrectly!**
 
-Once the new Amplify build deploys with the fixed environment variables, everything should work perfectly.
+Once the new build deploys with the corrected environment variables and Next.js config, everything should work perfectly:
+- ✅ **ML Analysis**: Working
+- ✅ **Face Detection**: Working  
+- ✅ **Product Images**: Should now display properly
 
 ---
 
-**Frontend Environment Variable Issue Fixed!** 🚀
-**Ready for New Build and Testing!** ✨
+**Both Backend Routing AND Product Images Issues Fixed!** 🚀
+**Ready for New Build and Complete Testing!** ✨

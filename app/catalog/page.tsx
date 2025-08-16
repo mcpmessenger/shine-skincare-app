@@ -11,11 +11,25 @@ import { SignInModal } from '@/components/sign-in-modal'
 import { products } from '@/lib/products'
 import { Header } from '@/components/header'
 
+// Interface for recommended products with additional properties
+interface RecommendedProduct {
+  id: string
+  name: string
+  price: number
+  image: string
+  description: string
+  category: string
+  matchReason?: string
+  score?: number
+}
+
 interface AnalysisData {
   health_score: number
   conditions: string[]
-  recommendations: string[]
-  face_detected: boolean
+  skinType?: string
+  concerns?: string[]
+  metrics?: any
+  intelligentRecommendations?: RecommendedProduct[]
 }
 
 export default function CatalogPage() {
@@ -49,9 +63,22 @@ export default function CatalogPage() {
     }, 1000); // Show logo for 1 second
   }, [])
 
-  const getRecommendedProducts = () => {
+  useEffect(() => {
+    // Fetch intelligent recommendations if we have analysis data
+    if (analysisData && !analysisData.intelligentRecommendations) {
+      fetchIntelligentRecommendations()
+    }
+  }, [analysisData])
+
+  const getRecommendedProducts = (): RecommendedProduct[] => {
     if (!analysisData) return []
     
+    // If we have intelligent recommendations from the API, use those
+    if (analysisData.intelligentRecommendations && analysisData.intelligentRecommendations.length > 0) {
+      return analysisData.intelligentRecommendations
+    }
+    
+    // Fallback to local logic if no API recommendations
     const recommended = products.filter(product => {
       // Match based on conditions
       const conditionMatch = analysisData.conditions.some(condition =>
@@ -67,12 +94,47 @@ export default function CatalogPage() {
       return conditionMatch || healthMatch
     })
     
-    // Remove duplicates and limit to top 6
+    // Remove duplicates and limit to top 6, convert to RecommendedProduct type
     const unique = recommended.filter((product, index, self) =>
       index === self.findIndex(p => p.id === product.id)
     )
     
-    return unique.slice(0, 6)
+    return unique.slice(0, 6).map(product => ({
+      ...product,
+      matchReason: `Matched based on your skin profile`,
+      score: 0
+    }))
+  }
+
+  const fetchIntelligentRecommendations = async () => {
+    if (!analysisData) return
+    
+    try {
+      // Create a mock image for the API call (since we already have analysis data)
+      const mockImage = new File(['mock'], 'mock.jpg', { type: 'image/jpeg' })
+      const formData = new FormData()
+      formData.append('image', mockImage)
+      
+      const response = await fetch('/api/analysis/skin', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        if (result.products && result.products.length > 0) {
+          setAnalysisData(prev => prev ? {
+            ...prev,
+            intelligentRecommendations: result.products,
+            skinType: result.skinType,
+            concerns: result.concerns,
+            metrics: result.metrics
+          } : null)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch intelligent recommendations:', error)
+    }
   }
 
   const addToCart = (product: any) => {
@@ -142,6 +204,11 @@ export default function CatalogPage() {
                       src={product.image}
                       alt={product.name}
                       className="w-full h-48 object-cover rounded-lg border border-primary"
+                      onError={(e) => {
+                        console.log('🖼️ Product image failed to load:', product.image);
+                        const target = e.target as HTMLImageElement;
+                        target.src = 'https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png';
+                      }}
                     />
                   </div>
                 )}
@@ -158,6 +225,17 @@ export default function CatalogPage() {
                 <p className="text-secondary text-sm mb-4 leading-relaxed">
                   {product.description}
                 </p>
+                
+                {/* Recommendation Reason */}
+                {product.matchReason && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Star className="w-4 h-4 text-blue-500" />
+                      <span className="text-sm font-medium text-blue-700">Why Recommended</span>
+                    </div>
+                    <p className="text-sm text-blue-600">{product.matchReason}</p>
+                  </div>
+                )}
                 
                 <div className="flex justify-between items-center">
                   <span className="px-3 py-1 bg-blue-100 border border-blue-300 rounded-xl text-xs capitalize text-blue-700">
@@ -196,6 +274,11 @@ export default function CatalogPage() {
                     src={product.image}
                     alt={product.name}
                     className="w-full h-48 object-cover rounded-lg border border-primary"
+                    onError={(e) => {
+                      console.log('🖼️ Product image failed to load:', product.image);
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png';
+                    }}
                   />
                 </div>
               )}

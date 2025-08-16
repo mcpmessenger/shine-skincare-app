@@ -10,11 +10,16 @@ frontend:
         - echo "Removing development environment file..."
         - rm -f .env.local
         - echo "Creating production environment file..."
-        - echo "NEXT_PUBLIC_BACKEND_URL=https://api.shineskincollective.com" > .env.production
+        - echo "# Production Environment Variables" > .env.production
+        - echo "NEXT_PUBLIC_BACKEND_URL=https://api.shineskincollective.com" >> .env.production
         - echo "NODE_ENV=production" >> .env.production
         - echo "NEXT_PUBLIC_IS_LOCAL_DEV=false" >> .env.production
         - echo "NEXT_PUBLIC_VERCEL_URL=https://shineskincollective.com" >> .env.production
+        - echo "Verifying environment variables..."
+        - cat .env.production
         - npm run build
+        - echo "Copying public folder to .next for deployment..."
+        - cp -r public .next/
   artifacts:
     baseDirectory: .next
     files:

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { products } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
 
@@ -150,30 +151,148 @@ function generateRecommendations(skinType: string, concerns: string[]) {
   return recs.slice(0, 4);
 }
 
-function productRecommendations() {
-  return [
-    {
-      name: "Gentle Foaming Cleanser",
-      category: "Cleanser",
-      rating: 4.5,
-      price: 24.99,
-      image: "/products/cleanser.jpg",
+function getIntelligentProductRecommendations(skinType: string, concerns: string[], metrics: any) {
+  // Define product matching rules based on skin analysis
+  const matchingRules = {
+    // Skin Type based recommendations
+    Normal: {
+      priority: ['cleanser', 'moisturizer', 'sunscreen'],
+      avoid: []
     },
-    {
-      name: "Vitamin C Brightening Serum",
-      category: "Serum",
-      rating: 4.8,
-      price: 45.99,
-      image: "/products/serum.jpg",
+    Combination: {
+      priority: ['cleanser', 'serum', 'moisturizer', 'sunscreen'],
+      avoid: ['heavy moisturizers']
     },
-    {
-      name: "Lightweight Hydrating Moisturizer",
-      category: "Moisturizer",
-      rating: 4.3,
-      price: 32.99,
-      image: "/products/moisturizer.jpg",
+    Sensitive: {
+      priority: ['cleanser', 'moisturizer'],
+      avoid: ['harsh treatments', 'fragranced products']
     },
-  ];
+    Dry: {
+      priority: ['cleanser', 'serum', 'moisturizer'],
+      avoid: ['drying cleansers']
+    },
+    Oily: {
+      priority: ['cleanser', 'serum', 'moisturizer'],
+      avoid: ['heavy moisturizers']
+    }
+  };
+
+  // Concern-based recommendations
+  const concernMatches = {
+    Acne: {
+      categories: ['cleanser', 'treatment'],
+      keywords: ['salicylic acid', 'acne', 'therapeutic', 'medical-grade'],
+      avoid: ['heavy', 'comedogenic']
+    },
+    Hyperpigmentation: {
+      categories: ['serum', 'treatment'],
+      keywords: ['vitamin C', 'niacinamide', 'brightening', 'pigment'],
+      avoid: []
+    },
+    'Fine Lines': {
+      categories: ['serum', 'treatment'],
+      keywords: ['retinol', 'growth factor', 'anti-aging', 'renewal'],
+      avoid: []
+    },
+    Sensitivity: {
+      categories: ['cleanser', 'moisturizer'],
+      keywords: ['gentle', 'calming', 'soothing', 'ultracalming'],
+      avoid: ['harsh', 'exfoliating', 'fragranced']
+    },
+    Dehydration: {
+      categories: ['serum', 'moisturizer'],
+      keywords: ['hydrating', 'moisturizing', 'amino acids', 'hyaluronic'],
+      avoid: ['drying', 'astringent']
+    }
+  };
+
+  // Score products based on analysis results
+  const scoredProducts = products.map(product => {
+    let score = 0;
+    let reasons: string[] = [];
+
+    // Base score for skin type compatibility
+    const skinTypeRule = matchingRules[skinType as keyof typeof matchingRules];
+    if (skinTypeRule) {
+      if (skinTypeRule.priority.includes(product.category)) {
+        score += 10;
+        reasons.push(`Good for ${skinType} skin`);
+      }
+      if (skinTypeRule.avoid.some(avoid => 
+        product.description.toLowerCase().includes(avoid.toLowerCase()) ||
+        product.name.toLowerCase().includes(avoid.toLowerCase())
+      )) {
+        score -= 5;
+        reasons.push(`May not be ideal for ${skinType} skin`);
+      }
+    }
+
+    // Score based on concerns
+    concerns.forEach(concern => {
+      const concernRule = concernMatches[concern as keyof typeof concernMatches];
+      if (concernRule) {
+        if (concernRule.categories.includes(product.category)) {
+          score += 8;
+          reasons.push(`Targets ${concern.toLowerCase()}`);
+        }
+        if (concernRule.keywords.some(keyword => 
+          product.description.toLowerCase().includes(keyword.toLowerCase()) ||
+          product.name.toLowerCase().includes(keyword.toLowerCase())
+        )) {
+          score += 6;
+          reasons.push(`Contains ingredients for ${concern.toLowerCase()}`);
+        }
+        if (concernRule.avoid.some(avoid => 
+          product.description.toLowerCase().includes(avoid.toLowerCase()) ||
+          product.name.toLowerCase().includes(avoid.toLowerCase())
+        )) {
+          score -= 3;
+          reasons.push(`May aggravate ${concern.toLowerCase()}`);
+        }
+      }
+    });
+
+    // Score based on metrics
+    if (metrics.hydration < 70 && product.category === 'moisturizer') {
+      score += 5;
+      reasons.push('Addresses hydration needs');
+    }
+    if (metrics.oiliness > 60 && product.category === 'cleanser') {
+      score += 4;
+      reasons.push('Helps control oil');
+    }
+    if (metrics.sensitivity > 50 && product.description.toLowerCase().includes('gentle')) {
+      score += 3;
+      reasons.push('Gentle for sensitive skin');
+    }
+
+    // Category balance - ensure we have a good mix
+    if (product.category === 'cleanser') score += 2; // Everyone needs a cleanser
+    if (product.category === 'sunscreen') score += 3; // Sun protection is crucial
+
+    return {
+      ...product,
+      score,
+      reasons,
+      rating: 4.5 + (score * 0.1) // Adjust rating based on score
+    };
+  });
+
+  // Sort by score and return top recommendations
+  const topProducts = scoredProducts
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4)
+    .map(product => ({
+      name: product.name,
+      category: product.category,
+      rating: Math.min(5.0, Math.max(4.0, product.rating)), // Keep rating between 4.0-5.0
+      price: product.price,
+      image: product.image,
+      matchReason: product.reasons[0] || 'Recommended for your skin profile',
+      score: product.score
+    }));
+
+  return topProducts;
 }
 
 //--------------------------------------------------------------------------
@@ -241,7 +360,7 @@ export async function POST(request: NextRequest) {
     const concerns = determineConcerns(converted.label_detection);
     const metrics = calcMetrics(converted.face_detection);
     const recs = generateRecommendations(skinType, concerns);
-    const products = productRecommendations();
+    const products = getIntelligentProductRecommendations(skinType, concerns, metrics);
 
     return NextResponse.json({
       status: "success",
