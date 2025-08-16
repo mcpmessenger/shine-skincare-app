@@ -18,12 +18,21 @@ frontend:
         - echo "Verifying environment variables..."
         - cat .env.production
         - npm run build
-        - echo "Copying public folder to .next for deployment..."
-        - cp -r public .next/
+        - echo "Build completed successfully"
+        - echo "Verifying file structure..."
+        - ls -la
+        - echo "Checking public folder contents..."
+        - ls -la public/
+        - echo "Checking .next folder contents..."
+        - ls -la .next/
   artifacts:
-    baseDirectory: .next
+    baseDirectory: .
     files:
-      - '**/*'
+      - .next/**/*
+      - public/**/*
+      - package.json
+      - next.config.mjs
+      - node_modules/**/*
   cache:
     paths:
       - node_modules/**/*

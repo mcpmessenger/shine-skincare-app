@@ -5,7 +5,7 @@ export const products: Product[] = [
     id: 'is-clinical-cleansing',
     name: 'iS Clinical Cleansing Complex',
     price: 45.00,
-    image: '/products/iS Clinical Cleansing Complex.jpg',
+    image: '/products/is-clinical-cleansing.jpg',
     description: 'Gentle yet effective cleanser with salicylic acid for acne-prone skin',
     category: 'cleanser'
   },
@@ -13,7 +13,7 @@ export const products: Product[] = [
     id: 'dermalogica-ultracalming',
     name: 'Dermalogica UltraCalming Cleanser',
     price: 38.00,
-    image: '/products/Dermalogica UltraCalming Cleanser.webp',
+    image: '/products/dermalogica-ultracalming.webp',
     description: 'Soothing cleanser for sensitive and reactive skin',
     category: 'cleanser'
   },
@@ -21,7 +21,7 @@ export const products: Product[] = [
     id: 'skinceuticals-ce-ferulic',
     name: 'SkinCeuticals C E Ferulic',
     price: 169.00,
-    image: '/products/SkinCeuticals C E Ferulic.webp',
+    image: '/products/skinceuticals-ce-ferulic.webp',
     description: 'Antioxidant serum with vitamin C for brightening and protection',
     category: 'serum'
   },
@@ -37,7 +37,7 @@ export const products: Product[] = [
     id: 'pca-skin-pigment-gel',
     name: 'PCA SKIN Pigment Gel Pro',
     price: 89.00,
-    image: '/products/PCA SKIN Pigment Gel Pro.jpg',
+    image: '/products/pca-skin-pigment-gel.jpg',
     description: 'Professional-grade treatment for hyperpigmentation and dark spots',
     category: 'treatment'
   },
@@ -45,7 +45,7 @@ export const products: Product[] = [
     id: 'first-aid-beauty-repair',
     name: 'First Aid Beauty Ultra Repair Cream',
     price: 34.00,
-    image: '/products/First Aid Beauty Ultra Repair Cream.webp',
+    image: '/products/first-aid-beauty-repair.webp',
     description: 'Intensive moisturizer for dry, sensitive skin',
     category: 'moisturizer'
   },
