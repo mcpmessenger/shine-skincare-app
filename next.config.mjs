@@ -12,11 +12,8 @@ const nextConfig = {
     domains: ['localhost', 'your-backend-domain.com'],
     unoptimized: true,
   },
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
-    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000',
-  },
-  // Disable static optimization for auth pages
+  // Remove hardcoded environment variable fallbacks that override code changes
+  // Let the code handle its own defaults for better control
   experimental: {
     // Remove invalid option
   },
