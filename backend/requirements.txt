@@ -8,3 +8,4 @@ scikit-image==0.21.0
 scipy==1.11.1
 Pillow==10.0.1
 gunicorn==21.2.0
+requests==2.31.0

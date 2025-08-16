@@ -20,7 +20,7 @@
                 },
                 {
                     "name": "FLASK_APP",
-                    "value": "application_hare_run_v6_clean.py"
+                    "value": "application_hare_run_v6_fixed.py"
                 },
                 {
                     "name": "PORT",

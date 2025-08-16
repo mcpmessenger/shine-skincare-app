@@ -2,8 +2,8 @@
   "family": "shine-api-gateway",
   "containerDefinitions": [
     {
-      "name": "api-gateway",
-      "image": "396608803476.dkr.ecr.us-east-1.amazonaws.com/shine-api-gateway:hare-run-v6-fixed",
+      "name": "shine-api-gateway",
+      "image": "396608803476.dkr.ecr.us-east-1.amazonaws.com/shine-api-gateway:hare-run-v6-fixed-v4",
       "cpu": 0,
       "portMappings": [
         {
@@ -20,7 +20,7 @@
         },
         {
           "name": "FLASK_APP",
-          "value": "application_hare_run_v6_fixed.py"
+          "value": "application_hare_run_v6.py"
         },
         {
           "name": "ML_MODE",

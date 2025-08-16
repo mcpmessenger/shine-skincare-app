@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 # Create Flask app - Elastic Beanstalk expects this exact variable name
 app = Flask(__name__)
-CORS(app, origins=['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3000', 'http://127.0.0.3001', 'http://127.0.0.3002'], supports_credentials=True)
+CORS(app, origins=['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3000', 'http://127.0.0.3001', 'http://127.0.0.3002', 'https://shineskincollective.com', 'https://api.shineskincollective.com'], supports_credentials=True)
 
 # Configuration
 SERVICE_NAME = "shine-backend-hare-run-v6"
@@ -89,12 +89,14 @@ class HareRunV6ModelManager:
             if local_models_dir.exists():
                 self._load_local_models(local_models_dir)
             
-            # If local models not available, try S3
+            # Only try S3 if local models failed to load
             if not self.models_loaded and s3_client:
+                logger.info("🔄 Local models not available, attempting S3...")
                 self._load_s3_models()
             
-            # Check results directory as fallback
+            # Check results directory as final fallback
             if not self.models_loaded:
+                logger.info("🔄 Local and S3 models not available, checking results directory...")
                 self._load_results_models()
             
             if self.models_loaded:

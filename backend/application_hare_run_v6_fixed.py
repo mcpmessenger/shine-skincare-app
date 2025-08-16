@@ -15,6 +15,7 @@ import numpy as np
 import cv2
 import boto3
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import traceback
 
 # Configure logging
@@ -23,6 +24,9 @@ logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__)
+
+# Configure CORS to allow frontend access
+CORS(app, origins=['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://127.0.0.1:3002'], supports_credentials=True)
 
 # Service configuration
 SERVICE_NAME = "shine-backend-hare-run-v6"
@@ -371,7 +375,7 @@ def analyze_skin_hare_run():
                 return jsonify({
                     'success': True,
                     'analysis_type': 'Hare Run V6 Enhanced',
-                    'results': results,
+                    'result': results,  # Changed from 'results' to 'result'
                     'model_info': hare_run_v6_manager.get_model_status(),
                     'timestamp': datetime.now().isoformat()
                 })

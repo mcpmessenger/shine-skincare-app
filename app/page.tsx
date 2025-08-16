@@ -7,6 +7,11 @@ import { getApiUrl, API_CONFIG } from '@/lib/config';
 import Link from 'next/link';
 
 export default function HomePage() {
+  // DEBUG: Log config values to see what's happening
+  console.log('🔍 DEBUG: API_CONFIG loaded:', API_CONFIG);
+  console.log('🔍 DEBUG: getApiUrl test:', getApiUrl('/api/v4/face/detect'));
+  console.log('🔍 DEBUG: process.env.NEXT_PUBLIC_BACKEND_URL:', typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_BACKEND_URL : 'process not available in browser');
+  
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [isCameraLoading, setIsCameraLoading] = useState(false);
