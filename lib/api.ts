@@ -89,7 +89,7 @@ class ApiClient {
 
   constructor() {
     // Use environment variable for backend URL (will be set in Amplify)
-    this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+    this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.shineskincollective.com';
     
     // Debug: Log the actual URL being used
     console.log('🔒 Using backend URL from environment variable');

@@ -14,6 +14,7 @@ const nextConfig = {
   },
   // Remove hardcoded environment variable fallbacks that override code changes
   // Let the code handle its own defaults for better control
+  // FORCE DEPLOYMENT: This comment ensures Amplify detects the change
   experimental: {
     // Remove invalid option
   },

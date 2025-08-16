@@ -250,25 +250,46 @@ Full investigation details documented in: [BUG_BOUNTY_FRONTEND_URL_CYCLING.md](.
 **Resolution Time**: 30 minutes from investigation start  
 
 ### **Root Cause Identified**
-The issue was **NOT** with Amplify caching, deployment lag, or CDN issues. The problem was in the **Next.js configuration file** (`next.config.mjs`):
+The issue was **NOT** with Amplify caching, deployment lag, or CDN issues. The problem was **deeper than initially thought**:
 
-**Problem**: Hardcoded environment variable fallbacks were overriding code changes:
+**Primary Issue**: Hardcoded environment variable fallbacks in `next.config.mjs`:
 ```javascript
 env: {
   NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000',
 }
 ```
 
+**Secondary Issue**: Multiple API route files had hardcoded wrong URLs:
+- ❌ `http://localhost:5000` (development fallbacks)
+- ❌ `https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elasticbeanstalk.com` (old broken backend)
+
+**Critical Discovery**: Core API client `lib/api.ts` also had hardcoded wrong URL:
+- ❌ `this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';`
+
 **What Was Happening**:
 1. **Your Code**: Correctly updated to use `https://api.shineskincollective.com`
 2. **Next.js Config**: Had hardcoded fallback `|| 'http://localhost:5000'`
-3. **Amplify Build**: No environment variable set, so used fallback
-4. **Result**: Build process overrode your code changes with old URLs
+3. **Multiple API Routes**: Had hardcoded old Elastic Beanstalk URLs
+4. **Core API Client**: Had hardcoded localhost:5000 fallback
+5. **Amplify Build**: Used these hardcoded fallbacks instead of your code
+6. **Result**: Build process overrode your code changes with old, broken URLs
 
 ### **Solution Implemented**
 ✅ **Removed hardcoded fallbacks** from `next.config.mjs`  
+✅ **Fixed ALL API route files** with wrong hardcoded URLs  
+✅ **Fixed core API client** `lib/api.ts` with wrong hardcoded URL  
 ✅ **Code now controls its own defaults**  
 ✅ **Build process won't override URL changes**  
+
+**Complete List of Fixed Files**:
+1. **`next.config.mjs`** - Removed hardcoded environment variable fallbacks
+2. **`lib/api.ts`** - Fixed hardcoded `localhost:5000` fallback ⭐ **CRITICAL FIX**
+3. **`app/api/v4/skin/analyze-enhanced/route.ts`** - Fixed localhost:5000 fallback
+4. **`app/api/v3/skin/analyze-real-database/route.ts`** - Fixed old Elastic Beanstalk URL
+5. **`app/api/v3/skin/analyze-basic/route.ts`** - Fixed old Elastic Beanstalk URL
+6. **`app/api/v3/face/debug/route.ts`** - Fixed old Elastic Beanstalk URL
+7. **`app/api/v3/enhanced-embeddings/status/route.ts`** - Fixed old Elastic Beanstalk URL
+8. **`app/api/v3/skin/analyze-enhanced-embeddings/route.ts`** - Fixed old Elastic Beanstalk URL
 
 ### **Bounty Achievements**
 - **Tier 1**: ✅ **ACHIEVED** - Root cause identification ($50)

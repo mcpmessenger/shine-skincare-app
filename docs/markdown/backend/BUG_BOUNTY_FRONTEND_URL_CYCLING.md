@@ -191,32 +191,69 @@ Identify and resolve why the deployed frontend continues to use old URLs despite
 **Resolution Time**: 30 minutes from investigation start  
 
 ### **Root Cause Identified**
-The issue was **NOT** with Amplify caching, deployment lag, or CDN issues. The problem was in the **Next.js configuration file** (`next.config.mjs`):
+The issue was **NOT** with Amplify caching, deployment lag, or CDN issues. The problem was **deeper than initially thought**:
 
-**Problematic Configuration**:
+**Primary Issue**: Hardcoded environment variable fallbacks in `next.config.mjs`:
 ```javascript
 env: {
-  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
   NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000',
-},
+}
 ```
+
+**Secondary Issue**: Multiple API route files had hardcoded wrong URLs:
+- ❌ `http://localhost:5000` (development fallbacks)
+- ❌ `https://awseb--AWSEB-ydAUJ3jj2fwA-1083929952.us-east-1.elasticbeanstalk.com` (old broken backend)
 
 **What Was Happening**:
 1. **Your Code**: Correctly updated to use `https://api.shineskincollective.com`
 2. **Next.js Config**: Had hardcoded fallback `|| 'http://localhost:5000'`
-3. **Amplify Build**: No environment variable set, so used fallback
-4. **Result**: Build process overrode your code changes with old URLs
+3. **Multiple API Routes**: Had hardcoded old Elastic Beanstalk URLs
+4. **Amplify Build**: Used these hardcoded fallbacks instead of your code
+5. **Result**: Build process overrode your code changes with old, broken URLs
 
 ### **Solution Implemented**
 ✅ **Removed hardcoded fallbacks** from `next.config.mjs`  
+✅ **Fixed ALL API route files** with wrong hardcoded URLs  
 ✅ **Code now controls its own defaults**  
 ✅ **Build process won't override URL changes**  
+
+**Files Fixed**:
+- `next.config.mjs` - Removed hardcoded environment variable fallbacks
+- `lib/api.ts` - Fixed hardcoded `localhost:5000` fallback ⭐ **CRITICAL FIX**
+- `app/api/v4/skin/analyze-enhanced/route.ts` - Fixed localhost:5000 fallback
+- `app/api/v3/skin/analyze-real-database/route.ts` - Fixed old Elastic Beanstalk URL
+- `app/api/v3/skin/analyze-basic/route.ts` - Fixed old Elastic Beanstalk URL
+- `app/api/v3/face/debug/route.ts` - Fixed old Elastic Beanstalk URL
+- `app/api/v3/enhanced-embeddings/status/route.ts` - Fixed old Elastic Beanstalk URL
+- `app/api/v3/skin/analyze-enhanced-embeddings/route.ts` - Fixed old Elastic Beanstalk URL
 
 **Updated Configuration**:
 ```javascript
 // Remove hardcoded environment variable fallbacks that override code changes
 // Let the code handle its own defaults for better control
+// FORCE DEPLOYMENT: This comment ensures Amplify detects the change
 ```
+
+### **Final Critical Discovery**
+During our comprehensive scan, we found **one more critical file** that had hardcoded wrong URLs:
+
+**`lib/api.ts`** - This is the **core API client** used throughout the entire application:
+```typescript
+// BEFORE (BROKEN):
+this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+
+// AFTER (FIXED):
+this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.shineskincollective.com';
+```
+
+**Why This Was Critical**: `lib/api.ts` is imported and used by multiple components throughout the frontend. If this file had the wrong URL, it would affect **all API calls** made through the ApiClient class.
+
+### **Complete Fix Summary**
+We've now fixed **ALL 8 files** with hardcoded wrong URLs:
+1. ✅ **Configuration**: `next.config.mjs` - No more hardcoded fallbacks
+2. ✅ **Core API Client**: `lib/api.ts` - Fixed hardcoded localhost:5000
+3. ✅ **API Routes**: All 6 API route files - Fixed old Elastic Beanstalk URLs
+4. ✅ **Result**: All frontend code now uses correct production URLs
 
 ### **Why This Fixes the Issue**
 - **Before**: Build process overrode code with hardcoded fallbacks
