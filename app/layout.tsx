@@ -3,6 +3,7 @@ import './globals.css'
 import { CartProvider } from '@/hooks/useCart'
 import { ThemeProvider } from '@/hooks/useTheme'
 import { AuthProvider } from '@/hooks/useAuth'
+import { AnalysisProvider } from './contexts/AnalysisContext'
 
 export const metadata: Metadata = {
   title: 'Shine Skin Collective - AI-Powered Skincare Analysis',
@@ -33,7 +34,9 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <CartProvider>
-              {children}
+              <AnalysisProvider>
+                {children}
+              </AnalysisProvider>
             </CartProvider>
           </AuthProvider>
         </ThemeProvider>

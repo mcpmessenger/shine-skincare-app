@@ -297,7 +297,18 @@ def face_detect():
             # Get the largest face
             largest_face = max(faces, key=lambda x: x[2] * x[3])
             x, y, w, h = largest_face
-            
+
+            # Crop the face from the original image
+            cropped_face = img_array[y:y+h, x:x+w]
+            _, buffer = cv2.imencode(".png", cropped_face)
+            cropped_face_base64 = base64.b64encode(buffer).decode("utf-8")
+
+            # Calculate a confidence score based on face area relative to image area
+            image_area = img_array.shape[0] * img_array.shape[1]
+            face_area = w * h
+            # Simple heuristic: larger face relative to image implies higher confidence
+            confidence_score = min(1.0, face_area / image_area + 0.5)
+
             return jsonify({
                 'status': 'success',
                 'face_detected': True,
@@ -308,7 +319,8 @@ def face_detect():
                     'width': int(w),
                     'height': int(h)
                 },
-                'confidence': 0.95
+                'confidence': confidence_score,
+                'cropped_face_image': cropped_face_base64
             })
         else:
             return jsonify({
@@ -357,17 +369,28 @@ def face_detect_v4():
             # Get the largest face
             largest_face = max(faces, key=lambda x: x[2] * x[3])
             x, y, w, h = largest_face
-            
+
+            # Crop the face from the original image
+            cropped_face = img_array[y:y+h, x:x+w]
+            _, buffer = cv2.imencode(".png", cropped_face)
+            cropped_face_base64 = base64.b64encode(buffer).decode("utf-8")
+
+            # Calculate confidence score
+            image_area = img_array.shape[0] * img_array.shape[1]
+            face_area = w * h
+            confidence_score = min(1.0, face_area / image_area + 0.5)
+
             return jsonify({
                 'status': 'success',
                 'faces': [{
-                    'confidence': 0.95,
+                    'confidence': confidence_score,
                     'bounds': {
                         'x': int(x),
                         'y': int(y),
                         'width': int(w),
                         'height': int(h)
-                    }
+                    },
+                    'cropped_face_image': cropped_face_base64
                 }],
                 'message': 'Face detection successful'
             })
@@ -375,7 +398,8 @@ def face_detect_v4():
             return jsonify({
                 'status': 'success',
                 'faces': [],
-                'message': 'No faces detected'
+                'message': 'No faces detected',
+                'cropped_face_image': None
             })
             
     except Exception as e:

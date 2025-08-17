@@ -29,6 +29,7 @@ import Link from 'next/link';
 import { products } from '@/lib/products';
 import Image from 'next/image';
 import { Header } from '@/components/header';
+import { useAnalysis } from '../contexts/AnalysisContext';
 
 interface AnalysisResult {
   status: string;
@@ -153,6 +154,7 @@ interface RecommendedProduct {
 function SuggestionsPageContent() {
   
   const searchParams = useSearchParams();
+  const { analysisData } = useAnalysis();
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [showTechnicalData, setShowTechnicalData] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -165,14 +167,26 @@ function SuggestionsPageContent() {
 
   useEffect(() => {
     console.log('🔍 Suggestions page loading...');
-    // Try to get analysis data from sessionStorage first
+    console.log('🔍 AnalysisContext data:', analysisData);
+    console.log('🔍 AnalysisContext croppedFaceImage:', analysisData.croppedFaceImage ? 'EXISTS' : 'MISSING');
+    console.log('🔍 AnalysisContext originalImage:', analysisData.originalImage ? 'EXISTS' : 'MISSING');
+    console.log('🔍 AnalysisContext faceConfidence:', analysisData.faceConfidence);
+    
+    // Priority 1: Use AnalysisContext data (Project Vanity)
+    if (analysisData.analysisResults) {
+      console.log('✅ Using AnalysisContext data for Project Vanity');
+      setAnalysisResult(analysisData.analysisResults);
+      return;
+    }
+    
+    // Priority 2: Try to get analysis data from sessionStorage
     const storedAnalysis = sessionStorage.getItem('analysisResult');
     console.log('📦 Stored analysis data:', storedAnalysis ? 'Found' : 'Not found');
     
     if (storedAnalysis) {
       try {
         const result = JSON.parse(storedAnalysis);
-        console.log('✅ Successfully parsed analysis result:', result);
+        console.log('✅ Successfully parsed analysis result from sessionStorage:', result);
         setAnalysisResult(result);
         // Don't clear the stored data - keep it for other pages to use
         console.log('💾 Keeping analysis data in sessionStorage for other pages');
@@ -180,7 +194,7 @@ function SuggestionsPageContent() {
         console.error('❌ Error parsing analysis data from sessionStorage:', error);
       }
     } else {
-      // Fallback to URL parameter for backward compatibility
+      // Priority 3: Fallback to URL parameter for backward compatibility
       const analysisParam = searchParams.get('analysis');
       console.log('🔗 URL analysis parameter:', analysisParam ? 'Found' : 'Not found');
       
@@ -194,10 +208,10 @@ function SuggestionsPageContent() {
           console.error('❌ Error parsing analysis data from URL:', error);
         }
       } else {
-        console.log('⚠️ No analysis data found in sessionStorage or URL');
+        console.log('⚠️ No analysis data found in AnalysisContext, sessionStorage, or URL');
       }
     }
-  }, [searchParams]);
+  }, [searchParams, analysisData]);
 
   useEffect(() => {
     // Set loading to false after initialization
@@ -757,9 +771,9 @@ function SuggestionsPageContent() {
            <p className="text-lg text-secondary font-light">
              Your personalized skin analysis and recommendations
            </p>
-           
-
          </div>
+
+
 
         {/* Main Content */}
         <div className="max-w-4xl mx-auto">
@@ -773,6 +787,28 @@ function SuggestionsPageContent() {
                 <span className="text-lg font-semibold text-primary">{overallConfidence}%</span>
               </div>
             </div>
+            
+            {/* Project Vanity: Face Thumbnail Display */}
+            {analysisData.croppedFaceImage && (
+              <div className="mb-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
+                <div className="flex items-center justify-center space-x-4">
+                  <div className="text-center">
+                    <p className="text-sm text-secondary mb-2">Analyzed Face Region</p>
+                    <img
+                      src={analysisData.croppedFaceImage}
+                      alt="Cropped face region that was analyzed"
+                      className="w-24 h-24 object-cover rounded-lg border-2 border-green-500 shadow-sm"
+                    />
+                    <p className="text-xs text-green-600 mt-1 font-medium">
+                      Face Detection: {Math.round(analysisData.faceConfidence * 100)}% Confidence
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-secondary text-center mt-2">
+                  This is the specific face region that was analyzed for skin conditions
+                </p>
+              </div>
+            )}
             
             {/* Primary Condition */}
             <div className="mb-6">

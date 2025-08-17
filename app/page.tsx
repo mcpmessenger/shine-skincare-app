@@ -5,8 +5,13 @@ import { Camera, Upload, ArrowRight, Zap, Eye } from 'lucide-react';
 import { Header } from '@/components/header';
 import { getApiUrl, API_CONFIG } from '@/lib/config';
 import Link from 'next/link';
+import { useAnalysis } from './contexts/AnalysisContext';
+import { useRouter } from 'next/navigation';
 
 export default function HomePage() {
+  const { setAnalysisData } = useAnalysis();
+  const router = useRouter();
+  
   // DEBUG: Log config values to see what's happening
   console.log('🔍 DEBUG: API_CONFIG loaded:', API_CONFIG);
   console.log('🔍 DEBUG: FACE_DETECT endpoint:', API_CONFIG.ENDPOINTS.FACE_DETECT);
@@ -22,6 +27,12 @@ export default function HomePage() {
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [croppedFaceImage, setCroppedFaceImage] = useState<string | null>(null);
+  
+  // Debug logging for cropped face image state changes
+  useEffect(() => {
+    console.log('🔍 DEBUG: croppedFaceImage state changed:', croppedFaceImage ? `EXISTS (${croppedFaceImage.length} chars)` : 'NULL');
+  }, [croppedFaceImage]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -109,6 +120,7 @@ export default function HomePage() {
     setUploadedImage(null);
     setFaceDetected(false);
     setFaceConfidence(0);
+    setCroppedFaceImage(null);
     setIsVideoPlaying(false);
     
     // Clear any canvas overlays
@@ -185,6 +197,19 @@ export default function HomePage() {
             faceDetected = true;
             faceConfidence = face.confidence || 0;
             faceBounds = face.bounds;
+            
+            // Handle cropped face image if available
+            console.log('🔍 DEBUG: Live detection - checking for cropped face image...');
+            console.log('🔍 DEBUG: Face object:', face);
+            console.log('🔍 DEBUG: cropped_face_image field:', face.cropped_face_image ? 'EXISTS' : 'MISSING');
+            
+            if (face.cropped_face_image) {
+              console.log('🔍 DEBUG: Setting cropped face image, length:', face.cropped_face_image.length);
+              setCroppedFaceImage(`data:image/png;base64,${face.cropped_face_image}`);
+            } else {
+              console.log('🔍 DEBUG: No cropped face image found in live response');
+            }
+            
             console.log('FACE DETECTED! Face data:', face);
             console.log('Face bounds:', face.bounds);
             console.log('Face confidence:', face.confidence);
@@ -193,6 +218,12 @@ export default function HomePage() {
             faceDetected = true;
             faceConfidence = result.confidence || 0;
             faceBounds = result.face_bounds;
+            
+            // Handle cropped face image if available
+            if (result.cropped_face_image) {
+              setCroppedFaceImage(`data:image/png;base64,${result.cropped_face_image}`);
+            }
+            
             console.log('FACE DETECTED! (Local API) Face data:', result);
             console.log('Face bounds:', result.face_bounds);
             console.log('Face confidence:', result.confidence);
@@ -348,15 +379,36 @@ export default function HomePage() {
           const face = result.faces[0];
           setFaceDetected(true);
           setFaceConfidence(face.confidence || 0);
+          
+          // Handle cropped face image if available
+          console.log('🔍 DEBUG: Checking for cropped face image...');
+          console.log('🔍 DEBUG: Face object:', face);
+          console.log('🔍 DEBUG: cropped_face_image field:', face.cropped_face_image ? 'EXISTS' : 'MISSING');
+          console.log('🔍 DEBUG: Full face detection response:', JSON.stringify(result, null, 2));
+          
+          if (face.cropped_face_image) {
+            console.log('🔍 DEBUG: Setting cropped face image, length:', face.cropped_face_image.length);
+            setCroppedFaceImage(`data:image/png;base64,${face.cropped_face_image}`);
+          } else {
+            console.log('🔍 DEBUG: No cropped face image found in response');
+          }
+          
           console.log('✅ Face detected with confidence:', face.confidence);
         } else if (result.face_detected) {
           // Local API format
           setFaceDetected(true);
           setFaceConfidence(result.confidence || 0);
+          
+          // Handle cropped face image if available
+          if (result.cropped_face_image) {
+            setCroppedFaceImage(`data:image/png;base64,${result.cropped_face_image}`);
+          }
+          
           console.log('✅ Face detected with confidence:', result.confidence);
         } else {
           setFaceDetected(false);
           setFaceConfidence(0);
+          setCroppedFaceImage(null);
           console.log('⚠️ No faces detected in image');
         }
       } else {
@@ -460,11 +512,24 @@ export default function HomePage() {
         result.accuracy = result.model_info?.accuracy || '97.13%';
         result.model_type = 'Enhanced_Facial_ML';
         
-        // Store analysis data in sessionStorage instead of URL parameter
+        // Store analysis data in context for persistence
+        console.log('🔍 DEBUG: Setting AnalysisContext data...');
+        console.log('🔍 DEBUG: originalImage length:', imageData ? imageData.length : 'NULL');
+        console.log('🔍 DEBUG: croppedFaceImage:', croppedFaceImage ? 'EXISTS' : 'MISSING');
+        console.log('🔍 DEBUG: faceConfidence:', faceConfidence);
+        
+        setAnalysisData({
+          originalImage: imageData,
+          croppedFaceImage: croppedFaceImage,
+          faceConfidence: faceConfidence,
+          analysisResults: result,
+        });
+        
+        // Also store in sessionStorage for backward compatibility
         sessionStorage.setItem('analysisResult', JSON.stringify(result));
-        console.log('💾 Stored analysis result in sessionStorage');
+        console.log('💾 Stored analysis result in context and sessionStorage');
         console.log('🔗 Navigating to suggestions page...');
-        window.location.href = '/suggestions';
+        router.push('/suggestions');
       } else {
         const errorText = await response.text();
         console.error('❌ Analysis failed with status:', response.status);
@@ -741,6 +806,28 @@ export default function HomePage() {
                    {faceDetected ? 'Analyze Photo' : 'Waiting for Face...'}
                  </button>
 
+                                   {/* Cropped Face Thumbnail Display - Project Vanity */}
+                  {croppedFaceImage && (
+                    <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                      <h3 className="text-lg font-medium mb-3 text-center">Face Region to be Analyzed</h3>
+                      <div className="flex justify-center items-center">
+                        <div className="text-center">
+                          <img
+                            src={croppedFaceImage}
+                            alt="Cropped face region that will be analyzed"
+                            className="w-32 h-32 object-cover rounded-lg border-2 border-green-500 shadow-sm"
+                          />
+                          <p className="text-sm text-green-600 mt-2 font-medium">
+                            Face Detection: {Math.round(faceConfidence * 100)}% Confidence
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 text-center mt-3">
+                        This is the specific face region that will be analyzed for skin conditions.
+                      </p>
+                    </div>
+                  )}
+
                 {/* Close Button */}
                 <button
                   onClick={() => {
@@ -748,6 +835,7 @@ export default function HomePage() {
                     setUploadedImage(null);
                     setFaceDetected(false);
                     setFaceConfidence(0);
+                    setCroppedFaceImage(null);
                   }}
                   className="absolute top-4 right-4 p-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
                 >
