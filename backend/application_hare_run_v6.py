@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 # Create Flask app - Elastic Beanstalk expects this exact variable name
 app = Flask(__name__)
-CORS(app, origins=['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3000', 'http://127.0.0.3001', 'http://127.0.0.3002', 'https://shineskincollective.com', 'https://api.shineskincollective.com'], supports_credentials=True)
+CORS(app, origins=['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://127.0.0.1:3002', 'https://shineskincollective.com', 'https://api.shineskincollective.com'], supports_credentials=True)
 
 # Configuration
 SERVICE_NAME = "shine-backend-hare-run-v6"
@@ -281,17 +281,32 @@ def face_detect():
         # Decode base64 image
         image_bytes = base64.b64decode(image_data.split(',')[1] if ',' in image_data else image_data)
         
+        # ✅ ENHANCED LOGGING: Log image processing details
+        logger.info(f"Face detection v1 request received - Image data length: {len(image_data)} chars")
+        logger.info(f"Decoded image bytes: {len(image_bytes)} bytes")
+        
         # Process image
         nparr = np.frombuffer(image_bytes, np.uint8)
         img_array = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
         if img_array is None:
+            logger.error("Failed to decode image data")
             return jsonify({'error': 'Invalid image data'}), 400
         
-        # Face detection using OpenCV
+        # ✅ ENHANCED LOGGING: Log image dimensions and format
+        logger.info(f"Image decoded successfully - Dimensions: {img_array.shape[1]}x{img_array.shape[0]}, Channels: {img_array.shape[2]}")
+        
+        # Face detection using OpenCV with optimized parameters for better sensitivity
         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+        # ✅ OPTIMIZED: More sensitive parameters for better face detection
+        # scaleFactor: 1.05 (smaller = more sensitive), minNeighbors: 3 (lower = more sensitive), minSize: (30, 30)
+        faces = face_cascade.detectMultiScale(gray, 1.05, 3, minSize=(30, 30))
+        
+        # ✅ ENHANCED LOGGING: Log face detection results
+        logger.info(f"Face detection v1 completed - Found {len(faces)} faces")
+        if len(faces) > 0:
+            logger.info(f"Primary face bounds: {faces[0]}")
         
         if len(faces) > 0:
             # Get the largest face
@@ -308,6 +323,9 @@ def face_detect():
             face_area = w * h
             # Simple heuristic: larger face relative to image implies higher confidence
             confidence_score = min(1.0, face_area / image_area + 0.5)
+
+            # ✅ ENHANCED LOGGING: Log successful face detection
+            logger.info(f"Face detection v1 successful - Cropped face size: {w}x{h}, Confidence: {confidence_score:.2f}")
 
             return jsonify({
                 'status': 'success',
@@ -337,6 +355,123 @@ def face_detect():
             'error': f'Face detection failed: {str(e)}'
         }), 500
 
+@app.route('/api/v3/face/detect', methods=['POST'])
+def face_detect_v3():
+    """Face detection endpoint for frontend v3 compatibility (Swan branch)"""
+    try:
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+        
+        data = request.get_json()
+        image_data = data.get('image') or data.get('image_data')
+        
+        if not image_data:
+            return jsonify({'error': 'Image data is required'}), 400
+        
+        # Decode base64 image
+        image_bytes = base64.b64decode(image_data.split(',')[1] if ',' in image_data else image_data)
+        
+        # ✅ ENHANCED LOGGING: Log image processing details
+        logger.info(f"Face detection v3 request received - Image data length: {len(image_data)} chars")
+        logger.info(f"Decoded image bytes: {len(image_bytes)} bytes")
+        
+        # Process image
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img_array = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img_array is None:
+            logger.error("Failed to decode image data")
+            return jsonify({'error': 'Invalid image data'}), 400
+        
+        # ✅ ENHANCED LOGGING: Log image dimensions and format
+        logger.info(f"Face detection v3 - Image decoded successfully - Dimensions: {img_array.shape[1]}x{img_array.shape[0]}, Channels: {img_array.shape[2]}")
+        
+        # Face detection using OpenCV with optimized parameters for better sensitivity
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+        # ✅ OPTIMIZED: More sensitive parameters for better face detection
+        # scaleFactor: 1.05 (smaller = more sensitive), minNeighbors: 3 (lower = more sensitive), minSize: (30, 30)
+        faces = face_cascade.detectMultiScale(gray, 1.05, 3, minSize=(30, 30))
+        
+        # ✅ ENHANCED LOGGING: Log face detection results
+        logger.info(f"Face detection v3 completed - Found {len(faces)} faces")
+        if len(faces) > 0:
+            logger.info(f"Primary face bounds: {faces[0]}")
+        
+        if len(faces) > 0:
+            # Get the largest face
+            largest_face = max(faces, key=lambda x: x[2] * x[3])
+            x, y, w, h = largest_face
+
+            # Crop the face from the original image
+            cropped_face = img_array[y:y+h, x:x+w]
+            _, buffer = cv2.imencode(".png", cropped_face)
+            cropped_face_base64 = base64.b64encode(buffer).decode("utf-8")
+
+            # Calculate a confidence score based on face area relative to image area
+            image_area = img_array.shape[0] * img_array.shape[1]
+            face_area = w * h
+            # Simple heuristic: larger face relative to image implies higher confidence
+            confidence_score = min(1.0, face_area / image_area + 0.5)
+
+            # ✅ ENHANCED LOGGING: Log successful face detection
+            logger.info(f"Face detection v3 successful - Cropped face size: {w}x{h}, Confidence: {confidence_score:.2f}")
+
+            return jsonify({
+                'status': 'success',
+                'face_detected': True,
+                'face_count': len(faces),
+                'face_bounds': {
+                    'x': int(x),
+                    'y': int(y),
+                    'width': int(w),
+                    'height': int(h)
+                },
+                'confidence': confidence_score,
+                'cropped_face_image': cropped_face_base64,
+                'quality_metrics': {
+                    'lighting': 'good' if confidence_score > 0.7 else 'moderate',
+                    'sharpness': 'good' if confidence_score > 0.7 else 'moderate',
+                    'positioning': 'good' if confidence_score > 0.7 else 'moderate'
+                },
+                'guidance': {
+                    'message': 'Face detected successfully',
+                    'suggestions': [
+                        'Face is clearly visible',
+                        'Good lighting conditions',
+                        'Ready for skin analysis'
+                    ]
+                }
+            })
+        else:
+            return jsonify({
+                'status': 'success',
+                'face_detected': False,
+                'face_count': 0,
+                'face_bounds': {'x': 0, 'y': 0, 'width': 0, 'height': 0},
+                'confidence': 0.0,
+                'quality_metrics': {
+                    'lighting': 'unknown',
+                    'sharpness': 'unknown',
+                    'positioning': 'unknown'
+                },
+                'guidance': {
+                    'message': 'No face detected',
+                    'suggestions': [
+                        'Ensure your face is clearly visible',
+                        'Check lighting conditions',
+                        'Try adjusting camera position'
+                    ]
+                }
+            })
+            
+    except Exception as e:
+        logger.error(f"Face detection v3 failed: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': f'Face detection failed: {str(e)}'
+        }), 500
+
 @app.route('/api/v4/face/detect', methods=['POST'])
 def face_detect_v4():
     """Face detection endpoint for frontend compatibility (v4)"""
@@ -353,17 +488,32 @@ def face_detect_v4():
         # Decode base64 image
         image_bytes = base64.b64decode(image_data.split(',')[1] if ',' in image_data else image_data)
         
+        # ✅ ENHANCED LOGGING: Log image processing details
+        logger.info(f"Face detection v4 request received - Image data length: {len(image_data)} chars")
+        logger.info(f"Decoded image bytes: {len(image_bytes)} bytes")
+        
         # Process image
         nparr = np.frombuffer(image_bytes, np.uint8)
         img_array = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
         if img_array is None:
+            logger.error("Failed to decode image data")
             return jsonify({'error': 'Invalid image data'}), 400
         
-        # Face detection using OpenCV
+        # ✅ ENHANCED LOGGING: Log image dimensions and format
+        logger.info(f"Image decoded successfully - Dimensions: {img_array.shape[1]}x{img_array.shape[0]}, Channels: {img_array.shape[2]}")
+        
+        # Face detection using OpenCV with optimized parameters for better sensitivity
         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+        # ✅ OPTIMIZED: More sensitive parameters for better face detection
+        # scaleFactor: 1.05 (smaller = more sensitive), minNeighbors: 3 (lower = more sensitive), minSize: (30, 30)
+        faces = face_cascade.detectMultiScale(gray, 1.05, 3, minSize=(30, 30))
+        
+        # ✅ ENHANCED LOGGING: Log face detection results
+        logger.info(f"Face detection v4 completed - Found {len(faces)} faces")
+        if len(faces) > 0:
+            logger.info(f"Primary face bounds: {faces[0]}")
         
         if len(faces) > 0:
             # Get the largest face
@@ -379,6 +529,9 @@ def face_detect_v4():
             image_area = img_array.shape[0] * img_array.shape[1]
             face_area = w * h
             confidence_score = min(1.0, face_area / image_area + 0.5)
+
+            # ✅ ENHANCED LOGGING: Log successful face detection
+            logger.info(f"Face detection v4 successful - Cropped face size: {w}x{h}, Confidence: {confidence_score:.2f}")
 
             return jsonify({
                 'status': 'success',
@@ -452,11 +605,14 @@ def analyze_skin_hare_run_v6():
             # Convert numpy types to JSON-serializable types
             analysis_result = convert_numpy_types(analysis_result)
             
+            # ✅ ENHANCED: Process enhanced analysis results into frontend-compatible format
+            enhanced_result = _process_enhanced_analysis(analysis_result)
+            
             # Add Hare Run V6 metadata
-            analysis_result['model_version'] = 'Hare_Run_V6_Facial_v1.0'
-            analysis_result['model_accuracy'] = '97.13%'
-            analysis_result['model_type'] = 'Enhanced_Facial_ML'
-            analysis_result['classes'] = ['healthy', 'acne', 'bags', 'redness', 'rosacea', 'eczema', 'hyperpigmentation', 'other']
+            enhanced_result['model_version'] = 'Hare_Run_V6_Facial_v1.0'
+            enhanced_result['model_accuracy'] = '97.13%'
+            enhanced_result['model_type'] = 'Enhanced_Facial_ML'
+            enhanced_result['classes'] = ['healthy', 'acne', 'bags', 'redness', 'rosacea', 'eczema', 'hyperpigmentation', 'other']
             
             return jsonify({
                 'status': 'success',
@@ -467,7 +623,7 @@ def analyze_skin_hare_run_v6():
                     'classes': 8,
                     'model_size': '128MB'
                 },
-                'result': analysis_result
+                'result': enhanced_result
             })
         else:
             # Fallback: Return basic analysis result
@@ -505,6 +661,163 @@ def analyze_skin_hare_run_v6():
             'status': 'error',
             'error': f'Analysis failed: {str(e)}'
         }), 500
+
+def _process_enhanced_analysis(analysis_result: Dict) -> Dict:
+        """Process enhanced analysis results into frontend-compatible format"""
+        try:
+            # Extract key information from enhanced analysis
+            conditions = analysis_result.get('conditions', {})
+            health_score = analysis_result.get('health_score', 0.5)
+            primary_concerns = analysis_result.get('primary_concerns', [])
+            severity_levels = analysis_result.get('severity_levels', {})
+            product_recommendations = analysis_result.get('product_recommendations', {})  # NEW: Product recommendations
+            
+            # Determine primary skin condition based on analysis
+            skin_condition = 'healthy'
+            confidence = 0.0
+            recommendations = []
+            severity = 'none'
+            areas_of_concern = []
+            
+            # Process acne analysis
+            if 'acne' in conditions:
+                acne_data = conditions['acne']
+                if acne_data.get('severity') != 'clear':
+                    skin_condition = 'acne'
+                    confidence = max(confidence, acne_data.get('confidence', 0.0))
+                    severity = acne_data.get('severity', 'none')
+                    if acne_data.get('spot_count', 0) > 0:
+                        areas_of_concern.append('acne')
+                        recommendations.extend([
+                            'Consider gentle cleanser for acne-prone skin',
+                            'Avoid touching face throughout the day',
+                            'Use non-comedogenic products'
+                        ])
+            
+            # Process redness analysis
+            if 'redness' in conditions:
+                redness_data = conditions['redness']
+                if redness_data.get('severity') != 'none':
+                    if skin_condition == 'healthy':
+                        skin_condition = 'redness'
+                    confidence = max(confidence, redness_data.get('confidence', 0.0))
+                    if redness_data.get('severity') != 'none':
+                        areas_of_concern.append('redness')
+                        recommendations.extend([
+                            'Use gentle, fragrance-free products',
+                            'Avoid hot water when washing face',
+                            'Consider products with calming ingredients'
+                        ])
+            
+            # Process dark spots analysis
+            if 'dark_spots' in conditions:
+                dark_spots_data = conditions['dark_spots']
+                if dark_spots_data.get('severity') != 'none':
+                    if skin_condition == 'healthy':
+                        skin_condition = 'hyperpigmentation'
+                    confidence = max(confidence, dark_spots_data.get('confidence', 0.0))
+                    if dark_spots_data.get('severity') != 'none':
+                        areas_of_concern.append('dark_spots')
+                        recommendations.extend([
+                            'Use broad-spectrum sunscreen daily',
+                            'Consider products with vitamin C or niacinamide',
+                            'Avoid picking at blemishes'
+                        ])
+            
+            # Process texture analysis
+            if 'texture' in conditions:
+                texture_data = conditions['texture']
+                if texture_data.get('type') != 'smooth':
+                    if skin_condition == 'healthy':
+                        skin_condition = 'texture_concerns'
+                    confidence = max(confidence, texture_data.get('confidence', 0.0))
+                    if texture_data.get('type') != 'smooth':
+                        areas_of_concern.append('texture')
+                        recommendations.extend([
+                            'Use gentle exfoliation 1-2 times per week',
+                            'Stay hydrated and moisturize regularly',
+                            'Consider products with hyaluronic acid'
+                        ])
+            
+            # If no specific conditions detected, mark as healthy
+            if skin_condition == 'healthy' and health_score > 0.7:
+                confidence = max(0.8, health_score / 100.0)  # Convert health_score from 0-100 to 0-1
+                recommendations = [
+                    'Skin appears healthy and well-maintained',
+                    'Continue current skincare routine',
+                    'Stay hydrated and use sunscreen daily',
+                    'Maintain good sleep and nutrition habits'
+                ]
+            elif confidence == 0.0:
+                # Calculate confidence from individual condition confidences
+                condition_confidences = []
+                for condition_name, condition_data in conditions.items():
+                    if isinstance(condition_data, dict) and condition_data.get('detected'):
+                        condition_confidences.append(condition_data.get('confidence', 0.0))
+                
+                if condition_confidences:
+                    confidence = max(0.3, np.mean(condition_confidences))
+                else:
+                    # Fallback confidence based on health score
+                    confidence = max(0.3, health_score / 100.0)
+            
+            # Add general recommendations based on overall health
+            if health_score < 60:  # health_score is 0-100, not 0-1
+                recommendations.insert(0, 'Consider consulting with a dermatologist')
+            
+            # ✅ ENHANCED: Include product recommendations in the response
+            enhanced_result = {
+                'skin_condition': skin_condition,
+                'confidence': round(confidence, 2),
+                'recommendations': recommendations,
+                'severity': severity,
+                'areas_of_concern': areas_of_concern,
+                'health_score': round(health_score, 2),
+                'enhanced_analysis': analysis_result,  # Keep full analysis for debugging
+                'product_recommendations': product_recommendations  # NEW: Product recommendations
+            }
+            
+            # Add product recommendation summary if available
+            if product_recommendations and isinstance(product_recommendations, dict):
+                if 'primary_recommendations' in product_recommendations:
+                    enhanced_result['top_products'] = [
+                        {
+                            'id': rec['product']['id'],
+                            'name': rec['product']['name'],
+                            'brand': rec['product']['brand'],
+                            'price': rec['product']['price'],
+                            'category': rec['product']['category'],
+                            'score': rec['score'],
+                            'reason': rec['reason']
+                        }
+                        for rec in product_recommendations['primary_recommendations'][:3]
+                    ]
+                
+                if 'skincare_routine' in product_recommendations:
+                    enhanced_result['skincare_routine'] = product_recommendations['skincare_routine']
+                
+                if 'general_recommendations' in product_recommendations:
+                    enhanced_result['product_tips'] = product_recommendations['general_recommendations']
+            
+            return enhanced_result
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to process enhanced analysis: {e}")
+            # Return fallback result
+            return {
+                'skin_condition': 'healthy',
+                'confidence': 0.5,
+                'recommendations': [
+                    'Analysis completed with basic results',
+                    'Continue current skincare routine',
+                    'Consider professional consultation for detailed analysis'
+                ],
+                'severity': 'none',
+                'areas_of_concern': [],
+                'health_score': 0.5,
+                'error': f'Processing failed: {str(e)}',
+                'product_recommendations': {}  # Empty product recommendations on error
+            }
 
 @app.route('/api/v5/skin/model-status', methods=['GET'])
 def skin_model_status():
@@ -560,6 +873,7 @@ def root():
             
             # Face Detection
             "face_detect": "/api/v1/face/detect",
+            "face_detect_v3": "/api/v3/face/detect",
             "face_detect_v4": "/api/v4/face/detect",
             
             # Skin Analysis
