@@ -581,11 +581,13 @@ export default function HomePage() {
     console.log('📊 Image data length:', imageData.length);
 
     try {
-      // Use the local Hare Run V6 endpoint to avoid CORS issues
-      const endpoint = '/api/v6/skin/analyze-hare-run';
+      // Call the Flask backend directly to avoid the frontend proxy issue
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      const endpoint = `${backendUrl}/api/v6/skin/analyze-hare-run`;
       
-      console.log('📡 Calling local Hare Run V6 enhanced ML endpoint...');
-      console.log('🔗 Local endpoint:', endpoint);
+      console.log('📡 Calling Flask backend Hare Run V6 enhanced ML endpoint...');
+      console.log('🔗 Backend endpoint:', endpoint);
+      console.log('🔗 Backend URL:', backendUrl);
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -593,7 +595,7 @@ export default function HomePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          image_data: imageData.split(',')[1]
+          image: imageData  // Use 'image' field to match backend expectations
         })
       });
 

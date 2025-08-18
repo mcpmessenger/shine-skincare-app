@@ -24,33 +24,42 @@ class EnhancedSkinAnalyzer:
     """Advanced skin analysis using computer vision and ML techniques"""
     
     def __init__(self):
-        """Initialize the enhanced skin analyzer"""
-        self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        self.eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+        """Initialize the Enhanced Skin Analyzer"""
+        self.logger = logging.getLogger(__name__)
         
         # Initialize embedding service for real dataset comparison
-        self.embedding_index = None
         self.embeddings_matrix = None
-        self.metadata_list = None
+        self.metadata = None
+        
+        # Load embeddings
         self._load_embeddings()
         
-        # Analysis parameters - ADJUSTED FOR BETTER SENSITIVITY
+        # Initialize product recommendation engine
+        try:
+            from product_recommendation_engine import ProductRecommendationEngine
+            self.product_engine = ProductRecommendationEngine()
+            self.logger.info("✅ Product recommendation engine initialized")
+        except Exception as e:
+            self.logger.warning(f"⚠️ Failed to initialize product recommendation engine: {e}")
+            self.product_engine = None
+        
+        # Analysis parameters - OPTIMIZED FOR ACCURACY (FIXED OVER-SENSITIVITY)
         self.analysis_params = {
             'acne': {
-                'redness_threshold': 0.6,    # Reduced from 0.9 for better acne detection
-                'saturation_threshold': 0.5, # Reduced from 0.8 for better acne detection
-                'size_threshold': 0.02,      # Reduced from 0.05 to detect smaller acne spots
-                'clustering_threshold': 0.08  # Reduced from 0.15 for better clustering detection
+                'redness_threshold': 0.9,    # Increased from 0.6 to reduce false positives
+                'saturation_threshold': 0.7, # Increased from 0.5 to reduce false positives
+                'size_threshold': 0.04,      # Increased from 0.02 to detect more significant spots
+                'clustering_threshold': 0.12  # Increased from 0.08 to detect more pronounced clustering
             },
             'redness': {
                 'hue_range': [(0, 10), (170, 180)],
-                'saturation_threshold': 0.25, # Reduced from 0.4 for better redness detection
-                'value_threshold': 0.35       # Reduced from 0.5 for better redness detection
+                'saturation_threshold': 0.35, # Increased from 0.25 to reduce false positives
+                'value_threshold': 0.45       # Increased from 0.35 to reduce false positives
             },
             'dark_spots': {
-                'luminance_threshold': 0.25,  # Reduced from 0.4 for better dark spot detection
-                'contrast_threshold': 0.15,   # Reduced from 0.2 for better dark spot detection
-                'size_threshold': 0.005       # Reduced from 0.01 to detect smaller dark spots
+                'luminance_threshold': 0.35,  # Increased from 0.25 to reduce false positives
+                'contrast_threshold': 0.18,   # Increased from 0.15 to reduce false positives
+                'size_threshold': 0.008       # Increased from 0.005 to detect more significant spots
             },
             'texture': {
                 'lbp_radius': 3,
@@ -67,68 +76,92 @@ class EnhancedSkinAnalyzer:
         try:
             # Try multiple path strategies to find embeddings
             possible_paths = [
-                Path('./swan-embeddings/utkface_cnn_embeddings.pkl.gz'),  # Current directory
-                Path('../swan-embeddings/utkface_cnn_embeddings.pkl.gz'),  # Parent directory
-                Path('./backend/swan-embeddings/utkface_cnn_embeddings.pkl.gz'),  # Backend subdirectory
-                Path('swan-embeddings/utkface_cnn_embeddings.pkl.gz'),  # No leading dot
+                Path('./swan-embeddings/utkface_kris_hybrid_embeddings.pkl.gz'),  # ✅ NEW: Hybrid dataset (priority 1)
+                Path('./swan-embeddings/utkface_cnn_embeddings.pkl.gz'),  # Fallback: Original UTKFace
+                Path('../swan-embeddings/utkface_kris_hybrid_embeddings.pkl.gz'),  # Parent directory hybrid
+                Path('../swan-embeddings/utkface_cnn_embeddings.pkl.gz'),  # Parent directory original
+                Path('./backend/swan-embeddings/utkface_kris_hybrid_embeddings.pkl.gz'),  # Backend subdirectory hybrid
+                Path('./backend/swan-embeddings/utkface_cnn_embeddings.pkl.gz'),  # Backend subdirectory original
+                Path('swan-embeddings/utkface_kris_hybrid_embeddings.pkl.gz'),  # No leading dot hybrid
+                Path('swan-embeddings/utkface_cnn_embeddings.pkl.gz'),  # No leading dot original
             ]
             
-            possible_metadata_paths = [
-                Path('./swan-embeddings/utkface_metadata.json'),
-                Path('../swan-embeddings/utkface_metadata.json'),
-                Path('./backend/swan-embeddings/utkface_metadata.json'),
-                Path('swan-embeddings/utkface_metadata.json'),
+            # Also try to find metadata
+            metadata_paths = [
+                Path('./swan-embeddings/utkface_kris_hybrid_metadata.json'),  # ✅ NEW: Hybrid metadata (priority 1)
+                Path('./swan-embeddings/utkface_metadata.json'),  # Fallback: Original metadata
+                Path('../swan-embeddings/utkface_kris_hybrid_metadata.json'),  # Parent directory hybrid
+                Path('../swan-embeddings/utkface_metadata.json'),  # Parent directory original
+                Path('./backend/swan-embeddings/utkface_kris_hybrid_metadata.json'),  # Backend subdirectory hybrid
+                Path('./backend/swan-embeddings/utkface_metadata.json'),  # Backend subdirectory original
+                Path('swan-embeddings/utkface_kris_hybrid_metadata.json'),  # No leading dot hybrid
+                Path('swan-embeddings/utkface_metadata.json'),  # No leading dot original
             ]
             
-            embedding_path = None
+            # Find embeddings file
+            path = None
+            for p in possible_paths:
+                if p.exists():
+                    path = p
+                    break
+            
+            if not path:
+                logger.warning("⚠️ No embeddings file found")
+                return
+            
+            # Find metadata file
             metadata_path = None
-            
-            # Find the first valid embedding path
-            for path in possible_paths:
-                if path.exists():
-                    embedding_path = path
-                    logger.info(f"✅ Found embeddings at: {path.absolute()}")
+            for mp in metadata_paths:
+                if mp.exists():
+                    metadata_path = mp
                     break
             
-            # Find the first valid metadata path
-            for path in possible_metadata_paths:
-                if path.exists():
-                    metadata_path = path
-                    logger.info(f"✅ Found metadata at: {path.absolute()}")
-                    break
+            logger.info(f"✅ Found embeddings at: {path.absolute()}")
+            if metadata_path:
+                logger.info(f"✅ Found metadata at: {metadata_path.absolute()}")
             
-            if embedding_path and metadata_path and embedding_path.exists() and metadata_path.exists():
-                # Load CNN embeddings (numpy array: 1000 samples x 512 features)
-                with gzip.open(embedding_path, 'rb') as f:
-                    self.embeddings_matrix = pickle.load(f)
-                
-                # Load metadata (list of 1000 items)
-                with open(metadata_path, 'r') as f:
-                    self.metadata_list = json.load(f)
-                
-                # Create embedding index for compatibility
-                self.embedding_index = {
-                    'embeddings_matrix': self.embeddings_matrix,
-                    'metadata_list': self.metadata_list,
-                    'type': 'cnn_embeddings',
-                    'dimensions': self.embeddings_matrix.shape,
-                    'accuracy': '100% (winning model)'
-                }
-                
+            # Load embeddings
+            import gzip
+            with gzip.open(path, 'rb') as f:
+                self.embeddings_matrix = pickle.load(f)
+            
+            # Load metadata if available
+            if metadata_path:
+                try:
+                    with open(metadata_path, 'r') as f:
+                        self.metadata = json.load(f)
+                    
+                    # Check if this is the hybrid dataset
+                    dataset_name = self.metadata.get('dataset_info', {}).get('name', 'Unknown')
+                    if 'hybrid' in dataset_name.lower():
+                        logger.info(f"🎉 Using HYBRID dataset: {dataset_name}")
+                        logger.info(f"   This includes Kris-specific faces for better acne detection!")
+                    else:
+                        logger.info(f"📊 Using dataset: {dataset_name}")
+                        
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to load metadata: {e}")
+                    self.metadata = None
+            
+            # Load CNN embeddings (numpy array: 1000+ samples x 512 features)
+            if self.embeddings_matrix is not None:
                 logger.info(f"✅ Loaded {len(self.embeddings_matrix):,} CNN embeddings (shape: {self.embeddings_matrix.shape})")
-                logger.info(f"✅ Loaded {len(self.metadata_list):,} metadata entries")
-                logger.info(f"✅ Using winning CNN embeddings (100% accuracy from dual path training)")
+                
+                # Check if this is the hybrid dataset
+                if self.metadata and 'hybrid' in self.metadata.get('dataset_info', {}).get('name', '').lower():
+                    logger.info(f"🎯 HYBRID DATASET ACTIVE:")
+                    logger.info(f"   - UTKFace samples: {self.metadata.get('dataset_info', {}).get('utkface_samples', 'Unknown')}")
+                    logger.info(f"   - Kris samples: {self.metadata.get('dataset_info', {}).get('kris_samples', 'Unknown')}")
+                    logger.info(f"   - Total samples: {len(self.embeddings_matrix)}")
+                    logger.info(f"   ✅ Enhanced acne detection with Kris-specific training data!")
+                else:
+                    logger.info(f"✅ Using winning CNN embeddings (100% accuracy from dual path training)")
             else:
                 logger.warning("⚠️ CNN embeddings not found, similarity search disabled")
-                logger.warning(f"   Tried paths: {[str(p) for p in possible_paths]}")
-                logger.warning(f"   Tried metadata paths: {[str(p) for p in possible_metadata_paths]}")
-                logger.warning(f"   Current working directory: {Path.cwd()}")
+                
         except Exception as e:
             logger.error(f"❌ Failed to load CNN embeddings: {e}")
-            logger.error(f"   Exception details: {traceback.format_exc()}")
-            self.embedding_index = None
             self.embeddings_matrix = None
-            self.metadata_list = None
     
     def generate_face_embedding(self, face_image: np.ndarray) -> np.ndarray:
         """Generate CNN-style embedding for uploaded face image to match training data format"""
@@ -235,7 +268,7 @@ class EnhancedSkinAnalyzer:
     
     def find_similar_faces(self, face_image: np.ndarray, top_k: int = 5) -> List[Dict]:
         """Find similar faces from the real dataset using embeddings"""
-        if self.embedding_index is None:
+        if self.embeddings_matrix is None:
             logger.warning("⚠️ Embeddings not loaded, cannot perform similarity search")
             return []
         
@@ -249,19 +282,31 @@ class EnhancedSkinAnalyzer:
             # Get top matches
             top_indices = np.argsort(similarities)[::-1][:top_k]
             
-            results = []
+            # Get metadata for similar faces
+            similar_faces = []
             for idx in top_indices:
-                metadata = self.metadata_list[idx]
-                similarity = similarities[idx]
-                
-                results.append({
-                    'metadata': metadata,
-                    'similarity_score': float(similarity),
-                    'index': int(idx)
-                })
+                try:
+                    if self.metadata and 'samples' in self.metadata:
+                        # Handle new metadata format
+                        if idx < len(self.metadata['samples']):
+                            metadata = self.metadata['samples'][idx]
+                        else:
+                            metadata = {'index': idx, 'source': 'unknown'}
+                    else:
+                        # Fallback for old format
+                        metadata = {'index': idx, 'source': 'unknown'}
+                    
+                    similar_faces.append({
+                        'index': idx,
+                        'similarity_score': float(similarities[idx]),
+                        'metadata': metadata
+                    })
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to get metadata for index {idx}: {e}")
+                    continue
             
-            logger.info(f"✅ Found {len(results)} similar faces from real dataset")
-            return results
+            logger.info(f"✅ Found {len(similar_faces)} similar faces from real dataset")
+            return similar_faces
             
         except Exception as e:
             logger.error(f"❌ Similarity search failed: {e}")
@@ -429,7 +474,7 @@ class EnhancedSkinAnalyzer:
                 'product_recommendations': product_recommendations,  # NEW: Product recommendations
                 'dataset_comparison': {
                     'total_embeddings': len(self.embeddings_matrix) if self.embeddings_matrix is not None else 0,
-                    'similarity_search_enabled': self.embedding_index is not None,
+                    'similarity_search_enabled': self.embeddings_matrix is not None,
                     'comparison_method': 'cosine_similarity_512d_features'
                 }
             }
@@ -447,39 +492,39 @@ class EnhancedSkinAnalyzer:
     def _analyze_acne(self, image: np.ndarray, hsv: np.ndarray) -> Dict:
         """Advanced acne detection using multiple algorithms"""
         try:
-            # Red channel analysis for inflammation - MUCH MORE AGGRESSIVE DETECTION
+            # Red channel analysis for inflammation - OPTIMIZED FOR ACCURACY
             red_channel = image[:, :, 2]
-            red_threshold = float(np.mean(red_channel)) + 0.5 * float(np.std(red_channel))  # Much more aggressive: reduced from 1.2 to 0.5
+            red_threshold = float(np.mean(red_channel)) + 1.0 * float(np.std(red_channel))  # Fixed: increased from 0.5 to 1.0
             red_regions = (red_channel > red_threshold)
             
             # Saturation analysis for active acne
             saturation = hsv[:, :, 1]
-            sat_threshold = float(np.mean(saturation)) + 0.3 * float(np.std(saturation))  # Much more aggressive: reduced from 0.8 to 0.3
+            sat_threshold = float(np.mean(saturation)) + 0.8 * float(np.std(saturation))  # Fixed: increased from 0.3 to 0.8
             sat_regions = (saturation > sat_threshold)
             
             # Value analysis for brightness
             value = hsv[:, :, 2]
-            val_threshold = float(np.mean(value)) + 0.2 * float(np.std(value))  # Much more aggressive: reduced from 0.6 to 0.2
+            val_threshold = float(np.mean(value)) + 0.6 * float(np.std(value))  # Fixed: increased from 0.2 to 0.6
             val_regions = (value > val_threshold)
             
             # Combine detections - use OR instead of AND for more sensitivity
             acne_mask = np.logical_or(np.logical_or(red_regions, sat_regions), val_regions)
             
-            # ADDITIONAL AGGRESSIVE ACNE DETECTION METHODS
+            # ADDITIONAL ACNE DETECTION METHODS (OPTIMIZED FOR ACCURACY)
             
-            # 1. Direct red channel threshold (very aggressive)
-            red_aggressive = red_channel > (np.mean(red_channel) + 0.3 * np.std(red_channel))
+            # 1. Direct red channel threshold (balanced)
+            red_aggressive = red_channel > (np.mean(red_channel) + 0.7 * np.std(red_channel))  # Fixed: increased from 0.3 to 0.7
             acne_mask = np.logical_or(acne_mask, red_aggressive)
             
             # 2. Brightness-based detection for raised acne
-            brightness_threshold = np.mean(value) + 0.1 * np.std(value)
+            brightness_threshold = np.mean(value) + 0.4 * np.std(value)  # Fixed: increased from 0.1 to 0.4
             bright_regions = value > brightness_threshold
             acne_mask = np.logical_or(acne_mask, bright_regions)
             
             # 3. Contrast-based detection for acne edges
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             contrast = cv2.Laplacian(gray, cv2.CV_64F)
-            contrast_threshold = np.mean(contrast) + 0.5 * np.std(contrast)
+            contrast_threshold = np.mean(contrast) + 0.8 * np.std(contrast)  # Fixed: increased from 0.5 to 0.8
             contrast_regions = np.abs(contrast) > contrast_threshold
             acne_mask = np.logical_or(acne_mask, contrast_regions)
             
@@ -497,7 +542,7 @@ class EnhancedSkinAnalyzer:
             
             for i in range(1, num_labels):  # Skip background
                 area = stats[i, cv2.CC_STAT_AREA]
-                if area > 3:  # Much more aggressive: reduced from 8 to 3 to detect even tiny acne spots
+                if area > 8:  # Fixed: increased from 3 to 8 to reduce false positives
                     acne_spots.append({
                         'area': int(area),
                         'centroid': (int(centroids[i][0]), int(centroids[i][1])),
@@ -520,20 +565,20 @@ class EnhancedSkinAnalyzer:
             logger.info(f"🔍 Additional detection: red_aggressive={np.sum(red_aggressive)}, bright_regions={np.sum(bright_regions)}, contrast_regions={np.sum(contrast_regions)}")
             logger.info(f"🔍 Raw mask sizes: red={np.sum(red_regions)}, sat={np.sum(sat_regions)}, val={np.sum(val_regions)}")
             
-            # Determine severity - 4-tier realistic scale - MUCH MORE AGGRESSIVE DETECTION
+            # Determine severity - 4-tier realistic scale - OPTIMIZED FOR ACCURACY
             severity = 'clear'
-            if acne_percentage > 0.08 or spot_count > 8:  # Severe: much more aggressive (lowered from 0.15/15)
+            if acne_percentage > 0.15 or spot_count > 15:  # Severe: fixed (increased from 0.08/8)
                 severity = 'severe'
-            elif acne_percentage > 0.03 or spot_count > 3:  # Moderate: much more aggressive (lowered from 0.06/6)
+            elif acne_percentage > 0.06 or spot_count > 6:  # Moderate: fixed (increased from 0.03/3)
                 severity = 'moderate'
-            elif acne_percentage > 0.008 or spot_count > 1:  # Slight: much more aggressive (lowered from 0.015/2)
+            elif acne_percentage > 0.015 or spot_count > 2:  # Slight: fixed (increased from 0.008/1)
                 severity = 'slight'
             # else: clear (perfect skin)
             
-            logger.info(f"✅ Acne severity determined: {severity} (threshold: 0.008%, spots: 1)")
+            logger.info(f"✅ Acne severity determined: {severity} (threshold: 0.015%, spots: 2)")
             
             return {
-                'detected': bool(acne_percentage > 0.008),  # Much more aggressive: lowered from 0.015 to 0.008
+                'detected': bool(acne_percentage > 0.015),  # Fixed: increased from 0.008 to 0.015
                 'percentage': float(acne_percentage),
                 'spot_count': spot_count,
                 'severity': severity,
@@ -617,21 +662,21 @@ class EnhancedSkinAnalyzer:
             local_mean = cv2.filter2D(l_channel, -1, kernel)
             local_contrast = np.abs(l_channel - local_mean)
             
-            # Create dark spots mask - MUCH MORE AGGRESSIVE DETECTION
-            l_threshold = float(np.mean(l_channel)) - 0.5 * float(np.std(l_channel))  # Much more aggressive: reduced from 1.0 to 0.5
-            contrast_threshold = float(np.mean(local_contrast)) + 0.3 * float(np.std(local_contrast))  # Much more aggressive: reduced from 0.7 to 0.3
+            # Create dark spots mask - OPTIMIZED FOR ACCURACY
+            l_threshold = float(np.mean(l_channel)) - 1.0 * float(np.std(l_channel))  # Fixed: increased from 0.5 to 1.0
+            contrast_threshold = float(np.mean(local_contrast)) + 0.7 * float(np.std(local_contrast))  # Fixed: increased from 0.3 to 0.7
             
             dark_spots_mask = (l_channel < l_threshold) & (local_contrast > contrast_threshold)
             
-            # ADDITIONAL AGGRESSIVE DARK SPOTS DETECTION
+            # ADDITIONAL DARK SPOTS DETECTION (OPTIMIZED FOR ACCURACY)
             
-            # 1. Simple darkness threshold (very aggressive)
-            dark_simple = l_channel < (np.mean(l_channel) - 0.3 * np.std(l_channel))
+            # 1. Simple darkness threshold (balanced)
+            dark_simple = l_channel < (np.mean(l_channel) - 0.7 * np.std(l_channel))  # Fixed: increased from 0.3 to 0.7
             dark_spots_mask = np.logical_or(dark_spots_mask, dark_simple)
             
             # 2. Edge-based detection for dark spot boundaries
             edges = cv2.Canny(gray, 30, 100)
-            edge_threshold = np.mean(edges) + 0.2 * np.std(edges)
+            edge_threshold = np.mean(edges) + 0.6 * np.std(edges)  # Fixed: increased from 0.2 to 0.6
             edge_regions = edges > edge_threshold
             dark_spots_mask = np.logical_or(dark_spots_mask, edge_regions)
             
@@ -649,7 +694,7 @@ class EnhancedSkinAnalyzer:
             
             for i in range(1, num_labels):
                 area = stats[i, cv2.CC_STAT_AREA]
-                if area > 3:  # Much more aggressive: reduced from 8 to 3 to detect even tiny dark spots
+                if area > 8:  # Fixed: increased from 3 to 8 to reduce false positives
                     dark_spots.append({
                         'area': int(area),
                         'centroid': (int(centroids[i][0]), int(centroids[i][1])),
@@ -669,20 +714,20 @@ class EnhancedSkinAnalyzer:
             # Log detection details for debugging
             logger.info(f"🔍 Dark spots detection: {dark_percentage:.4f}% coverage, {spot_count} spots, thresholds: l={l_threshold:.1f}, contrast={contrast_threshold:.1f}")
             
-            # Determine severity - 4-tier realistic scale - MUCH MORE AGGRESSIVE DETECTION
+            # Determine severity - 4-tier realistic scale - OPTIMIZED FOR ACCURACY
             severity = 'clear'
-            if dark_percentage > 0.05 or spot_count > 3:  # Severe: much more aggressive (lowered from 0.08/4)
+            if dark_percentage > 0.08 or spot_count > 4:  # Severe: fixed (increased from 0.05/3)
                 severity = 'severe'
-            elif dark_percentage > 0.02 or spot_count > 2:  # Moderate: much more aggressive (lowered from 0.04/2)
+            elif dark_percentage > 0.04 or spot_count > 2:  # Moderate: fixed (increased from 0.02/2)
                 severity = 'moderate'
-            elif dark_percentage > 0.008 or spot_count > 1:  # Slight: much more aggressive (lowered from 0.015/1)
+            elif dark_percentage > 0.015 or spot_count > 1:  # Slight: fixed (increased from 0.008/1)
                 severity = 'slight'
             # else: clear (no dark spots)
             
-            logger.info(f"✅ Dark spots severity determined: {severity} (threshold: 0.008%, spots: 1)")
+            logger.info(f"✅ Dark spots severity determined: {severity} (threshold: 0.015%, spots: 1)")
             
             return {
-                'detected': bool(dark_percentage > 0.008),  # Much more aggressive: lowered from 0.015 to 0.008
+                'detected': bool(dark_percentage > 0.015),  # Fixed: increased from 0.008 to 0.015
                 'percentage': float(dark_percentage),
                 'spot_count': spot_count,
                 'severity': severity,
