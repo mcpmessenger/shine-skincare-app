@@ -9,8 +9,21 @@ import { useAnalysis } from './contexts/AnalysisContext';
 import { useRouter } from 'next/navigation';
 
 export default function HomePage() {
-  const { setAnalysisData } = useAnalysis();
+  const { setAnalysisData, setDemographics } = useAnalysis();
   const router = useRouter();
+  
+  // SWAN Initiative: Demographic state
+  const [demographics, setDemographicsLocal] = useState({
+    age_group: '',
+    ethnicity: '',
+  });
+  
+  // Update context when demographics change
+  const handleDemographicsChange = (updates: { age_group?: string; ethnicity?: string }) => {
+    const newDemographics = { ...demographics, ...updates };
+    setDemographicsLocal(newDemographics);
+    setDemographics(newDemographics);
+  };
   
   // DEBUG: Log config values to see what's happening
   console.log('🔍 DEBUG: API_CONFIG loaded:', API_CONFIG);
@@ -41,6 +54,12 @@ export default function HomePage() {
     // Set loading to false immediately for testing
     setIsLoading(false);
   }, []);
+
+  // Debug effect to monitor faceDetected state changes
+  useEffect(() => {
+    console.log('🔍 DEBUG: faceDetected state changed to:', faceDetected);
+    console.log('🔍 DEBUG: faceConfidence state changed to:', faceConfidence);
+  }, [faceDetected, faceConfidence]);
 
   const startCamera = async () => {
     try {
@@ -162,6 +181,40 @@ export default function HomePage() {
     console.log('Video element size:', videoRect.width, 'x', videoRect.height);
     console.log('Video resolution:', video.videoWidth, 'x', video.videoHeight);
 
+    // ✅ ADDED: Draw flashing green circle to guide face positioning
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = Math.min(canvas.width, canvas.height) * 0.3;
+    
+    // Create flashing effect
+    const flashIntensity = Math.sin(Date.now() * 0.005) * 0.5 + 0.5;
+    const alpha = 0.3 + flashIntensity * 0.4;
+    
+    // Draw outer glow
+    ctx.shadowColor = '#00FF00';
+    ctx.shadowBlur = 20;
+    ctx.strokeStyle = `rgba(0, 255, 0, ${alpha})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+    ctx.stroke();
+    
+    // Reset shadow
+    ctx.shadowBlur = 0;
+    
+    // Draw inner circle
+    ctx.strokeStyle = `rgba(0, 255, 0, ${alpha + 0.2})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius - 10, 0, 2 * Math.PI);
+    ctx.stroke();
+    
+    // Draw positioning text
+    ctx.fillStyle = `rgba(0, 255, 0, ${alpha + 0.3})`;
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Position your face here', centerX, centerY + radius + 30);
+
     // Convert video frame to base64 for face detection
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
@@ -172,19 +225,26 @@ export default function HomePage() {
       const imageData = tempCanvas.toDataURL('image/jpeg', 0.8);
 
              try {
-         const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.FACE_DETECT), {
-           method: 'POST',
-           headers: {
-             'Content-Type': 'application/json',
-           },
-                     body: JSON.stringify({
-            image: imageData.split(',')[1]
-          })
-         });
+        // ✅ FIXED: Send as JSON instead of FormData to match backend expectations
+        const requestBody = {
+          image_data: imageData  // Send the full base64 string as expected by backend
+        };
+        
+        const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.FACE_DETECT), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody)  // Send as JSON, not FormData
+        });
 
         if (response.ok) {
           const result = await response.json();
           console.log('Live face detection result:', result);
+          console.log('🔍 DEBUG: Live detection - Response structure:', Object.keys(result));
+          console.log('🔍 DEBUG: Live detection - face_detected field:', result.face_detected);
+          console.log('🔍 DEBUG: Live detection - success field:', result.success);
+          console.log('🔍 DEBUG: Live detection - Full response:', JSON.stringify(result, null, 2));
           
           // Handle both response formats: external backend (faces array) and local API (direct properties)
           let faceDetected = false;
@@ -196,7 +256,7 @@ export default function HomePage() {
             const face = result.faces[0];
             faceDetected = true;
             faceConfidence = face.confidence || 0;
-            faceBounds = face.bounds;
+            faceBounds = face.bounds || face.primary_face;  // ✅ FIXED: Handle both formats
             
             // Handle cropped face image if available
             console.log('🔍 DEBUG: Live detection - checking for cropped face image...');
@@ -211,13 +271,17 @@ export default function HomePage() {
             }
             
             console.log('FACE DETECTED! Face data:', face);
-            console.log('Face bounds:', face.bounds);
+            console.log('Face bounds:', faceBounds);  // ✅ FIXED: Use faceBounds variable
             console.log('Face confidence:', face.confidence);
           } else if (result.face_detected) {
             // Local API format
             faceDetected = true;
             faceConfidence = result.confidence || 0;
-            faceBounds = result.face_bounds;
+            faceBounds = result.primary_face;  // ✅ FIXED: Use primary_face instead of face_bounds
+            
+            console.log('🔍 DEBUG: Setting faceDetected to TRUE');
+            console.log('🔍 DEBUG: Setting faceConfidence to:', faceConfidence);
+            console.log('🔍 DEBUG: Setting faceBounds to:', faceBounds);
             
             // Handle cropped face image if available
             if (result.cropped_face_image) {
@@ -225,13 +289,18 @@ export default function HomePage() {
             }
             
             console.log('FACE DETECTED! (Local API) Face data:', result);
-            console.log('Face bounds:', result.face_bounds);
+            console.log('Face bounds:', result.primary_face);  // ✅ FIXED: Log primary_face
             console.log('Face confidence:', result.confidence);
           }
           
           if (faceDetected && faceBounds) {
+            console.log('🔍 DEBUG: About to set faceDetected to TRUE');
             setFaceDetected(true);
+            console.log('🔍 DEBUG: About to set faceConfidence to:', faceConfidence);
             setFaceConfidence(faceConfidence);
+            
+            // Clear the positioning circle and draw face detection overlay
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Draw face detection overlay
             const { x, y, width, height } = faceBounds;
@@ -307,37 +376,55 @@ export default function HomePage() {
               ctx.lineTo(scaledX + scaledWidth, scaledY + scaledHeight - markerSize);
               ctx.stroke();
               
-                          // Draw confidence text with background
-            const confidenceText = `${Math.round(faceConfidence * 100)}%`;
-            const textWidth = ctx.measureText(confidenceText).width;
-            
-            // Draw background for text
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fillRect(scaledX, scaledY - 25, textWidth + 10, 20);
-            
-            // Draw confidence text
-            ctx.fillStyle = '#00FF00';
-            ctx.font = 'bold 14px Arial';
-            ctx.fillText(confidenceText, scaledX + 5, scaledY - 10);
-              
-              console.log('Drew simple overlay over detected face');
-            }
-            
-            console.log('Face detected with confidence:', faceConfidence);
-                     } else {
-             setFaceDetected(false);
-             setFaceConfidence(0);
-             console.log('No faces detected in live mode');
+                           // Draw confidence text with background
+             const confidenceText = `${Math.round(faceConfidence * 100)}%`;
+             const textWidth = ctx.measureText(confidenceText).width;
              
-             // Clear any previous overlays when no face is detected
-             if (canvas && ctx) {
-               ctx.clearRect(0, 0, canvas.width, canvas.height);
-               console.log('Canvas cleared - no face detected');
+             // Draw background for text
+             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+             ctx.fillRect(scaledX, scaledY - 25, textWidth + 10, 20);
+             
+             // Draw confidence text
+             ctx.fillStyle = '#00FF00';
+             ctx.font = 'bold 14px Arial';
+             ctx.fillText(confidenceText, scaledX + 5, scaledY - 10);
+               
+               console.log('Drew simple overlay over detected face');
              }
-           }
+             
+             console.log('Face detected with confidence:', faceConfidence);
+                      } else {
+              setFaceDetected(false);
+              setFaceConfidence(0);
+              console.log('No faces detected in live mode');
+              
+              // Clear any previous overlays when no face is detected
+              if (canvas && ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                console.log('Canvas cleared - no face detected');
+              }
+            }
+        } else {
+          // ✅ ENHANCED ERROR HANDLING: Log detailed error information
+          const errorText = await response.text();
+          console.error('❌ Face detection failed with status:', response.status);
+          console.error('❌ Error response:', errorText);
+          
+          // Try to parse error response
+          try {
+            const errorData = JSON.parse(errorText);
+            console.error('❌ Parsed error:', errorData);
+          } catch (e) {
+            console.error('❌ Raw error text:', errorText);
+          }
+          
+          // Don't clear the positioning circle on error - keep it visible
+          console.log('⚠️ Face detection failed, keeping positioning circle visible');
         }
       } catch (error) {
         console.error('Live face detection error:', error);
+        // Don't clear the positioning circle on error - keep it visible
+        console.log('⚠️ Face detection error, keeping positioning circle visible');
       }
     }
 
@@ -356,14 +443,17 @@ export default function HomePage() {
       console.log('🔍 Performing face detection on uploaded image...');
       console.log('📡 Calling face detection API:', getApiUrl(API_CONFIG.ENDPOINTS.FACE_DETECT));
       
+      // ✅ FIXED: Send as JSON instead of FormData to match backend expectations
+      const requestBody = {
+        image_data: imageData  // Send the full base64 string as expected by backend
+      };
+      
       const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.FACE_DETECT), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          image_data: imageData.split(',')[1]
-        })
+        body: JSON.stringify(requestBody)  // Send as JSON, not FormData
       });
 
       console.log('📊 Face detection response status:', response.status);
@@ -372,6 +462,10 @@ export default function HomePage() {
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Face detection result:', result);
+        console.log('🔍 DEBUG: Response structure:', Object.keys(result));
+        console.log('🔍 DEBUG: face_detected field:', result.face_detected);
+        console.log('🔍 DEBUG: success field:', result.success);
+        console.log('🔍 DEBUG: Full response:', JSON.stringify(result, null, 2));
         
         // Handle both response formats: external backend (faces array) and local API (direct properties)
         if (result.faces && result.faces.length > 0) {
@@ -398,6 +492,11 @@ export default function HomePage() {
           // Local API format
           setFaceDetected(true);
           setFaceConfidence(result.confidence || 0);
+          
+          // ✅ FIXED: Store face bounds for potential use
+          if (result.primary_face) {
+            console.log('✅ Face bounds available:', result.primary_face);
+          }
           
           // Handle cropped face image if available
           if (result.cropped_face_image) {
@@ -494,7 +593,7 @@ export default function HomePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          image: imageData.split(',')[1]
+          image_data: imageData.split(',')[1]
         })
       });
 
@@ -632,10 +731,74 @@ export default function HomePage() {
           </p>
         </div>
 
+        {/* SWAN Initiative: Demographic Selection */}
+        <div className="max-w-2xl mx-auto mb-6">
+          <div className="bg-secondary rounded-2xl shadow-lg p-6 border border-primary">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-light mb-2">🎯 Enhanced Analysis with SWAN Initiative</h3>
+              <p className="text-sm text-secondary font-light">
+                Optional: Select your demographics for more personalized recommendations
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Age Group Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Age Group
+                </label>
+                <select
+                  value={demographics.age_group || ''}
+                  onChange={(e) => handleDemographicsChange({ age_group: e.target.value || undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select Age Group (Optional)</option>
+                  <option value="AGE_18_TO_29">18-29 years</option>
+                  <option value="AGE_30_TO_39">30-39 years</option>
+                  <option value="AGE_40_TO_49">40-49 years</option>
+                  <option value="AGE_50_TO_59">50-59 years</option>
+                  <option value="AGE_60_TO_69">60-69 years</option>
+                  <option value="AGE_70_TO_79">70-79 years</option>
+                </select>
+              </div>
+              
+              {/* Ethnicity Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Ethnicity
+                </label>
+                <select
+                  value={demographics.ethnicity || ''}
+                  onChange={(e) => handleDemographicsChange({ ethnicity: e.target.value || undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select Ethnicity (Optional)</option>
+                  <option value="WHITE">White</option>
+                  <option value="BLACK">Black</option>
+                  <option value="ASIAN">Asian</option>
+                  <option value="HISPANIC">Hispanic</option>
+                </select>
+              </div>
+            </div>
+            
+            {demographics.age_group || demographics.ethnicity ? (
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  🦢 SWAN Initiative Active: Your analysis will use demographic-aware AI trained on {demographics.age_group ? demographics.age_group.replace('AGE_', '').replace('_TO_', '-') : 'all age groups'} {demographics.ethnicity ? demographics.ethnicity.toLowerCase() : 'ethnicities'} for enhanced accuracy.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  💡 Tip: Selecting demographics enables SWAN Initiative's demographic-aware analysis for more personalized recommendations.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Main Content */}
         <div className="max-w-2xl mx-auto">
-          
-          {/* Camera Section */}
           {showCamera ? (
             <div className="bg-secondary rounded-2xl shadow-lg p-6 mb-6 border border-primary">
               <div className="relative">

@@ -272,16 +272,55 @@ export function AnalysisResults({ result, type, onClose }: AnalysisResultsProps)
       {/* Health Score */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
         <div className="flex items-center mb-4">
-          <User className="w-6 h-6 text-blue-500 mr-2" />
+          <User className="w-6 h6 text-blue-500 mr-2" />
           <h3 className="text-lg font-semibold">Enhanced Analysis Results</h3>
         </div>
         
-        <div className="text-center mb-4">
-          <div className={`text-4xl font-bold ${getHealthScoreColor(result.skin_analysis.overall_health_score)}`}>
-            {Math.round(result.skin_analysis.overall_health_score * 100)}%
+        {/* ✅ NEW: Thumbnail and Demographics Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* Thumbnail */}
+          <div className="text-center">
+            <h4 className="font-medium mb-2">Your Photo</h4>
+            {result.thumbnail_image ? (
+              <div className="w-24 h-24 mx-auto bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
+                <img 
+                  src={result.thumbnail_image} 
+                  alt="Your analyzed photo" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : result.face_detection.face_bounds ? (
+              <div className="w-24 h-24 mx-auto bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
+                <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 flex items-center justify-center">
+                  <User className="w-12 h-12 text-gray-400" />
+                </div>
+              </div>
+            ) : null}
+            <div className="text-xs text-gray-500 mt-1">Face Detected</div>
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            {getHealthScoreLabel(result.skin_analysis.overall_health_score)}
+          
+          {/* Demographics */}
+          <div className="text-center">
+            <h4 className="font-medium mb-2">Demographics</h4>
+            <div className="space-y-1 text-sm">
+              {result.demographics?.age_category && (
+                <div>Age: {result.demographics.age_category}</div>
+              )}
+              {result.demographics?.race_category && (
+                <div>Race: {result.demographics.race_category}</div>
+              )}
+            </div>
+          </div>
+          
+          {/* Health Score */}
+          <div className="text-center">
+            <h4 className="font-medium mb-2">Health Score</h4>
+            <div className={`text-3xl font-bold ${getHealthScoreColor(result.skin_analysis.overall_health_score)}`}>
+              {Math.round(result.skin_analysis.overall_health_score * 100)}%
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              {getHealthScoreLabel(result.skin_analysis.overall_health_score)}
+            </div>
           </div>
         </div>
 
@@ -327,6 +366,37 @@ export function AnalysisResults({ result, type, onClose }: AnalysisResultsProps)
                   </div>
                   <div className="text-sm text-gray-500">
                     {Math.round(condition.confidence * 100)}%
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ✅ NEW: Similar Faces from Dataset */}
+      {result.similarity_search && result.similarity_search.similar_cases && result.similarity_search.similar_cases.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
+          <h3 className="text-lg font-semibold mb-4">Similar Cases from Dataset</h3>
+          <div className="space-y-3">
+            {result.similarity_search.similar_cases.slice(0, 3).map((case_item, index) => (
+              <div key={index} className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="font-medium text-blue-700 dark:text-blue-300">
+                      {case_item.condition}
+                    </div>
+                    <div className="text-sm text-blue-600 dark:text-blue-400">
+                      Similarity: {Math.round(case_item.similarity_score * 100)}% • Source: {case_item.dataset_source}
+                    </div>
+                    {case_item.demographic_match && (
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        Demographic Match: {case_item.demographic_match}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {Math.round(case_item.similarity_score * 100)}%
                   </div>
                 </div>
               </div>

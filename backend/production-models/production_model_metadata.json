@@ -1,0 +1,20 @@
+{
+  "model": "RandomForestClassifier(class_weight='balanced', n_jobs=-1, random_state=42)",
+  "scaler": "StandardScaler()",
+  "feature_dim": 512,
+  "class_names": [
+    "HEALTHY",
+    "CONDITION"
+  ],
+  "model_type": "RandomForest",
+  "feature_path": "CNN",
+  "training_date": "2025-08-17T15:49:14.312200",
+  "performance": {
+    "validation_accuracy": 1.0,
+    "dataset_size": 1000,
+    "class_distribution": [
+      1000,
+      0
+    ]
+  }
+}

@@ -535,6 +535,8 @@ def face_detect_v4():
 
             return jsonify({
                 'status': 'success',
+                'face_detected': True,  # ✅ ADDED: Frontend expects this field
+                'confidence': confidence_score,  # ✅ ADDED: Frontend expects this field
                 'faces': [{
                     'confidence': confidence_score,
                     'bounds': {
@@ -550,6 +552,8 @@ def face_detect_v4():
         else:
             return jsonify({
                 'status': 'success',
+                'face_detected': False,  # ✅ ADDED: Frontend expects this field
+                'confidence': 0.0,  # ✅ ADDED: Frontend expects this field
                 'faces': [],
                 'message': 'No faces detected',
                 'cropped_face_image': None

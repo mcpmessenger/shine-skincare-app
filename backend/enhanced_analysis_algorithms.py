@@ -16,6 +16,7 @@ import gzip
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
 import json
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -33,23 +34,23 @@ class EnhancedSkinAnalyzer:
         self.metadata_list = None
         self._load_embeddings()
         
-        # Analysis parameters
+        # Analysis parameters - ADJUSTED FOR BETTER SENSITIVITY
         self.analysis_params = {
             'acne': {
-                'redness_threshold': 0.9,    # Much higher for very conservative detection
-                'saturation_threshold': 0.8, # Much higher for very conservative detection
-                'size_threshold': 0.05,      # Much larger spots only
-                'clustering_threshold': 0.15  # Much higher for very conservative clustering
+                'redness_threshold': 0.6,    # Reduced from 0.9 for better acne detection
+                'saturation_threshold': 0.5, # Reduced from 0.8 for better acne detection
+                'size_threshold': 0.02,      # Reduced from 0.05 to detect smaller acne spots
+                'clustering_threshold': 0.08  # Reduced from 0.15 for better clustering detection
             },
             'redness': {
                 'hue_range': [(0, 10), (170, 180)],
-                'saturation_threshold': 0.4, # Increased from 0.3 to reduce false positives
-                'value_threshold': 0.5       # Increased from 0.4 to reduce false positives
+                'saturation_threshold': 0.25, # Reduced from 0.4 for better redness detection
+                'value_threshold': 0.35       # Reduced from 0.5 for better redness detection
             },
             'dark_spots': {
-                'luminance_threshold': 0.4,
-                'contrast_threshold': 0.2,
-                'size_threshold': 0.01
+                'luminance_threshold': 0.25,  # Reduced from 0.4 for better dark spot detection
+                'contrast_threshold': 0.15,   # Reduced from 0.2 for better dark spot detection
+                'size_threshold': 0.005       # Reduced from 0.01 to detect smaller dark spots
             },
             'texture': {
                 'lbp_radius': 3,
@@ -64,11 +65,39 @@ class EnhancedSkinAnalyzer:
     def _load_embeddings(self):
         """Load the winning CNN face embeddings for comparison"""
         try:
-            # Use the winning CNN embeddings (100% accuracy) instead of handcrafted
-            embedding_path = Path('./swan-embeddings/utkface_cnn_embeddings.pkl.gz')
-            metadata_path = Path('./swan-embeddings/utkface_metadata.json')
+            # Try multiple path strategies to find embeddings
+            possible_paths = [
+                Path('./swan-embeddings/utkface_cnn_embeddings.pkl.gz'),  # Current directory
+                Path('../swan-embeddings/utkface_cnn_embeddings.pkl.gz'),  # Parent directory
+                Path('./backend/swan-embeddings/utkface_cnn_embeddings.pkl.gz'),  # Backend subdirectory
+                Path('swan-embeddings/utkface_cnn_embeddings.pkl.gz'),  # No leading dot
+            ]
             
-            if embedding_path.exists() and metadata_path.exists():
+            possible_metadata_paths = [
+                Path('./swan-embeddings/utkface_metadata.json'),
+                Path('../swan-embeddings/utkface_metadata.json'),
+                Path('./backend/swan-embeddings/utkface_metadata.json'),
+                Path('swan-embeddings/utkface_metadata.json'),
+            ]
+            
+            embedding_path = None
+            metadata_path = None
+            
+            # Find the first valid embedding path
+            for path in possible_paths:
+                if path.exists():
+                    embedding_path = path
+                    logger.info(f"✅ Found embeddings at: {path.absolute()}")
+                    break
+            
+            # Find the first valid metadata path
+            for path in possible_metadata_paths:
+                if path.exists():
+                    metadata_path = path
+                    logger.info(f"✅ Found metadata at: {path.absolute()}")
+                    break
+            
+            if embedding_path and metadata_path and embedding_path.exists() and metadata_path.exists():
                 # Load CNN embeddings (numpy array: 1000 samples x 512 features)
                 with gzip.open(embedding_path, 'rb') as f:
                     self.embeddings_matrix = pickle.load(f)
@@ -91,10 +120,12 @@ class EnhancedSkinAnalyzer:
                 logger.info(f"✅ Using winning CNN embeddings (100% accuracy from dual path training)")
             else:
                 logger.warning("⚠️ CNN embeddings not found, similarity search disabled")
-                logger.warning(f"   Expected: {embedding_path}")
-                logger.warning(f"   Expected: {metadata_path}")
+                logger.warning(f"   Tried paths: {[str(p) for p in possible_paths]}")
+                logger.warning(f"   Tried metadata paths: {[str(p) for p in possible_metadata_paths]}")
+                logger.warning(f"   Current working directory: {Path.cwd()}")
         except Exception as e:
             logger.error(f"❌ Failed to load CNN embeddings: {e}")
+            logger.error(f"   Exception details: {traceback.format_exc()}")
             self.embedding_index = None
             self.embeddings_matrix = None
             self.metadata_list = None
@@ -309,25 +340,85 @@ class EnhancedSkinAnalyzer:
             hsv = cv2.cvtColor(analysis_image, cv2.COLOR_BGR2HSV)
             lab = cv2.cvtColor(analysis_image, cv2.COLOR_BGR2LAB)
             
-            # Analyze different skin conditions
+            logger.info("🔍 Starting individual condition analysis...")
+            
+            # Analyze different skin conditions with detailed logging
+            try:
+                acne_result = self._analyze_acne(analysis_image, hsv)
+                logger.info(f"✅ Acne analysis completed: {acne_result.get('detected', 'N/A')}")
+            except Exception as e:
+                logger.error(f"❌ Acne analysis failed: {e}")
+                acne_result = {'detected': False, 'percentage': 0.0, 'severity': 'none', 'confidence': 0.0}
+            
+            try:
+                redness_result = self._analyze_redness(hsv)
+                logger.info(f"✅ Redness analysis completed: {redness_result.get('detected', 'N/A')}")
+            except Exception as e:
+                logger.error(f"❌ Redness analysis failed: {e}")
+                redness_result = {'detected': False, 'percentage': 0.0, 'severity': 'none', 'confidence': 0.0}
+            
+            try:
+                dark_spots_result = self._analyze_dark_spots(lab)
+                logger.info(f"✅ Dark spots analysis completed: {dark_spots_result.get('detected', 'N/A')}")
+            except Exception as e:
+                logger.error(f"❌ Dark spots analysis failed: {e}")
+                dark_spots_result = {'detected': False, 'percentage': 0.0, 'severity': 'none', 'confidence': 0.0}
+            
+            try:
+                texture_result = self._analyze_texture(analysis_image)
+                logger.info(f"✅ Texture analysis completed: {texture_result.get('detected', 'N/A')}")
+            except Exception as e:
+                logger.error(f"❌ Texture analysis failed: {e}")
+                texture_result = {'detected': False, 'type': 'unknown', 'uniformity': 0.0, 'confidence': 0.0}
+            
+            try:
+                pores_result = self._analyze_pores(analysis_image)
+                logger.info(f"✅ Pores analysis completed: {pores_result.get('detected', 'N/A')}")
+            except Exception as e:
+                logger.error(f"❌ Pores analysis failed: {e}")
+                pores_result = {'detected': False, 'count': 0, 'density': 0.0, 'severity': 'none', 'confidence': 0.0}
+            
+            try:
+                wrinkles_result = self._analyze_wrinkles(analysis_image)
+                logger.info(f"✅ Wrinkles analysis completed: {wrinkles_result.get('detected', 'N/A')}")
+            except Exception as e:
+                logger.error(f"❌ Wrinkles analysis failed: {e}")
+                wrinkles_result = {'detected': False, 'count': 0, 'severity': 'none', 'confidence': 0.0}
+            
+            try:
+                pigmentation_result = self._analyze_pigmentation(lab)
+                logger.info(f"✅ Pigmentation analysis completed: {pigmentation_result.get('detected', 'N/A')}")
+            except Exception as e:
+                logger.error(f"❌ Pigmentation analysis failed: {e}")
+                pigmentation_result = {'detected': False, 'level': 'unknown', 'color_variance': 0.0, 'confidence': 0.0}
+            
+            # Combine all results
             conditions = {
-                'acne': self._analyze_acne(analysis_image, hsv),
-                'redness': self._analyze_redness(hsv),
-                'dark_spots': self._analyze_dark_spots(lab),
-                'texture': self._analyze_texture(analysis_image),
-                'pores': self._analyze_pores(analysis_image),
-                'wrinkles': self._analyze_wrinkles(analysis_image),
-                'pigmentation': self._analyze_pigmentation(lab)
+                'acne': acne_result,
+                'redness': redness_result,
+                'dark_spots': dark_spots_result,
+                'texture': texture_result,
+                'pores': pores_result,
+                'wrinkles': wrinkles_result,
+                'pigmentation': pigmentation_result
             }
+            
+            logger.info("🔍 All condition analysis completed, proceeding to similarity search...")
             
             # Find similar faces from real dataset using embeddings
             similar_faces = self.find_similar_faces(analysis_image, top_k=5)
             
+            logger.info("🔍 Calculating health score...")
+            
             # Calculate overall health score
             health_score = self._calculate_overall_health_score(conditions)
             
+            logger.info("🔍 Generating product recommendations...")
+            
             # ✅ ENHANCED: Generate product recommendations based on analysis results
             product_recommendations = self._generate_product_recommendations(conditions, health_score)
+            
+            logger.info("✅ All analysis steps completed successfully!")
             
             return {
                 'conditions': conditions,
@@ -337,7 +428,7 @@ class EnhancedSkinAnalyzer:
                 'similar_faces': similar_faces,
                 'product_recommendations': product_recommendations,  # NEW: Product recommendations
                 'dataset_comparison': {
-                    'total_embeddings': len(self.embeddings_matrix) if self.embeddings_matrix else 0,
+                    'total_embeddings': len(self.embeddings_matrix) if self.embeddings_matrix is not None else 0,
                     'similarity_search_enabled': self.embedding_index is not None,
                     'comparison_method': 'cosine_similarity_512d_features'
                 }
@@ -345,6 +436,7 @@ class EnhancedSkinAnalyzer:
             
         except Exception as e:
             logger.error(f"❌ Skin condition analysis failed: {e}")
+            logger.error(f"   Exception details: {traceback.format_exc()}")
             return {
                 'conditions': {},
                 'health_score': 0.5,
@@ -355,23 +447,41 @@ class EnhancedSkinAnalyzer:
     def _analyze_acne(self, image: np.ndarray, hsv: np.ndarray) -> Dict:
         """Advanced acne detection using multiple algorithms"""
         try:
-            # Red channel analysis for inflammation
+            # Red channel analysis for inflammation - MUCH MORE AGGRESSIVE DETECTION
             red_channel = image[:, :, 2]
-            red_threshold = float(np.mean(red_channel)) + 2.0 * float(np.std(red_channel))  # Increased from 1.0 to 2.0
+            red_threshold = float(np.mean(red_channel)) + 0.5 * float(np.std(red_channel))  # Much more aggressive: reduced from 1.2 to 0.5
             red_regions = (red_channel > red_threshold)
             
             # Saturation analysis for active acne
             saturation = hsv[:, :, 1]
-            sat_threshold = float(np.mean(saturation)) + 1.5 * float(np.std(saturation))  # Increased from 0.5 to 1.5
+            sat_threshold = float(np.mean(saturation)) + 0.3 * float(np.std(saturation))  # Much more aggressive: reduced from 0.8 to 0.3
             sat_regions = (saturation > sat_threshold)
             
             # Value analysis for brightness
             value = hsv[:, :, 2]
-            val_threshold = float(np.mean(value)) + 1.0 * float(np.std(value))  # Increased from 0.3 to 1.0
+            val_threshold = float(np.mean(value)) + 0.2 * float(np.std(value))  # Much more aggressive: reduced from 0.6 to 0.2
             val_regions = (value > val_threshold)
             
             # Combine detections - use OR instead of AND for more sensitivity
             acne_mask = np.logical_or(np.logical_or(red_regions, sat_regions), val_regions)
+            
+            # ADDITIONAL AGGRESSIVE ACNE DETECTION METHODS
+            
+            # 1. Direct red channel threshold (very aggressive)
+            red_aggressive = red_channel > (np.mean(red_channel) + 0.3 * np.std(red_channel))
+            acne_mask = np.logical_or(acne_mask, red_aggressive)
+            
+            # 2. Brightness-based detection for raised acne
+            brightness_threshold = np.mean(value) + 0.1 * np.std(value)
+            bright_regions = value > brightness_threshold
+            acne_mask = np.logical_or(acne_mask, bright_regions)
+            
+            # 3. Contrast-based detection for acne edges
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            contrast = cv2.Laplacian(gray, cv2.CV_64F)
+            contrast_threshold = np.mean(contrast) + 0.5 * np.std(contrast)
+            contrast_regions = np.abs(contrast) > contrast_threshold
+            acne_mask = np.logical_or(acne_mask, contrast_regions)
             
             # Morphological operations to clean up the mask
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
@@ -387,7 +497,7 @@ class EnhancedSkinAnalyzer:
             
             for i in range(1, num_labels):  # Skip background
                 area = stats[i, cv2.CC_STAT_AREA]
-                if area > 15:  # Increased minimum size threshold from 5 to 15 to filter out small false positives
+                if area > 3:  # Much more aggressive: reduced from 8 to 3 to detect even tiny acne spots
                     acne_spots.append({
                         'area': int(area),
                         'centroid': (int(centroids[i][0]), int(centroids[i][1])),
@@ -405,18 +515,25 @@ class EnhancedSkinAnalyzer:
             acne_percentage = float(total_acne_area) / float(total_pixels)
             spot_count = len(acne_spots)
             
-            # Determine severity - 4-tier realistic scale based on real dataset analysis
+            # Log detection details for debugging
+            logger.info(f"🔍 Acne detection: {acne_percentage:.4f}% coverage, {spot_count} spots, thresholds: red={red_threshold:.1f}, sat={sat_threshold:.1f}, val={val_threshold:.1f}")
+            logger.info(f"🔍 Additional detection: red_aggressive={np.sum(red_aggressive)}, bright_regions={np.sum(bright_regions)}, contrast_regions={np.sum(contrast_regions)}")
+            logger.info(f"🔍 Raw mask sizes: red={np.sum(red_regions)}, sat={np.sum(sat_regions)}, val={np.sum(val_regions)}")
+            
+            # Determine severity - 4-tier realistic scale - MUCH MORE AGGRESSIVE DETECTION
             severity = 'clear'
-            if acne_percentage > 0.4 or spot_count > 100:  # Severe: significant acne (rare)
+            if acne_percentage > 0.08 or spot_count > 8:  # Severe: much more aggressive (lowered from 0.15/15)
                 severity = 'severe'
-            elif acne_percentage > 0.15 or spot_count > 50:  # Moderate: noticeable acne
+            elif acne_percentage > 0.03 or spot_count > 3:  # Moderate: much more aggressive (lowered from 0.06/6)
                 severity = 'moderate'
-            elif acne_percentage > 0.05 or spot_count > 15:  # Slight: minor blemishes
+            elif acne_percentage > 0.008 or spot_count > 1:  # Slight: much more aggressive (lowered from 0.015/2)
                 severity = 'slight'
             # else: clear (perfect skin)
             
+            logger.info(f"✅ Acne severity determined: {severity} (threshold: 0.008%, spots: 1)")
+            
             return {
-                'detected': bool(acne_percentage > 0.05),  # Convert to Python boolean
+                'detected': bool(acne_percentage > 0.008),  # Much more aggressive: lowered from 0.015 to 0.008
                 'percentage': float(acne_percentage),
                 'spot_count': spot_count,
                 'severity': severity,
@@ -460,18 +577,23 @@ class EnhancedSkinAnalyzer:
             # Calculate metrics - convert to Python types
             redness_percentage = float(np.sum(redness_mask)) / float(redness_mask.size)
             
-            # Determine severity - 4-tier realistic scale
+            # Log detection details for debugging
+            logger.info(f"🔍 Redness detection: {redness_percentage:.4f}% coverage, thresholds: sat={sat_threshold:.1f}, val={val_threshold:.1f}")
+            
+            # Determine severity - 4-tier realistic scale - ADJUSTED FOR BETTER SENSITIVITY
             severity = 'clear'
-            if redness_percentage > 0.3:  # Severe: significant redness
+            if redness_percentage > 0.12:  # Severe: significant redness (lowered from 0.15)
                 severity = 'severe'
-            elif redness_percentage > 0.2:  # Moderate: noticeable redness
+            elif redness_percentage > 0.06:  # Moderate: noticeable redness (lowered from 0.08)
                 severity = 'moderate'
-            elif redness_percentage > 0.1:  # Slight: minor redness
+            elif redness_percentage > 0.02:  # Slight: minor redness (lowered from 0.03)
                 severity = 'slight'
             # else: clear (no redness)
             
+            logger.info(f"✅ Redness severity determined: {severity} (threshold: 0.02%)")
+            
             return {
-                'detected': bool(redness_percentage > 0.1),  # Convert to Python boolean
+                'detected': bool(redness_percentage > 0.02),  # Lowered from 0.03 to 0.02 for more sensitivity
                 'percentage': float(redness_percentage),
                 'severity': severity,
                 'confidence': min(1.0, max(0.3, redness_percentage * 25))  # Improved confidence scoring with minimum threshold
@@ -487,16 +609,31 @@ class EnhancedSkinAnalyzer:
             # L channel (lightness)
             l_channel = lab[:, :, 0]
             
+            # Convert to grayscale for edge detection
+            gray = cv2.cvtColor(cv2.cvtColor(lab, cv2.COLOR_LAB2BGR), cv2.COLOR_BGR2GRAY)
+            
             # Calculate local contrast
             kernel = np.ones((5, 5), np.float32) / 25
             local_mean = cv2.filter2D(l_channel, -1, kernel)
             local_contrast = np.abs(l_channel - local_mean)
             
-            # Create dark spots mask
-            l_threshold = float(np.mean(l_channel)) - 1.5 * float(np.std(l_channel))
-            contrast_threshold = float(np.mean(local_contrast)) + float(np.std(local_contrast))
+            # Create dark spots mask - MUCH MORE AGGRESSIVE DETECTION
+            l_threshold = float(np.mean(l_channel)) - 0.5 * float(np.std(l_channel))  # Much more aggressive: reduced from 1.0 to 0.5
+            contrast_threshold = float(np.mean(local_contrast)) + 0.3 * float(np.std(local_contrast))  # Much more aggressive: reduced from 0.7 to 0.3
             
             dark_spots_mask = (l_channel < l_threshold) & (local_contrast > contrast_threshold)
+            
+            # ADDITIONAL AGGRESSIVE DARK SPOTS DETECTION
+            
+            # 1. Simple darkness threshold (very aggressive)
+            dark_simple = l_channel < (np.mean(l_channel) - 0.3 * np.std(l_channel))
+            dark_spots_mask = np.logical_or(dark_spots_mask, dark_simple)
+            
+            # 2. Edge-based detection for dark spot boundaries
+            edges = cv2.Canny(gray, 30, 100)
+            edge_threshold = np.mean(edges) + 0.2 * np.std(edges)
+            edge_regions = edges > edge_threshold
+            dark_spots_mask = np.logical_or(dark_spots_mask, edge_regions)
             
             # Morphological operations
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
@@ -512,7 +649,7 @@ class EnhancedSkinAnalyzer:
             
             for i in range(1, num_labels):
                 area = stats[i, cv2.CC_STAT_AREA]
-                if area > 15:  # Minimum size threshold
+                if area > 3:  # Much more aggressive: reduced from 8 to 3 to detect even tiny dark spots
                     dark_spots.append({
                         'area': int(area),
                         'centroid': (int(centroids[i][0]), int(centroids[i][1])),
@@ -529,18 +666,23 @@ class EnhancedSkinAnalyzer:
             dark_percentage = float(total_dark_area) / float(dark_spots_mask.size)
             spot_count = len(dark_spots)
             
-            # Determine severity - 4-tier realistic scale
+            # Log detection details for debugging
+            logger.info(f"🔍 Dark spots detection: {dark_percentage:.4f}% coverage, {spot_count} spots, thresholds: l={l_threshold:.1f}, contrast={contrast_threshold:.1f}")
+            
+            # Determine severity - 4-tier realistic scale - MUCH MORE AGGRESSIVE DETECTION
             severity = 'clear'
-            if dark_percentage > 0.1 or spot_count > 5:  # Severe: significant dark spots
+            if dark_percentage > 0.05 or spot_count > 3:  # Severe: much more aggressive (lowered from 0.08/4)
                 severity = 'severe'
-            elif dark_percentage > 0.06 or spot_count > 3:  # Moderate: noticeable spots
+            elif dark_percentage > 0.02 or spot_count > 2:  # Moderate: much more aggressive (lowered from 0.04/2)
                 severity = 'moderate'
-            elif dark_percentage > 0.02 or spot_count > 1:  # Slight: minor spots
+            elif dark_percentage > 0.008 or spot_count > 1:  # Slight: much more aggressive (lowered from 0.015/1)
                 severity = 'slight'
             # else: clear (no dark spots)
             
+            logger.info(f"✅ Dark spots severity determined: {severity} (threshold: 0.008%, spots: 1)")
+            
             return {
-                'detected': bool(dark_percentage > 0.02),  # Convert to Python boolean
+                'detected': bool(dark_percentage > 0.008),  # Much more aggressive: lowered from 0.015 to 0.008
                 'percentage': float(dark_percentage),
                 'spot_count': spot_count,
                 'severity': severity,
@@ -583,7 +725,11 @@ class EnhancedSkinAnalyzer:
             else:
                 texture_type = 'rough'
             
+            # Determine if texture issues are detected
+            detected = texture_type != 'smooth'
+            
             return {
+                'detected': bool(detected),  # Add missing detected field
                 'type': texture_type,
                 'uniformity': float(texture_uniformity),
                 'gabor_variance': float(gabor_variance),
@@ -592,7 +738,7 @@ class EnhancedSkinAnalyzer:
             
         except Exception as e:
             logger.error(f"❌ Texture analysis failed: {e}")
-            return {'type': 'unknown', 'uniformity': 0.0, 'confidence': 0.0}
+            return {'detected': False, 'type': 'unknown', 'uniformity': 0.0, 'confidence': 0.0}
     
     def _analyze_pores(self, image: np.ndarray) -> Dict:
         """Pore detection using blob detection"""
@@ -723,7 +869,11 @@ class EnhancedSkinAnalyzer:
             else:
                 pigmentation_level = 'low'
             
+            # Determine if pigmentation issues are detected
+            detected = pigmentation_level != 'low'
+            
             return {
+                'detected': bool(detected),  # Add missing detected field
                 'level': pigmentation_level,
                 'color_variance': float(color_variance),
                 'a_variance': float(a_variance),
@@ -733,7 +883,7 @@ class EnhancedSkinAnalyzer:
             
         except Exception as e:
             logger.error(f"❌ Pigmentation analysis failed: {e}")
-            return {'level': 'unknown', 'color_variance': 0.0, 'confidence': 0.0}
+            return {'detected': False, 'level': 'unknown', 'color_variance': 0.0, 'confidence': 0.0}
     
     def _calculate_face_quality(self, face_roi: np.ndarray, face_gray: np.ndarray, eye_count: int) -> Dict:
         """Calculate comprehensive face quality metrics"""

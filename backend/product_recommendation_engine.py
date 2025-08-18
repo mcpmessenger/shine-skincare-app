@@ -228,17 +228,16 @@ class ProductRecommendationEngine:
             }
         }
     
-    def generate_recommendations(self, skin_analysis: Dict, max_products: int = 6) -> Dict:
+    def generate_recommendations(self, analysis_data: Dict) -> Dict:
         """Generate personalized product recommendations based on skin analysis"""
         try:
+            conditions = analysis_data.get('conditions', {})
+            health_score = analysis_data.get('health_score', 0.5)
+            primary_concerns = analysis_data.get('primary_concerns', [])
+            
             logger.info("🧠 Generating personalized product recommendations...")
             
-            # Extract analysis data
-            conditions = skin_analysis.get('conditions', {})
-            health_score = skin_analysis.get('health_score', 0.5)
-            primary_concerns = skin_analysis.get('primary_concerns', [])
-            
-            # Initialize recommendation structure
+            # Initialize recommendations structure
             recommendations = {
                 'primary_recommendations': [],
                 'secondary_recommendations': [],
@@ -262,6 +261,17 @@ class ProductRecommendationEngine:
                     )
                     all_recommendations.extend(condition_recs)
             
+            # ✅ ENHANCED: Generate maintenance recommendations for healthy skin
+            if not all_recommendations or health_score >= 0.7:
+                maintenance_recs = self._get_maintenance_recommendations(health_score, conditions)
+                all_recommendations.extend(maintenance_recs)
+                logger.info(f"✅ Added {len(maintenance_recs)} maintenance recommendations for healthy skin")
+            
+            # ✅ ENHANCED: Generate preventive recommendations for all skin types
+            preventive_recs = self._get_preventive_recommendations(health_score, conditions)
+            all_recommendations.extend(preventive_recs)
+            logger.info(f"✅ Added {len(preventive_recs)} preventive recommendations")
+            
             # Sort and rank recommendations
             ranked_recommendations = self._rank_recommendations(all_recommendations, health_score)
             
@@ -278,7 +288,7 @@ class ProductRecommendationEngine:
                 detected_conditions, health_score
             )
             
-            logger.info(f"✅ Generated {len(ranked_recommendations)} product recommendations")
+            logger.info(f"✅ Generated {len(ranked_recommendations)} total product recommendations")
             return recommendations
             
         except Exception as e:
@@ -467,21 +477,27 @@ class ProductRecommendationEngine:
                 "Continue your current skincare routine",
                 "Maintain good hydration and nutrition",
                 "Use broad-spectrum sunscreen daily",
-                "Consider preventive anti-aging products"
+                "Consider preventive anti-aging products",
+                "Schedule regular dermatologist check-ups",
+                "Protect skin from environmental stressors"
             ]
         elif health_score >= 0.6:
             return [
                 "Focus on gentle, consistent skincare",
                 "Address specific concerns with targeted products",
                 "Maintain skin barrier health",
-                "Use sunscreen to prevent further damage"
+                "Use sunscreen to prevent further damage",
+                "Consider professional treatments",
+                "Monitor skin changes regularly"
             ]
         else:
             return [
                 "Consider consulting with a dermatologist",
                 "Focus on gentle, barrier-repair products",
                 "Avoid harsh ingredients and over-exfoliation",
-                "Prioritize hydration and protection"
+                "Prioritize hydration and protection",
+                "Use fragrance-free, hypoallergenic products",
+                "Be patient with skin recovery"
             ]
     
     def _generate_skincare_routine(self, recommendations: List[Dict]) -> List[Dict]:
@@ -556,22 +572,196 @@ class ProductRecommendationEngine:
         return health_score
     
     def _get_fallback_recommendations(self) -> Dict:
-        """Get fallback recommendations when analysis fails"""
+        """Get fallback product recommendations when the engine fails"""
         return {
-            'primary_recommendations': [],
+            'primary_recommendations': [
+                {
+                    'product': {
+                        'id': 'eltamd-uv-clear',
+                        'name': 'EltaMD UV Clear Broad-Spectrum SPF 46',
+                        'price': 39.00,
+                        'category': 'sunscreen',
+                        'brand': 'EltaMD',
+                        'description': 'Oil-free sunscreen with niacinamide for all skin types',
+                        'ingredients': ['zinc oxide', 'niacinamide', 'hyaluronic acid', 'vitamin e'],
+                        'skin_type_compatibility': ['all', 'acne-prone', 'sensitive'],
+                        'skin_concerns_addressed': ['sun_damage', 'acne', 'redness'],
+                        'dermatologist_recommended': True,
+                        'rating': 4.8
+                    },
+                    'score': 0.8,
+                    'reason': 'Essential daily protection for all skin types',
+                    'priority': 'high',
+                    'urgency': 'immediate'
+                }
+            ],
             'secondary_recommendations': [],
             'general_recommendations': [
                 "Continue your current skincare routine",
                 "Use gentle, fragrance-free products",
                 "Maintain good hydration and nutrition",
-                "Consider consulting with a dermatologist for personalized advice"
+                "Consider consulting with a dermatologist for personalized advice",
+                "Use broad-spectrum sunscreen daily",
+                "Protect skin from environmental stressors"
             ],
             'avoid_products': [],
-            'skincare_routine': [],
+            'skincare_routine': [
+                {
+                    'time': 'morning',
+                    'products': [
+                        {
+                            'product': {
+                                'id': 'eltamd-uv-clear',
+                                'name': 'EltaMD UV Clear Broad-Spectrum SPF 46',
+                                'price': 39.00,
+                                'category': 'sunscreen',
+                                'brand': 'EltaMD',
+                                'description': 'Oil-free sunscreen with niacinamide for all skin types',
+                                'ingredients': ['zinc oxide', 'niacinamide', 'hyaluronic acid', 'vitamin e'],
+                                'skin_type_compatibility': ['all', 'acne-prone', 'sensitive'],
+                                'skin_concerns_addressed': ['sun_damage', 'acne', 'redness'],
+                                'dermatologist_recommended': True,
+                                'rating': 4.8
+                            },
+                            'score': 0.8,
+                            'reason': 'Essential daily protection for all skin types',
+                            'priority': 'high',
+                            'urgency': 'immediate'
+                        }
+                    ],
+                    'steps': ['1. Apply EltaMD UV Clear SPF 46 - use a generous amount and reapply every 2 hours']
+                }
+            ],
             'analysis_summary': {},
             'confidence_score': 0.3,
-            'note': 'Fallback recommendations - analysis unavailable'
+            'note': 'Fallback recommendations - recommendation engine unavailable'
         }
+
+    def _get_maintenance_recommendations(self, health_score: float, conditions: Dict) -> List[Dict]:
+        """Generate maintenance recommendations for healthy skin."""
+        recommendations = []
+        if health_score >= 0.7:
+            recommendations.append({
+                'product': {
+                    'id': 'skinceuticals-ce-ferulic',
+                    'name': 'SkinCeuticals C E Ferulic',
+                    'price': 169.00,
+                    'category': 'serum',
+                    'brand': 'SkinCeuticals',
+                    'description': 'Antioxidant serum with vitamin C for brightening and protection',
+                    'ingredients': ['vitamin c', 'vitamin e', 'ferulic acid', 'hyaluronic acid'],
+                    'skin_type_compatibility': ['all'],
+                    'skin_concerns_addressed': ['dark_spots', 'hyperpigmentation', 'aging', 'sun_damage'],
+                    'dermatologist_recommended': True,
+                    'rating': 4.9
+                },
+                'score': 0.8,
+                'reason': 'Maintain healthy skin with antioxidant protection',
+                'priority': 'medium',
+                'urgency': 'medium_term'
+            })
+            recommendations.append({
+                'product': {
+                    'id': 'tns-advanced-serum',
+                    'name': 'TNS Advanced+ Serum',
+                    'price': 195.00,
+                    'category': 'serum',
+                    'brand': 'SkinMedica',
+                    'description': 'Advanced growth factor serum for anti-aging and skin renewal',
+                    'ingredients': ['growth factors', 'peptides', 'hyaluronic acid', 'antioxidants'],
+                    'skin_type_compatibility': ['all'],
+                    'skin_concerns_addressed': ['aging', 'fine_lines', 'wrinkles', 'texture'],
+                    'dermatologist_recommended': True,
+                    'rating': 4.8
+                },
+                'score': 0.7,
+                'reason': 'Keep skin hydrated and prevent aging',
+                'priority': 'medium',
+                'urgency': 'long_term'
+            })
+            recommendations.append({
+                'product': {
+                    'id': 'first-aid-beauty-repair',
+                    'name': 'First Aid Beauty Ultra Repair Cream',
+                    'price': 34.00,
+                    'category': 'moisturizer',
+                    'brand': 'First Aid Beauty',
+                    'description': 'Intensive moisturizer for dry, sensitive skin',
+                    'ingredients': ['colloidal oatmeal', 'ceramides', 'hyaluronic acid', 'shea butter'],
+                    'skin_type_compatibility': ['dry', 'sensitive', 'dehydrated'],
+                    'skin_concerns_addressed': ['dryness', 'irritation', 'barrier_damage'],
+                    'dermatologist_recommended': True,
+                    'rating': 4.7
+                },
+                'score': 0.6,
+                'reason': 'Maintain barrier health and hydration',
+                'priority': 'high',
+                'urgency': 'immediate'
+            })
+        return recommendations
+
+    def _get_preventive_recommendations(self, health_score: float, conditions: Dict) -> List[Dict]:
+        """Generate preventive recommendations for all skin types."""
+        recommendations = []
+        if health_score < 0.7:
+            recommendations.append({
+                'product': {
+                    'id': 'dermalogica-ultracalming',
+                    'name': 'Dermalogica UltraCalming Cleanser',
+                    'price': 38.00,
+                    'category': 'cleanser',
+                    'brand': 'Dermalogica',
+                    'description': 'Soothing cleanser for sensitive and reactive skin',
+                    'ingredients': ['oat kernel extract', 'colloidal oatmeal', 'aloe vera', 'chamomile'],
+                    'skin_type_compatibility': ['sensitive', 'dry', 'reactive'],
+                    'skin_concerns_addressed': ['redness', 'irritation', 'sensitivity'],
+                    'dermatologist_recommended': True,
+                    'rating': 4.7
+                },
+                'score': 0.7,
+                'reason': 'Gentle daily cleansing for all skin types',
+                'priority': 'high',
+                'urgency': 'immediate'
+            })
+            recommendations.append({
+                'product': {
+                    'id': 'eltamd-uv-clear',
+                    'name': 'EltaMD UV Clear Broad-Spectrum SPF 46',
+                    'price': 39.00,
+                    'category': 'sunscreen',
+                    'brand': 'EltaMD',
+                    'description': 'Oil-free sunscreen with niacinamide for acne-prone skin',
+                    'ingredients': ['zinc oxide', 'niacinamide', 'hyaluronic acid', 'vitamin e'],
+                    'skin_type_compatibility': ['all', 'acne-prone', 'sensitive'],
+                    'skin_concerns_addressed': ['sun_damage', 'acne', 'redness'],
+                    'dermatologist_recommended': True,
+                    'rating': 4.8
+                },
+                'score': 0.6,
+                'reason': 'Daily broad-spectrum protection for all skin types',
+                'priority': 'medium',
+                'urgency': 'immediate'
+            })
+            recommendations.append({
+                'product': {
+                    'id': 'allies-of-skin-cleanser',
+                    'name': 'Allies of Skin Mandelic Pigmentation Corrector',
+                    'price': 95.00,
+                    'category': 'treatment',
+                    'brand': 'Allies of Skin',
+                    'description': 'Gentle exfoliating treatment for hyperpigmentation',
+                    'ingredients': ['mandelic acid', 'niacinamide', 'vitamin c', 'hyaluronic acid'],
+                    'skin_type_compatibility': ['all'],
+                    'skin_concerns_addressed': ['dark_spots', 'hyperpigmentation', 'texture'],
+                    'dermatologist_recommended': True,
+                    'rating': 4.7
+                },
+                'score': 0.5,
+                'reason': 'Gentle exfoliation for all skin types',
+                'priority': 'medium',
+                'urgency': 'immediate'
+            })
+        return recommendations
 
 def main():
     """Test the product recommendation engine"""

@@ -9,6 +9,12 @@ export const API_CONFIG = {
   
   // API endpoints
   ENDPOINTS: {
+    // SWAN Production API endpoints (new - with face detection)
+    SWAN_HEALTH: '/health',
+    SWAN_ANALYZE: '/api/v1/analyze',
+    SWAN_MODEL_INFO: '/api/v1/model-info',
+    SWAN_STATS: '/api/v1/stats',
+    
     // V5 endpoints (latest - production)
     SKIN_ANALYZE_FIXED: '/api/v5/skin/analyze-fixed',
     SKIN_MODEL_STATUS: '/api/v5/skin/model-status',

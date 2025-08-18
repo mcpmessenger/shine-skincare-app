@@ -138,6 +138,9 @@ interface AnalysisResult {
     severity_levels: { [key: string]: string };
     conditions: { [key: string]: { confidence: number; severity: string; description?: string } };
   };
+  conditions?: { [key: string]: { confidence: number; severity: string; description?: string } };
+  health_score?: number;
+  severity_levels?: { [key: string]: string };
 }
 
 interface RecommendedProduct {
@@ -388,27 +391,65 @@ function SuggestionsPageContent() {
     console.log('🧠 Starting enhanced recommendation generation for data:', data)
     console.log('🔍 Full data object keys:', Object.keys(data))
     
-    // Extract data from the nested structure
-    const conditions = data.result?.conditions || data.detected_conditions || data.primary_concerns || []
-    const healthScore = data.result?.health_score || 50
-    const primaryConcerns = data.result?.primary_concerns || data.primary_concerns || []
-    const severityLevels = data.result?.severity_levels || {}
+    // ✅ ENHANCED: Handle multiple data structures from different analysis endpoints
+    let conditions: any = {}
+    let healthScore = 50
+    let primaryConcerns: string[] = []
+    let severityLevels: any = {}
+    
+    // Try to extract data from Hare Run V6 enhanced structure first
+    if (data.conditions) {
+      console.log('✅ Using Hare Run V6 enhanced structure')
+      conditions = data.conditions
+      healthScore = data.health_score || 50
+      primaryConcerns = data.primary_concerns || []
+      severityLevels = data.severity_levels || {}
+    }
+    // Try legacy structure
+    else if (data.result?.conditions) {
+      console.log('✅ Using legacy result structure')
+      conditions = data.result.conditions
+      healthScore = data.result.health_score || 50
+      primaryConcerns = data.result.primary_concerns || []
+      severityLevels = data.result.severity_levels || {}
+    }
+    // Try detected_conditions structure
+    else if (data.detected_conditions && data.detected_conditions.length > 0) {
+      console.log('✅ Using detected_conditions structure')
+      conditions = data.detected_conditions.reduce((acc: any, condition: any) => {
+        acc[condition.name] = {
+          confidence: condition.confidence,
+          severity: condition.severity,
+          description: condition.description
+        }
+        return acc
+      }, {})
+      healthScore = data.confidence_score || 50
+      primaryConcerns = data.primary_concerns || []
+    }
+    // Try primary_concerns structure
+    else if (data.primary_concerns && data.primary_concerns.length > 0) {
+      console.log('✅ Using primary_concerns structure')
+      conditions = data.primary_concerns.reduce((acc: any, concern: string) => {
+        acc[concern] = { confidence: 0.7, severity: 'moderate' }
+        return acc
+      }, {})
+      healthScore = data.confidence_score || 50
+      primaryConcerns = data.primary_concerns
+    }
     
     console.log('📊 Extracted conditions:', conditions)
     console.log('📊 Extracted health score:', healthScore)
     console.log('📊 Primary concerns:', primaryConcerns)
     console.log('📊 Severity levels:', severityLevels)
+    console.log('📊 Data.conditions exists:', !!data.conditions)
     console.log('📊 Data.result exists:', !!data.result)
     
-    if (!conditions || (Object.keys(conditions).length === 0 && primaryConcerns.length === 0)) {
-      console.log('⚠️ No conditions found, cannot generate recommendations')
-      console.log('🔍 Available data for debugging:', {
-        result_conditions: data.result?.conditions,
-        detected_conditions: data.detected_conditions,
-        primary_concerns: data.primary_concerns,
-        full_data: data
-      })
-      return []
+    // ✅ ENHANCED: Always generate recommendations, even for healthy skin
+    if (!conditions || Object.keys(conditions).length === 0) {
+      console.log('🟡 No specific conditions detected - generating maintenance recommendations for healthy skin')
+      // For healthy skin, focus on maintenance and prevention
+      return generateMaintenanceRecommendations(healthScore)
     }
     
     console.log('✅ Conditions found, proceeding with intelligent scoring...')
@@ -463,11 +504,16 @@ function SuggestionsPageContent() {
       }
 
       // Enhanced condition-based scoring using the new data structure
-      if (data.result?.conditions) {
+      if (data.conditions) {
         // New structure: conditions object with severity levels
-        Object.entries(data.result.conditions).forEach(([conditionKey, conditionData]) => {
+        Object.entries(data.conditions).forEach(([conditionKey, conditionData]) => {
           const conditionLower = conditionKey.toLowerCase()
           console.log(`🔍 Scoring product "${product.name}" for condition: ${conditionKey}`)
+          
+          // ✅ ENHANCED: Handle both string and object condition data
+          const conditionInfo = typeof conditionData === 'string' ? { severity: conditionData, confidence: 0.7 } : conditionData
+          const severity = conditionInfo.severity || 'moderate'
+          const confidence = 'confidence' in conditionInfo ? conditionInfo.confidence : 0.7
           
           // Acne-related conditions
           if (conditionLower.includes('acne')) {
@@ -543,6 +589,13 @@ function SuggestionsPageContent() {
               console.log(`✅ ${product.name} scored +8 for wrinkles (anti-aging moisturizer)`)
             }
           }
+          
+          // ✅ ENHANCED: Add severity-based scoring
+          if (severity === 'severe') score += 2
+          else if (severity === 'moderate') score += 1
+          else if (severity === 'slight') score += 0.5
+          
+          console.log(`📊 ${product.name} scored ${score} for condition ${conditionKey} (severity: ${severity}, confidence: ${confidence})`)
         })
       } else {
         // Fallback to old structure: conditions array
@@ -720,6 +773,123 @@ function SuggestionsPageContent() {
     return topRecommendations
   }
 
+  // NEW: Generate maintenance recommendations for healthy skin
+  const generateMaintenanceRecommendations = (healthScore: number): RecommendedProduct[] => {
+    console.log('🧠 Generating maintenance recommendations for healthy skin (Health Score: ' + healthScore + ')');
+    const maintenanceProducts: RecommendedProduct[] = [];
+
+    // Add general maintenance products
+    maintenanceProducts.push({
+      id: 'maintenance-cleanser',
+      name: 'Gentle Daily Cleanser',
+      description: 'A gentle, non-drying cleanser for daily use. Perfect for sensitive skin.',
+      price: 15,
+      category: 'cleanser',
+      image: 'https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png', // Placeholder
+      score: 0, // Will be calculated
+      matchReason: 'Recommended for overall skin health and maintenance'
+    });
+
+    maintenanceProducts.push({
+      id: 'maintenance-moisturizer',
+      name: 'Hydrating Face Cream',
+      description: 'A lightweight, hydrating cream to lock in moisture and protect the skin barrier.',
+      price: 25,
+      category: 'moisturizer',
+      image: 'https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png', // Placeholder
+      score: 0, // Will be calculated
+      matchReason: 'Recommended for hydration and barrier repair'
+    });
+
+    maintenanceProducts.push({
+      id: 'maintenance-sunscreen',
+      name: 'Daily Sunscreen SPF 30',
+      description: 'A broad-spectrum sunscreen to protect against UVA and UVB rays, suitable for daily use.',
+      price: 20,
+      category: 'sunscreen',
+      image: 'https://muse2025.s3.us-east-1.amazonaws.com/shine_logo_option3.png', // Placeholder
+      score: 0, // Will be calculated
+      matchReason: 'Recommended for daily sun protection'
+    });
+
+    // Score and sort maintenance products
+    const scoredMaintenanceProducts = maintenanceProducts.map(product => {
+      let score = 0;
+      let reasons: string[] = [];
+
+      // Score based on health score (more nuanced)
+      if (healthScore < 30) {
+        // Very low health score needs intensive treatment
+        if (product.category === 'treatment' || product.category === 'serum') {
+          score += 10;
+          reasons.push('Intensive treatment for significant skin concerns');
+        }
+        if (product.category === 'cleanser') {
+          score += 6;
+          reasons.push('Gentle cleansing for sensitive skin');
+        }
+      } else if (healthScore < 50) {
+        // Low health score needs treatment + maintenance
+        if (product.category === 'treatment' || product.category === 'serum') {
+          score += 8;
+          reasons.push('Treatment for skin concerns');
+        }
+        if (product.category === 'moisturizer') {
+          score += 6;
+          reasons.push('Moisturizing for compromised skin barrier');
+        }
+      } else if (healthScore < 70) {
+        // Moderate health score - balanced approach
+        if (product.category === 'moisturizer' || product.category === 'sunscreen') {
+          score += 7;
+          reasons.push('Maintenance and protection for moderate skin health');
+        }
+        if (product.category === 'serum') {
+          score += 5;
+          reasons.push('Targeted improvement for moderate concerns');
+        }
+      } else {
+        // High health score - maintenance and enhancement
+        if (product.category === 'sunscreen') {
+          score += 8;
+          reasons.push('Protection for healthy skin');
+        }
+        if (product.category === 'moisturizer') {
+          score += 6;
+          reasons.push('Maintenance for healthy skin');
+        }
+      }
+
+      // Category balance and essential products
+      if (product.category === 'cleanser') score += 3;
+      if (product.category === 'sunscreen') score += 4;
+      if (product.category === 'moisturizer') score += 2;
+
+      // Brand reputation and quality indicators
+      if (product.description.toLowerCase().includes('clinical') || product.description.toLowerCase().includes('medical-grade')) {
+        score += 2;
+        reasons.push('Medical-grade formulation');
+      }
+
+      // Price consideration (affordability bonus)
+      if (product.price < 50) score += 1;
+
+      console.log(`📊 ${product.name} final score: ${score}, reasons: ${reasons.join(', ')}`);
+
+      return {
+        ...product,
+        score: score,
+        matchReason: reasons.length > 0 ? reasons.join('; ') : 'Recommended for your skin profile'
+      };
+    });
+
+    // Sort by score and return top recommendations
+    const sortedByScore = scoredMaintenanceProducts.sort((a, b) => b.score - a.score);
+    console.log('📊 Top 10 maintenance recommendations:', sortedByScore.slice(0, 10).map(p => ({ name: p.name, score: p.score, category: p.category })));
+
+    return sortedByScore.slice(0, 6); // Return top 6 maintenance recommendations
+  };
+
   if (!analysisResult) {
     return (
       <div className="min-h-screen bg-transparent text-primary flex items-center justify-center">
@@ -753,7 +923,17 @@ function SuggestionsPageContent() {
   }
 
   const overallConfidence = getEnhancedConfidence();
-  const conditions = analysisResult.detected_conditions?.map(condition => condition.name) || [];
+  
+  // ✅ ENHANCED: Extract conditions from multiple possible data structures
+  let conditions: string[] = [];
+  if (analysisResult.conditions) {
+    conditions = Object.keys(analysisResult.conditions);
+  } else if (analysisResult.detected_conditions) {
+    conditions = analysisResult.detected_conditions.map(condition => condition.name);
+  } else if (analysisResult.primary_concerns) {
+    conditions = analysisResult.primary_concerns;
+  }
+  
   const recommendedProducts = generateIntelligentRecommendations(analysisResult);
 
   return (
@@ -773,6 +953,25 @@ function SuggestionsPageContent() {
            </p>
          </div>
 
+         {/* SWAN Initiative Status Banner */}
+         {analysisData.demographics && (analysisData.demographics.age_group || analysisData.demographics.ethnicity) && (
+           <div className="max-w-4xl mx-auto mb-6">
+             <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
+               <div className="flex items-center justify-center space-x-3">
+                 <span className="text-2xl">🦢</span>
+                 <div className="text-center">
+                   <h3 className="text-lg font-medium text-blue-800 dark:text-blue-200">
+                     SWAN Initiative Active
+                   </h3>
+                   <p className="text-sm text-blue-700 dark:text-blue-300">
+                     Your analysis used demographic-aware AI trained on {analysisData.demographics.age_group ? analysisData.demographics.age_group.replace('AGE_', '').replace('_TO_', '-') : 'all age groups'} {analysisData.demographics.ethnicity ? analysisData.demographics.ethnicity.toLowerCase() : 'ethnicities'} for enhanced accuracy
+                   </p>
+                 </div>
+               </div>
+             </div>
+           </div>
+         )}
+
 
 
         {/* Main Content */}
@@ -783,15 +982,63 @@ function SuggestionsPageContent() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-light">Analysis Summary</h2>
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-secondary">Confidence:</span>
-                <span className="text-lg font-semibold text-primary">{overallConfidence}%</span>
+                <span className="text-sm text-secondary">Health Score:</span>
+                <span className="text-lg font-semibold text-primary">{analysisResult.health_score || analysisResult.result?.health_score || overallConfidence}%</span>
               </div>
             </div>
             
-            {/* Project Vanity: Face Thumbnail Display */}
+            {/* Enhanced Analysis Results Display */}
+            <div className="mb-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
+              <h3 className="text-lg font-medium mb-3 text-center">Enhanced ML Analysis Results</h3>
+              
+              {/* Health Score */}
+              <div className="text-center mb-4">
+                <div className="text-3xl font-bold text-green-600">
+                  {analysisResult.health_score || analysisResult.result?.health_score || 'N/A'}%
+                </div>
+                <div className="text-sm text-secondary">Overall Skin Health Score</div>
+              </div>
+              
+              {/* Detected Conditions */}
+              {conditions && conditions.length > 0 ? (
+                <div className="mb-4">
+                  <h4 className="text-md font-medium mb-2 text-center">Detected Conditions</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {conditions.map((condition, index) => {
+                      const conditionData = analysisResult.conditions?.[condition] || analysisResult.result?.conditions?.[condition];
+                      const severity = conditionData?.severity || 'moderate';
+                      const confidence = conditionData?.confidence || 0.7;
+                      
+                      return (
+                        <div key={index} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded-lg border">
+                          <span className="text-sm font-medium capitalize">{condition.replace(/_/g, ' ')}</span>
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              severity === 'severe' ? 'bg-red-100 text-red-800' :
+                              severity === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {severity}
+                            </span>
+                            <span className="text-xs text-secondary">{Math.round(confidence * 100)}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center mb-4">
+                  <div className="text-lg font-medium text-green-600 mb-2">🎉 Healthy Skin Detected!</div>
+                  <div className="text-sm text-secondary">No specific skin conditions were detected. Your skin appears to be in good health.</div>
+                </div>
+              )}
+            </div>
+            
+            {/* Project Vanity: Face Thumbnail Display with SWAN Initiative Demographics */}
             {analysisData.croppedFaceImage && (
               <div className="mb-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
-                <div className="flex items-center justify-center space-x-4">
+                <div className="flex items-center justify-center space-x-6">
                   <div className="text-center">
                     <p className="text-sm text-secondary mb-2">Analyzed Face Region</p>
                     <img
@@ -803,9 +1050,38 @@ function SuggestionsPageContent() {
                       Face Detection: {Math.round(analysisData.faceConfidence * 100)}% Confidence
                     </p>
                   </div>
+                  
+                  {/* SWAN Initiative: Demographic Information */}
+                  {analysisData.demographics && (analysisData.demographics.age_group || analysisData.demographics.ethnicity) && (
+                    <div className="text-center">
+                      <p className="text-sm text-secondary mb-2">🦢 SWAN Demographics</p>
+                      <div className="space-y-2">
+                        {analysisData.demographics.age_group && (
+                          <div className="bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <p className="text-xs text-blue-800 dark:text-blue-200 font-medium">
+                              Age: {analysisData.demographics.age_group.replace('AGE_', '').replace('_TO_', '-')} years
+                            </p>
+                          </div>
+                        )}
+                        {analysisData.demographics.ethnicity && (
+                          <div className="bg-purple-50 dark:bg-purple-900/20 px-3 py-1 rounded-lg border border-purple-200 dark:border-purple-800">
+                            <p className="text-xs text-purple-800 dark:text-purple-200 font-medium">
+                              Ethnicity: {analysisData.demographics.ethnicity}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 font-medium">
+                        Demographic-Aware Analysis
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <p className="text-xs text-secondary text-center mt-2">
                   This is the specific face region that was analyzed for skin conditions
+                  {analysisData.demographics && (analysisData.demographics.age_group || analysisData.demographics.ethnicity) && 
+                    ' using SWAN Initiative demographic-aware AI'
+                  }
                 </p>
               </div>
             )}
