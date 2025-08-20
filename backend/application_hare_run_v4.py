@@ -1,6 +1,6 @@
-# Shine Skincare App - Hare Run V6 Enhanced Backend for Elastic Beanstalk
-# This version properly integrates Hare Run V6 models for enhanced skin analysis
-# Updated: 2025-08-13 - Operation Tortoise: Hare Run V6 Integration
+# Shine Skincare App - Hare Run 4 Enhanced Backend for Elastic Beanstalk
+# This version properly integrates Hare Run 4 models for enhanced skin analysis
+# Updated: 2025-08-19 - HARE Run 4 Integration (Current Working System)
 
 import os
 import json
@@ -33,8 +33,8 @@ S3_MODEL_KEY = os.getenv('S3_MODEL_KEY', 'hare_run_v6/hare_run_v6_facial/best_fa
 LOCAL_MODEL_PATH = os.getenv('MODEL_PATH', './models/fixed_model_best.h5')
 PORT = int(os.getenv('PORT', 8000))
 
-# Hare Run V6 Configuration
-HARE_RUN_V6_CONFIG = {
+# Hare Run 4 Configuration
+HARE_RUN_4_CONFIG = {
     'enabled': True,
     'models': {
         'facial': {
@@ -71,9 +71,9 @@ except Exception as e:
     logger.error(f"❌ Failed to initialize enhanced analyzer: {e}")
     enhanced_analyzer = None
 
-# Hare Run V6 Model Manager
-class HareRunV6ModelManager:
-    """Manages Hare Run V6 model loading and availability"""
+# Hare Run 4 Model Manager
+class HareRun4ModelManager:
+    """Manages Hare Run 4 model loading and availability"""
     
     def __init__(self):
         self.models_loaded = False
@@ -82,7 +82,7 @@ class HareRunV6ModelManager:
         self._load_models()
     
     def _load_models(self):
-        """Load Hare Run V6 models from local or S3"""
+        """Load Hare Run 4 models from local or S3"""
         try:
             # Check local models first
             local_models_dir = Path('./models')
@@ -213,8 +213,8 @@ class HareRunV6ModelManager:
             'config': HARE_RUN_V6_CONFIG
         }
 
-# Initialize Hare Run V6 Model Manager
-hare_run_v6_manager = HareRunV6ModelManager()
+# Initialize Hare Run 4 Model Manager
+hare_run_4_manager = HareRun4ModelManager()
 
 # ============================================================================
 # HEALTH & STATUS ENDPOINTS

@@ -25,7 +25,7 @@ A sophisticated web application that provides personalized skincare analysis and
 - **Face Validation**: Analysis only proceeds when face is detected with >90% confidence
 - **OpenCV Integration**: Professional-grade face detection using Haar Cascade Classifiers
 
-### 📊 **Enhanced ML Analysis (Hare Run V6)**
+### 📊 **Enhanced ML Analysis (Hare Run 4)**
 - **Multi-Condition Detection**: Identifies 8+ skin conditions simultaneously
 - **Severity Assessment**: Provides detailed severity levels for each condition
 - **Health Score Calculation**: Overall skin health assessment (0-100%)
