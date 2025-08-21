@@ -48,6 +48,9 @@ export function Header({ showProductsTab = true, title }: HeaderProps) {
           <Link href="/training-dashboard" className="text-secondary no-underline text-sm font-medium p-3 rounded-xl transition-all duration-200 bg-secondary hover:bg-hover shadow-sm">
             Training
           </Link>
+          <Link href="/test-production-model" className="text-secondary no-underline text-sm font-medium p-3 rounded-xl transition-all duration-200 bg-secondary hover:bg-hover shadow-sm">
+            🧪 Test Model
+          </Link>
         </nav>
 
         {/* Right Side Controls */}

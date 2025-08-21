@@ -127,16 +127,54 @@ interface AnalysisResult {
   top_3_predictions?: Array<{
     condition: string;
     confidence: number;
-    percentage: number;
   }>;
+  // Result object structure from backend
+  result?: {
+    confidence: number;
+    demographics: {
+      age_group: string;
+      ethnicity: string;
+      gender: string;
+    };
+    detected_conditions: Array<{
+      name: string;
+      confidence: number;
+      severity: string;
+      source: string;
+      description: string;
+    }>;
+    primary_condition: string;
+    severity: number;
+    model_info: {
+      version: string;
+      accuracy: string;
+      type: string;
+    };
+  };
   all_predictions?: {
     [key: string]: number;
   };
   result?: {
-    health_score: number;
-    primary_concerns: string[];
-    severity_levels: { [key: string]: string };
-    conditions: { [key: string]: { confidence: number; severity: string; description?: string } };
+    confidence: number;
+    demographics: {
+      age_group: string;
+      ethnicity: string;
+      gender: string;
+    };
+    detected_conditions: Array<{
+      name: string;
+      confidence: number;
+      severity: string;
+      source: string;
+      description: string;
+    }>;
+    primary_condition: string;
+    severity: number;
+    model_info: {
+      version: string;
+      accuracy: string;
+      type: string;
+    };
   };
 }
 
@@ -389,7 +427,7 @@ function SuggestionsPageContent() {
     console.log('🔍 Full data object keys:', Object.keys(data))
     
     // Extract data from the nested structure
-    const conditions = data.result?.conditions || data.detected_conditions || data.primary_concerns || []
+    const conditions = data.result?.detected_conditions || data.result?.conditions || data.detected_conditions || data.primary_concerns || []
     const healthScore = data.result?.health_score || 50
     const primaryConcerns = data.result?.primary_concerns || data.primary_concerns || []
     const severityLevels = data.result?.severity_levels || {}
@@ -462,12 +500,12 @@ function SuggestionsPageContent() {
         }
       }
 
-      // Enhanced condition-based scoring using the new data structure
-      if (data.result?.conditions) {
-        // New structure: conditions object with severity levels
-        Object.entries(data.result.conditions).forEach(([conditionKey, conditionData]) => {
-          const conditionLower = conditionKey.toLowerCase()
-          console.log(`🔍 Scoring product "${product.name}" for condition: ${conditionKey}`)
+      // Enhanced condition-based scoring using the detected_conditions array structure
+      if (data.result?.detected_conditions && Array.isArray(data.result.detected_conditions)) {
+        // New structure: detected_conditions array with condition objects
+        data.result.detected_conditions.forEach((conditionData) => {
+          const conditionLower = conditionData.name.toLowerCase()
+          console.log(`🔍 Scoring product "${product.name}" for condition: ${conditionData.name}`)
           
           // Acne-related conditions
           if (conditionLower.includes('acne')) {

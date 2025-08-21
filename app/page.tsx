@@ -483,7 +483,7 @@ export default function HomePage() {
 
     try {
       // Use the local Hare Run V6 endpoint to avoid CORS issues
-      const endpoint = '/api/v6/skin/analyze-hare-run';
+      const endpoint = 'http://localhost:8000/api/v6/skin/analyze-production-model';
       
       console.log('📡 Calling local Hare Run V6 enhanced ML endpoint...');
       console.log('🔗 Local endpoint:', endpoint);
