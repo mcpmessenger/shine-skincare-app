@@ -1,6 +1,6 @@
-# Shine Skincare App - Hare Run V6 Enhanced Backend for Elastic Beanstalk
-# This version properly integrates Hare Run V6 models for enhanced skin analysis
-# Updated: 2025-08-13 - Operation Tortoise: Hare Run V6 Integration
+# Shine Skincare App - Hare Run 4 Enhanced Backend for Elastic Beanstalk
+# This version properly integrates Hare Run 4 models for enhanced skin analysis
+# Updated: 2025-08-19 - HARE Run 4 Integration (Current Working System)
 
 import os
 import json
@@ -24,17 +24,17 @@ logger = logging.getLogger(__name__)
 
 # Create Flask app - Elastic Beanstalk expects this exact variable name
 app = Flask(__name__)
-CORS(app, origins=['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3000', 'http://127.0.0.3001', 'http://127.0.0.3002', 'https://shineskincollective.com', 'https://api.shineskincollective.com'], supports_credentials=True)
+CORS(app, origins=['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://127.0.0.1:3002', 'https://shineskincollective.com', 'https://api.shineskincollective.com'], supports_credentials=True)
 
 # Configuration
-SERVICE_NAME = "shine-backend-hare-run-v6"
+SERVICE_NAME = "shine-backend-hare-run-4"
 S3_BUCKET = os.getenv('S3_BUCKET', 'shine-skincare-models')
 S3_MODEL_KEY = os.getenv('S3_MODEL_KEY', 'hare_run_v6/hare_run_v6_facial/best_facial_model.h5')
 LOCAL_MODEL_PATH = os.getenv('MODEL_PATH', './models/fixed_model_best.h5')
 PORT = int(os.getenv('PORT', 8000))
 
-# Hare Run V6 Configuration
-HARE_RUN_V6_CONFIG = {
+# Hare Run 4 Configuration
+HARE_RUN_4_CONFIG = {
     'enabled': True,
     'models': {
         'facial': {
@@ -71,9 +71,9 @@ except Exception as e:
     logger.error(f"❌ Failed to initialize enhanced analyzer: {e}")
     enhanced_analyzer = None
 
-# Hare Run V6 Model Manager
-class HareRunV6ModelManager:
-    """Manages Hare Run V6 model loading and availability"""
+# Hare Run 4 Model Manager
+class HareRun4ModelManager:
+    """Manages Hare Run 4 model loading and availability"""
     
     def __init__(self):
         self.models_loaded = False
@@ -82,7 +82,7 @@ class HareRunV6ModelManager:
         self._load_models()
     
     def _load_models(self):
-        """Load Hare Run V6 models from local or S3"""
+        """Load Hare Run 4 models from local or S3"""
         try:
             # Check local models first
             local_models_dir = Path('./models')
@@ -111,7 +111,7 @@ class HareRunV6ModelManager:
     def _load_local_models(self, models_dir: Path):
         """Load models from local models directory"""
         try:
-            for model_type, model_info in HARE_RUN_V6_CONFIG['models'].items():
+            for model_type, model_info in HARE_RUN_4_CONFIG['models'].items():
                 model_path = models_dir / model_info['primary']
                 if model_path.exists():
                     self.model_paths[model_type] = str(model_path)
@@ -142,7 +142,7 @@ class HareRunV6ModelManager:
             models_dir = Path('./models')
             models_dir.mkdir(exist_ok=True)
             
-            for model_type, model_info in HARE_RUN_V6_CONFIG['models'].items():
+            for model_type, model_info in HARE_RUN_4_CONFIG['models'].items():
                 s3_key = f"ml-models/production/{model_info['primary']}"
                 local_path = models_dir / model_info['primary']
                 
@@ -178,7 +178,7 @@ class HareRunV6ModelManager:
         try:
             results_dir = Path('./results')
             if results_dir.exists():
-                for model_type, model_info in HARE_RUN_V6_CONFIG['models'].items():
+                for model_type, model_info in HARE_RUN_4_CONFIG['models'].items():
                     model_path = results_dir / model_info['primary']
                     if model_path.exists():
                         self.model_paths[model_type] = str(model_path)
@@ -210,11 +210,11 @@ class HareRunV6ModelManager:
             'models_loaded': self.models_loaded,
             'total_models': len(self.model_paths),
             'model_details': self.model_metadata,
-            'config': HARE_RUN_V6_CONFIG
+            'config': HARE_RUN_4_CONFIG
         }
 
-# Initialize Hare Run V6 Model Manager
-hare_run_v6_manager = HareRunV6ModelManager()
+# Initialize Hare Run 4 Model Manager
+hare_run_4_manager = HareRun4ModelManager()
 
 # ============================================================================
 # HEALTH & STATUS ENDPOINTS
@@ -238,7 +238,7 @@ def api_health():
             "message": "API Gateway is running",
             "service": SERVICE_NAME,
             "status": "healthy",
-            "models_loaded": hare_run_v6_manager.models_loaded,
+            "models_loaded": hare_run_4_manager.models_loaded,
             "timestamp": datetime.now().isoformat()
         })
     except Exception as e:
@@ -427,11 +427,11 @@ def analyze_skin_hare_run_v6():
             return jsonify({'error': 'Image data is required'}), 400
         
         # Check if Hare Run V6 models are available
-        if not hare_run_v6_manager.is_model_available('facial'):
+        if not hare_run_4_manager.is_model_available('facial'):
             return jsonify({
                 'status': 'error',
-                'error': 'Hare Run V6 facial model not available',
-                'model_status': hare_run_v6_manager.get_model_status()
+                'error': 'Hare Run 4 facial model not available',
+                'model_status': hare_run_4_manager.get_model_status()
             }), 503
         
         # Decode base64 image
@@ -510,7 +510,7 @@ def analyze_skin_hare_run_v6():
 def skin_model_status():
     """Model status endpoint for frontend compatibility"""
     try:
-        model_status = hare_run_v6_manager.get_model_status()
+        model_status = hare_run_4_manager.get_model_status()
         
         return jsonify({
             'model_loaded': model_status['models_loaded'],
@@ -546,11 +546,11 @@ def root():
         "service": SERVICE_NAME,
         "version": "4.0.0",
         "description": "Enhanced skin analysis with Hare Run V6 ML models",
-        "hare_run_v6": {
-            "enabled": HARE_RUN_V6_CONFIG['enabled'],
-            "models_available": hare_run_v6_manager.models_loaded,
-            "endpoints": HARE_RUN_V6_CONFIG['endpoints'],
-            "performance": HARE_RUN_V6_CONFIG['performance']
+        "hare_run_4": {
+            "enabled": HARE_RUN_4_CONFIG['enabled'],
+            "models_available": hare_run_4_manager.models_loaded,
+            "endpoints": HARE_RUN_4_CONFIG['endpoints'],
+            "performance": HARE_RUN_4_CONFIG['performance']
         },
         "endpoints": {
             # Health & Status
@@ -593,7 +593,7 @@ def convert_numpy_types(obj):
 
 if __name__ == '__main__':
     logger.info(f"🚀 Starting {SERVICE_NAME} on port {PORT}")
-    logger.info(f"🐢 Hare Run V6 enabled: {HARE_RUN_V6_CONFIG['enabled']}")
-    logger.info(f"📊 Models loaded: {hare_run_v6_manager.models_loaded}")
+    logger.info(f"🐢 Hare Run 4 enabled: {HARE_RUN_4_CONFIG['enabled']}")
+    logger.info(f"📊 Models loaded: {hare_run_4_manager.models_loaded}")
     
     app.run(host='0.0.0.0', port=PORT, debug=False)
