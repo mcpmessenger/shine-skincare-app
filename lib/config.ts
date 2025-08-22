@@ -9,6 +9,9 @@ export const API_CONFIG = {
   
   // API endpoints
   ENDPOINTS: {
+    // V6 endpoints (latest - enhanced preprocessing)
+    SKIN_ANALYZE_ENHANCED_PREPROCESSING: '/api/v6/skin/analyze-advanced',
+    
     // V5 endpoints (latest - production)
     SKIN_ANALYZE_FIXED: '/api/v5/skin/analyze-fixed',
     SKIN_MODEL_STATUS: '/api/v5/skin/model-status',

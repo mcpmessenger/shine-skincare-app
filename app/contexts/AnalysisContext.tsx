@@ -7,6 +7,20 @@ interface AnalysisData {
   croppedFaceImage: string | null;
   faceConfidence: number;
   analysisResults: any;
+  // Enhanced preprocessing data
+  preprocessingMetrics?: {
+    geometric: any;
+    colorLighting: any;
+    enhancement: any;
+    mediapipe: any;
+  };
+  mediapipeLandmarks?: Array<[number, number, number]>;
+  // Product recommendations
+  productRecommendations?: Array<{
+    name: string;
+    category: string;
+    description: string;
+  }>;
   // Add fields for Settings page integration
   processedImages?: {
     rgbChannels: {

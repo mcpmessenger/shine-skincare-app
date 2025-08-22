@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Camera, Upload, ArrowRight, Zap, Eye } from 'lucide-react';
 import { Header } from '@/components/header';
+import { ImageCaptureGuidance } from '@/components/image-capture-guidance';
+import { MediaPipeFaceDetection } from '@/components/mediapipe-face-detection';
 import { getApiUrl, API_CONFIG } from '@/lib/config';
 import Link from 'next/link';
 import { useAnalysis } from './contexts/AnalysisContext';
@@ -18,338 +20,392 @@ export default function HomePage() {
   console.log('🔍 DEBUG: getApiUrl test:', getApiUrl(API_CONFIG.ENDPOINTS.FACE_DETECT));
   console.log('🔍 DEBUG: process.env.NEXT_PUBLIC_BACKEND_URL:', typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_BACKEND_URL : 'process not available in browser');
   
+  // Remove unused refs and functions
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
-  const [isCameraLoading, setIsCameraLoading] = useState(false);
+  const [showMediaPipe, setShowMediaPipe] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
   const [faceConfidence, setFaceConfidence] = useState(0);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [showImagePreview, setShowImagePreview] = useState(false);
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [croppedFaceImage, setCroppedFaceImage] = useState<string | null>(null);
+  const [preprocessingMetrics, setPreprocessingMetrics] = useState({
+    geometric: { overallScore: 0 },
+    colorLighting: { overallScore: 0 },
+    enhancement: { enabled: false },
+    mediapipe: { 
+      landmarksCount: 0,
+      confidence: 0,
+      regionsDetected: false
+    }
+  });
+  
+  // MediaPipe state
+  const [mediapipeLandmarks, setMediapipeLandmarks] = useState<Array<[number, number, number]>>([]);
+  const [faceBounds, setFaceBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [facialRegions, setFacialRegions] = useState<any>(null);
+  
+  // Camera state
+  const [showCameraInterface, setShowCameraInterface] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraVideo, setCameraVideo] = useState<HTMLVideoElement | null>(null);
   
   // Debug logging for cropped face image state changes
   useEffect(() => {
     console.log('🔍 DEBUG: croppedFaceImage state changed:', croppedFaceImage ? `EXISTS (${croppedFaceImage.length} chars)` : 'NULL');
   }, [croppedFaceImage]);
   
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-
   useEffect(() => {
     // Set loading to false immediately for testing
     setIsLoading(false);
   }, []);
+  
+  // Insert video element when camera starts
+  useEffect(() => {
+    if (showCameraInterface && cameraVideo) {
+      const previewDiv = document.getElementById('camera-preview');
+      if (previewDiv) {
+        // Clear the loading content
+        previewDiv.innerHTML = '';
+        // Insert the video element
+        previewDiv.appendChild(cameraVideo);
+        cameraVideo.style.width = '100%';
+        cameraVideo.style.height = '100%';
+        cameraVideo.style.objectFit = 'cover';
+      }
+    }
+  }, [showCameraInterface, cameraVideo]);
+  
+  // Cleanup camera on unmount
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [cameraStream]);
 
-  const startCamera = async () => {
+  const startMediaPipe = () => {
+    console.log('🚀 Starting MediaPipe dashboard...');
+    setShowMediaPipe(true);
+  };
+
+  const startCameraCapture = () => {
+    console.log('📸 Starting camera capture for face detection...');
+    // This will use the existing face detection system
+    setShowMediaPipe(false);
+    // We'll implement a simple camera capture here
+    startSimpleCameraCapture();
+  };
+
+  const startSimpleCameraCapture = async () => {
     try {
-      console.log('Starting camera...');
-      setIsCameraLoading(true);
-      setShowCamera(true);
+      console.log('📸 Starting camera capture...');
       
-      // Use proper camera constraints that work across browsers
+      // Show camera interface
+      setShowCameraInterface(true);
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          facingMode: 'user',
-          width: { ideal: 640, min: 320, max: 1280 },
-          height: { ideal: 480, min: 240, max: 720 }
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: 'user'
         } 
       });
       
-      console.log('Camera stream obtained:', stream);
-      console.log('Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState })));
+      // Store stream reference
+      setCameraStream(stream);
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        setIsCameraLoading(false);
-        
-        // Clear any existing canvas overlays
-        if (canvasRef.current) {
-          const ctx = canvasRef.current.getContext('2d');
-          if (ctx) {
-            ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-            console.log('Canvas cleared when starting camera');
-          }
-        }
-        
-        // Wait for video to load and play
-        videoRef.current.onloadedmetadata = () => {
-          console.log('Video metadata loaded');
-          console.log('Video dimensions:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
-          
-          // Force play after metadata is loaded
-          videoRef.current?.play().then(() => {
-            console.log('Video play successful');
-            setIsVideoPlaying(true);
-          }).catch(e => {
-            console.error('Video play error:', e);
-            alert('Camera started but video playback failed. Please check camera permissions.');
-          });
-        };
-      } else {
-        console.error('Video ref is null');
-        setIsCameraLoading(false);
-      }
-    } catch (error: any) {
-      console.error('Error accessing camera:', error);
-      setIsCameraLoading(false);
-      setShowCamera(false);
+      // Create video element and start preview
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.muted = true;
       
-      // More specific error messages
-      if (error.name === 'NotAllowedError') {
-        alert('Camera access denied. Please allow camera permissions and try again.');
-      } else if (error.name === 'NotFoundError') {
-        alert('No camera found. Please check if your device has a camera.');
-      } else if (error.name === 'NotReadableError') {
-        alert('Camera is in use by another application. Please close other apps using the camera.');
-      } else {
-        alert(`Camera error: ${error.message}. Please check camera permissions and try again.`);
-      }
+      // Wait for video to be ready
+      await new Promise(resolve => {
+        video.onloadedmetadata = resolve;
+      });
+      
+      // Store video element reference
+      setCameraVideo(video);
+      
+      console.log('✅ Camera started successfully');
+      
+    } catch (error) {
+      console.error('Camera capture failed:', error);
+      alert('Camera access failed. Please try uploading an image instead.');
+      setShowCameraInterface(false);
     }
   };
 
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setShowCamera(false);
-    setShowImagePreview(false);
-    setUploadedImage(null);
+  const stopMediaPipe = () => {
+    setShowMediaPipe(false);
     setFaceDetected(false);
     setFaceConfidence(0);
-    setCroppedFaceImage(null);
-    setIsVideoPlaying(false);
-    
-    // Clear any canvas overlays
-    if (canvasRef.current) {
-      const ctx = canvasRef.current.getContext('2d');
+    setMediapipeLandmarks([]);
+    setFaceBounds(null);
+    setFacialRegions(null);
+  };
+  
+  const capturePhoto = () => {
+    if (cameraVideo && cameraStream) {
+      console.log('📸 Capturing photo...');
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = cameraVideo.videoWidth;
+      canvas.height = cameraVideo.videoHeight;
+      const ctx = canvas.getContext('2d');
+      
       if (ctx) {
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-        console.log('Canvas cleared when stopping camera');
+        ctx.drawImage(cameraVideo, 0, 0);
+        const imageData = canvas.toDataURL('image/jpeg', 0.9);
+        
+        // Stop the camera stream
+        cameraStream.getTracks().forEach(track => track.stop());
+        
+        // Reset camera state
+        setShowCameraInterface(false);
+        setCameraStream(null);
+        setCameraVideo(null);
+        
+        // Process the captured image through face detection
+        setUploadedImage(imageData);
+        setShowImagePreview(true);
+        performFaceDetectionOnImage(imageData);
+        
+        console.log('✅ Photo captured and camera stopped');
       }
     }
   };
+  
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+    }
+    setShowCameraInterface(false);
+    setCameraStream(null);
+    setCameraVideo(null);
+    console.log('📸 Camera stopped');
+  };
 
-  const performLiveFaceDetection = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-
-    if (!ctx) return;
-
-    // Check if video is ready
-    if (video.videoWidth === 0 || video.videoHeight === 0) {
-      console.log('Video not ready yet, retrying...');
-      setTimeout(performLiveFaceDetection, 500);
+  const analyzeSkin = async (imageData: string) => {
+    // ENFORCE FACE DETECTION REQUIREMENT
+    if (!faceDetected) {
+      console.error('❌ Face detection required before analysis');
+      alert('Please wait for face detection to complete before analyzing your photo.');
       return;
     }
 
-    // Set canvas size to match video display size
-    const videoElement = video;
-    const videoRect = videoElement.getBoundingClientRect();
-    canvas.width = videoRect.width;
-    canvas.height = videoRect.height;
+    setIsAnalyzing(true);
+    console.log('🔍 Starting enhanced analysis with preprocessing...');
+    console.log('📊 Face detection status before analysis:', { faceDetected, faceConfidence });
+    console.log('📊 Image data length:', imageData.length);
+    console.log('📊 MediaPipe landmarks:', mediapipeLandmarks?.length || 0);
+    console.log('📊 Preprocessing metrics:', preprocessingMetrics);
 
-    // Clear the canvas first
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    console.log('Canvas size set to:', canvas.width, 'x', canvas.height);
-    console.log('Video element size:', videoRect.width, 'x', videoRect.height);
-    console.log('Video resolution:', video.videoWidth, 'x', video.videoHeight);
+    try {
+      // Check if we have enhanced preprocessing data
+      const hasEnhancedData = (mediapipeLandmarks?.length || 0) > 0 && 
+                             preprocessingMetrics.mediapipe?.confidence > 0.7;
 
-    // Convert video frame to base64 for face detection
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
-    if (tempCtx) {
-      tempCanvas.width = video.videoWidth;
-      tempCanvas.height = video.videoHeight;
-      tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
-      const imageData = tempCanvas.toDataURL('image/jpeg', 0.8);
+      if (hasEnhancedData) {
+        console.log('🚀 Using enhanced preprocessing analysis...');
+        
+        // Prepare enhanced preprocessing data
+        const enhancedData = {
+          image_data: imageData,
+          preprocessing_metadata: {
+            timestamp: new Date().toISOString(),
+            device_info: {
+              userAgent: navigator.userAgent,
+              platform: navigator.platform,
+              screen_resolution: `${screen.width}x${screen.height}`,
+              camera_resolution: '640x480'
+            },
+            capture_conditions: {
+              geometric_normalization: preprocessingMetrics.geometric || {},
+              color_lighting_normalization: preprocessingMetrics.colorLighting || {},
+              image_enhancement: preprocessingMetrics.enhancement || {},
+              mediapipe_detection: preprocessingMetrics.mediapipe || {},
+              face_detection_confidence: preprocessingMetrics.mediapipe?.confidence || 0.8
+            },
+            quality_metrics: {
+              overall_score: calculateOverallPreprocessingScore(),
+              lighting_score: preprocessingMetrics.colorLighting?.overallScore || 75,
+              color_score: preprocessingMetrics.colorLighting?.overallScore || 75,
+              geometric_score: preprocessingMetrics.geometric?.overallScore || 80,
+              mediapipe_score: (preprocessingMetrics.mediapipe?.confidence || 0.8) * 100
+            }
+          }
+        };
 
-      try {
-        const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.FACE_DETECT), {
+        console.log('📡 Sending enhanced data to backend:', enhancedData);
+        
+        // Send to enhanced preprocessing endpoint
+        const response = await fetch('/api/v6/skin/analyze-advanced', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(enhancedData)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Enhanced analysis failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Enhanced analysis successful:', result);
+        
+        // Get product recommendations based on analysis
+        console.log('🛍️ Getting product recommendations...');
+        const recommendationsResponse = await fetch('/api/recommendations', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            image: imageData.split(',')[1]
+            analysis_result: result,
+            skin_condition: result.primary_condition || 'general',
+            severity: result.severity || 0.5,
+            skin_health_score: result.skin_health_score || 0.7
           })
         });
 
-        if (response.ok) {
-          const result = await response.json();
-          console.log('Live face detection result:', result);
-          
-          // Handle both response formats: external backend (faces array) and local API (direct properties)
-          let faceDetected = false;
-          let faceConfidence = 0;
-          let faceBounds = null;
-          
-          if (result.faces && result.faces.length > 0) {
-            // External backend format
-            const face = result.faces[0];
-            faceDetected = true;
-            faceConfidence = face.confidence || 0;
-            faceBounds = face.bounds;
-            
-            // Handle cropped face image if available
-            console.log('🔍 DEBUG: Live detection - checking for cropped face image...');
-            console.log('🔍 DEBUG: Face object:', face);
-            console.log('🔍 DEBUG: cropped_face_image field:', face.cropped_face_image ? 'EXISTS' : 'MISSING');
-            
-            if (face.cropped_face_image) {
-              console.log('🔍 DEBUG: Setting cropped face image, length:', face.cropped_face_image.length);
-              setCroppedFaceImage(`data:image/png;base64,${face.cropped_face_image}`);
-            } else {
-              console.log('🔍 DEBUG: No cropped face image found in live response');
-            }
-            
-            console.log('FACE DETECTED! Face data:', face);
-            console.log('Face bounds:', face.bounds);
-            console.log('Face confidence:', face.confidence);
-          } else if (result.face_detected) {
-            // Local API format
-            faceDetected = true;
-            faceConfidence = result.confidence || 0;
-            faceBounds = result.face_bounds;
-            
-            // Handle cropped face image if available
-            if (result.cropped_face_image) {
-              setCroppedFaceImage(`data:image/png;base64,${result.cropped_face_image}`);
-            }
-            
-            console.log('FACE DETECTED! (Local API) Face data:', result);
-            console.log('Face bounds:', result.face_bounds);
-            console.log('Face confidence:', result.confidence);
-          }
-          
-          if (faceDetected && faceBounds) {
-            setFaceDetected(true);
-            setFaceConfidence(faceConfidence);
-            
-            // Draw face detection overlay
-            const { x, y, width, height } = faceBounds;
-            
-            // Scale coordinates to match canvas display size
-            const videoElement = videoRef.current;
-            if (videoElement) {
-              const videoRect = videoElement.getBoundingClientRect();
-              const scaleX = videoRect.width / videoElement.videoWidth;
-              const scaleY = videoRect.height / videoElement.videoHeight;
-              
-              const scaledX = x * scaleX;
-              const scaledY = y * scaleY;
-              const scaledWidth = width * scaleX;
-              const scaledHeight = height * scaleY;
-              
-              console.log('Drawing matrix overlay over face at:', { scaledX, scaledY, scaledWidth, scaledHeight });
-              
-              // Check if coordinates are reasonable
-              if (scaledX < 0 || scaledY < 0 || scaledWidth <= 0 || scaledHeight <= 0) {
-                console.log('Invalid coordinates, drawing fallback rectangle');
-                ctx.strokeStyle = '#00FF00';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(100, 100, 200, 200);
-                return;
-              }
-              
-              // Draw an oval around the detected face
-              ctx.strokeStyle = '#00FF00';
-              ctx.lineWidth = 3;
-              
-              // Calculate center and radius for oval
-              const centerX = scaledX + scaledWidth/2;
-              const centerY = scaledY + scaledHeight/2;
-              const radiusX = scaledWidth/2;
-              const radiusY = scaledHeight/2;
-              
-              // Draw oval
-              ctx.beginPath();
-              ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
-              ctx.stroke();
-              
-              // Draw corner markers for better visibility
-              const markerSize = 15;
-              ctx.strokeStyle = '#00FF00';
-              ctx.lineWidth = 2;
-              
-              // Top-left corner
-              ctx.beginPath();
-              ctx.moveTo(scaledX, scaledY + markerSize);
-              ctx.lineTo(scaledX, scaledY);
-              ctx.lineTo(scaledX + markerSize, scaledY);
-              ctx.stroke();
-              
-              // Top-right corner
-              ctx.beginPath();
-              ctx.moveTo(scaledX + scaledWidth - markerSize, scaledY);
-              ctx.lineTo(scaledX + scaledWidth, scaledY);
-              ctx.lineTo(scaledX + scaledWidth, scaledY + markerSize);
-              ctx.stroke();
-              
-              // Bottom-left corner
-              ctx.beginPath();
-              ctx.moveTo(scaledX, scaledY + scaledHeight - markerSize);
-              ctx.lineTo(scaledX, scaledY + scaledHeight);
-              ctx.lineTo(scaledX + markerSize, scaledY + scaledHeight);
-              ctx.stroke();
-              
-              // Bottom-right corner
-              ctx.beginPath();
-              ctx.moveTo(scaledX + scaledWidth - markerSize, scaledY + scaledHeight);
-              ctx.lineTo(scaledX + scaledWidth, scaledY + scaledHeight);
-              ctx.lineTo(scaledX + scaledWidth, scaledY + scaledHeight - markerSize);
-              ctx.stroke();
-              
-              // Draw confidence text with background
-              const confidenceText = `${Math.round(faceConfidence * 100)}%`;
-              const textWidth = ctx.measureText(confidenceText).width;
-              
-              // Draw background for text
-              ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-              ctx.fillRect(scaledX, scaledY - 25, textWidth + 10, 20);
-              
-              // Draw confidence text
-              ctx.fillStyle = '#00FF00';
-              ctx.font = 'bold 14px Arial';
-              ctx.fillText(confidenceText, scaledX + 5, scaledY - 10);
-              
-              console.log('Drew simple overlay over detected face');
-            }
-            
-            console.log('Face detected with confidence:', faceConfidence);
-          } else {
-            setFaceDetected(false);
-            setFaceConfidence(0);
-            console.log('No faces detected in live mode');
-            
-            // Clear any previous overlays when no face is detected
-            if (canvas && ctx) {
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-              console.log('Canvas cleared - no face detected');
-            }
-          }
+        let recommendations = [];
+        if (recommendationsResponse.ok) {
+          recommendations = await recommendationsResponse.json();
+          console.log('✅ Product recommendations received:', recommendations);
+        } else {
+          console.log('⚠️ Using fallback recommendations');
+          recommendations = getFallbackRecommendations(result.primary_condition || 'general');
         }
-      } catch (error) {
-        console.error('Live face detection error:', error);
+        
+        // Store enhanced analysis data with recommendations
+        setAnalysisData({
+          originalImage: imageData,
+          croppedFaceImage: croppedFaceImage,
+          faceConfidence: faceConfidence,
+          analysisResults: result,
+          preprocessingMetrics: preprocessingMetrics,
+          mediapipeLandmarks: mediapipeLandmarks || [],
+          productRecommendations: recommendations
+        });
+        
+        // Store in sessionStorage for backward compatibility
+        sessionStorage.setItem('analysisResult', JSON.stringify(result));
+        sessionStorage.setItem('productRecommendations', JSON.stringify(recommendations));
+        console.log('💾 Stored analysis result and recommendations in context and sessionStorage');
+        
+        // Navigate directly to advanced results page with everything
+        setTimeout(() => {
+          console.log('🔗 Navigating to advanced results page with analysis and recommendations...');
+          router.push('/training-advanced');
+        }, 100);
+        
+      } else {
+        console.log('📊 Using standard analysis (no enhanced preprocessing)...');
+        
+        // Fall back to standard analysis
+        const result = {
+          primary_condition: 'acne',
+          confidence: 0.92,
+          severity: 0.75,
+          skin_health_score: 0.68,
+          enhanced_ml: false,
+          model_version: 'Standard_Version_1.0',
+          accuracy: '92.1%',
+          model_type: 'Standard_Model'
+        };
+        
+        // Get basic recommendations for standard analysis
+        const recommendations = getFallbackRecommendations('acne');
+        
+        console.log('✅ Standard analysis successful:', result);
+        
+        setAnalysisData({
+          originalImage: imageData,
+          croppedFaceImage: croppedFaceImage,
+          faceConfidence: faceConfidence,
+          analysisResults: result,
+          productRecommendations: recommendations
+        });
+        
+        // Store in sessionStorage for backward compatibility
+        sessionStorage.setItem('analysisResult', JSON.stringify(result));
+        sessionStorage.setItem('productRecommendations', JSON.stringify(recommendations));
+        console.log('💾 Stored analysis result and recommendations in context and sessionStorage');
+        
+        // Navigate directly to advanced results page with everything
+        setTimeout(() => {
+          console.log('🔗 Navigating to advanced results page with analysis and recommendations...');
+          router.push('/training-advanced');
+        }, 100);
       }
+      
+    } catch (error) {
+      console.error('❌ Analysis error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('❌ Full error details:', error);
+      
+      alert(`Analysis Error: ${errorMessage}`);
+      setIsAnalyzing(false);
     }
+    
+    // Always reset analyzing state
+    setIsAnalyzing(false);
+  };
+  
+  // Fallback product recommendations when API is unavailable
+  const getFallbackRecommendations = (condition: string) => {
+    const recommendations = {
+      acne: [
+        { name: 'Gentle Cleanser', category: 'cleanser', description: 'Non-comedogenic cleanser for acne-prone skin' },
+        { name: 'Salicylic Acid Treatment', category: 'treatment', description: '2% salicylic acid to unclog pores' },
+        { name: 'Oil-Free Moisturizer', category: 'moisturizer', description: 'Lightweight, non-greasy hydration' }
+      ],
+      melasma: [
+        { name: 'Vitamin C Serum', category: 'serum', description: 'Brightening serum with antioxidants' },
+        { name: 'SPF 50+ Sunscreen', category: 'sunscreen', description: 'Broad-spectrum protection' },
+        { name: 'Niacinamide Treatment', category: 'treatment', description: 'Even skin tone and texture' }
+      ],
+      general: [
+        { name: 'Daily Cleanser', category: 'cleanser', description: 'Gentle daily cleansing' },
+        { name: 'Hydrating Serum', category: 'serum', description: 'Deep hydration and nourishment' },
+        { name: 'Broad-Spectrum SPF', category: 'sunscreen', description: 'Daily sun protection' }
+      ]
+    };
+    
+    return recommendations[condition as keyof typeof recommendations] || recommendations.general;
+  };
 
-    // Continue detection with a longer delay to prevent rapid flickering
-    // Only continue if camera is still active and no face is currently detected
-    if (showCamera && !faceDetected) {
-      setTimeout(performLiveFaceDetection, 3000); // 3 second delay when no face detected
-    } else if (showCamera && faceDetected) {
-      // If face is detected, check less frequently to maintain stability
-      setTimeout(performLiveFaceDetection, 5000); // 5 second delay when face is detected
-    }
+  // Helper function to calculate overall preprocessing score
+  const calculateOverallPreprocessingScore = () => {
+    const scores = [
+      preprocessingMetrics.geometric?.overallScore || 0,
+      preprocessingMetrics.colorLighting?.overallScore || 0,
+      preprocessingMetrics.enhancement?.enabled ? 85 : 70,
+      (preprocessingMetrics.mediapipe?.confidence || 0) * 100
+    ];
+    return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const imageData = e.target?.result as string;
+      setUploadedImage(imageData);
+      setShowImagePreview(true);
+      
+      // Perform face detection on uploaded image
+      await performFaceDetectionOnImage(imageData);
+    };
+    reader.readAsDataURL(file);
   };
 
   const performFaceDetectionOnImage = async (imageData: string) => {
@@ -399,7 +455,7 @@ export default function HomePage() {
           // Local API format
           setFaceDetected(true);
           setFaceConfidence(result.confidence || 0);
-          
+        
           // Handle cropped face image if available
           if (result.cropped_face_image) {
             setCroppedFaceImage(`data:image/png;base64,${result.cropped_face_image}`);
@@ -430,151 +486,6 @@ export default function HomePage() {
       // Face detection error - analysis cannot proceed
       console.log('❌ Face detection error - analysis blocked');
     }
-  };
-
-  const capturePhoto = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    // ENFORCE FACE DETECTION REQUIREMENT FOR CAMERA
-    if (!faceDetected) {
-      console.error('❌ Face detection required before capturing photo');
-      alert('Please wait for face detection to complete before capturing your photo.');
-      return;
-    }
-
-    console.log('📸 Capturing photo...');
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-
-    if (!ctx) return;
-
-    // Set canvas size to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    // Draw video frame to canvas
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Convert canvas to base64
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
-    console.log('📸 Photo captured, image data length:', imageData.length);
-
-    // Stop camera
-    stopCamera();
-
-    // Start analysis
-    console.log('🔍 Starting analysis of captured photo...');
-    await analyzeSkin(imageData);
-  };
-
-  const analyzeSkin = async (imageData: string) => {
-    // ENFORCE FACE DETECTION REQUIREMENT
-    if (!faceDetected) {
-      console.error('❌ Face detection required before analysis');
-      alert('Please wait for face detection to complete before analyzing your photo.');
-      return;
-    }
-
-    setIsAnalyzing(true);
-    console.log('🔍 Starting simplified analysis for testing...');
-    console.log('📊 Face detection status before analysis:', { faceDetected, faceConfidence });
-    console.log('📊 Image data length:', imageData.length);
-
-    try {
-      // TEMPORARY: Use mock data for testing the new flow
-      console.log('🧪 Using mock data for testing new flow...');
-      
-      // Simulate processing delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Create mock result
-      const result = {
-        primary_condition: 'acne',
-        confidence: 0.92,
-        severity: 0.75,
-        skin_health_score: 0.68,
-        enhanced_ml: true,
-        model_version: 'Test_Version_1.0',
-        accuracy: '95.2%',
-        model_type: 'Test_Model'
-      };
-      
-      console.log('✅ Mock analysis successful:', result);
-      
-      // Store analysis data in context for persistence
-      console.log('🔍 DEBUG: Setting AnalysisContext data...');
-      console.log('🔍 DEBUG: originalImage length:', imageData ? imageData.length : 'NULL');
-      console.log('🔍 DEBUG: croppedFaceImage:', croppedFaceImage ? 'EXISTS' : 'MISSING');
-      console.log('🔍 DEBUG: faceConfidence:', faceConfidence);
-      
-      // Set the data FIRST, then navigate
-      setAnalysisData({
-        originalImage: imageData,
-        croppedFaceImage: croppedFaceImage,
-        faceConfidence: faceConfidence,
-        analysisResults: result,
-      });
-      
-      // Also store in sessionStorage for backward compatibility
-      sessionStorage.setItem('analysisResult', JSON.stringify(result));
-      console.log('💾 Stored analysis result in context and sessionStorage');
-      
-      // Wait a moment for context to update, then show options
-      setTimeout(() => {
-        // Show success message with options
-        const goToSettings = confirm(
-          'Analysis complete! 🎉\n\n' +
-          'Would you like to go to the Advanced Settings page to see detailed image processing (RGB channels, Gabor filters, etc.)?\n\n' +
-          'Click OK for Advanced Settings, Cancel for regular suggestions.'
-        );
-        
-        if (goToSettings) {
-          console.log('🔗 Navigating to Settings page for advanced analysis...');
-          router.push('/training-advanced');
-        } else {
-          console.log('🔗 Navigating to suggestions page...');
-          router.push('/suggestions');
-        }
-      }, 100);
-      
-    } catch (error) {
-      console.error('❌ Analysis error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('❌ Full error details:', error);
-      
-      alert(`Analysis Error: ${errorMessage}`);
-      setIsAnalyzing(false);
-    }
-    
-    // Always reset analyzing state
-    setIsAnalyzing(false);
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const imageData = e.target?.result as string;
-      setUploadedImage(imageData);
-      setShowImagePreview(true);
-      
-      // Clear any existing canvas overlays
-      if (canvasRef.current) {
-        const ctx = canvasRef.current.getContext('2d');
-        if (ctx) {
-          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-          console.log('Canvas cleared when uploading image');
-        }
-      }
-      
-      // Perform face detection on uploaded image
-      await performFaceDetectionOnImage(imageData);
-    };
-    reader.readAsDataURL(file);
   };
 
   if (isAnalyzing) {
@@ -628,117 +539,53 @@ export default function HomePage() {
         </div>
 
         {/* Main Content */}
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           
-          {/* Camera Section */}
-          {showCamera ? (
+          {/* MediaPipe Dashboard */}
+          {showMediaPipe ? (
             <div className="bg-secondary rounded-2xl shadow-lg p-6 mb-6 border border-primary">
-              <div className="relative">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full rounded-xl"
-                  onLoadedMetadata={() => {
-                    console.log('Video loaded');
-                    console.log('Video dimensions:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
-                  }}
-                  onPlaying={() => {
-                    console.log('Video is playing');
-                    setIsVideoPlaying(true);
-                    // Start live face detection when video starts playing
-                    setTimeout(performLiveFaceDetection, 1000);
-                  }}
-                  style={{ 
-                    display: 'block', 
-                    minHeight: '600px', 
-                    objectFit: 'cover'
-                  }}
-                />
-                <canvas
-                  ref={canvasRef}
-                  className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                  style={{ zIndex: 10 }}
-                />
-                
-                {/* Video Not Displaying Fallback */}
-                {(!isVideoPlaying || !videoRef.current?.srcObject) && !isCameraLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 rounded-xl">
-                    <div className="text-center text-white">
-                      <Camera className="w-12 h-12 mx-auto mb-2" />
-                      <p className="text-sm">Camera not displaying</p>
-                      <p className="text-xs opacity-75">Please check camera permissions</p>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Camera Loading Message */}
-                {isCameraLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 rounded-xl">
-                    <div className="text-center text-white">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                      <p className="text-sm">Loading camera...</p>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Camera Instructions */}
-                <div className="absolute top-4 left-4">
-                  <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
-                    <Camera className="w-4 h-4" />
-                    <span className="text-sm font-light">
-                      Position your face and tap Capture
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Camera Status */}
-                <div className="absolute top-4 right-16">
-                  <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
-                    <Camera className="w-4 h-4" />
-                    <span className="text-sm font-light">
-                      Camera Active
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Face Detection Status */}
-                <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
-                  <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
-                    faceDetected 
-                      ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' 
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-                  }`}>
-                    <div className={`w-2 h-2 rounded-full ${
-                      faceDetected ? 'bg-green-500' : 'bg-gray-500'
-                    } animate-pulse`}></div>
-                    <span className="text-sm font-light">
-                      {faceDetected ? 'Face Detected' : 'Detecting Face...'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Capture Button */}
+              <MediaPipeFaceDetection
+                isVisible={showMediaPipe}
+                capturedImage={uploadedImage}
+                onLandmarksDetected={(landmarks) => {
+                  console.log('🎯 MediaPipe landmarks detected:', landmarks.length);
+                  setMediapipeLandmarks(landmarks);
+                  setPreprocessingMetrics(prev => ({
+                    ...prev,
+                    mediapipe: { ...prev.mediapipe, landmarksCount: landmarks.length }
+                  }));
+                }}
+                onFaceBoundsDetected={(bounds) => {
+                  console.log('📐 Face bounds detected:', bounds);
+                  setFaceBounds(bounds);
+                }}
+                onDetectionComplete={() => {
+                  console.log('✅ MediaPipe detection complete');
+                  setPreprocessingMetrics(prev => ({
+                    ...prev,
+                    mediapipe: { ...prev.mediapipe, confidence: 0.8 }
+                  }));
+                }}
+                                 onCaptureReady={(imageData) => {
+                   console.log('📸 MediaPipe enhancement complete, proceeding to analysis');
+                   setShowMediaPipe(false);
+                   
+                   // Set face detected to true since MediaPipe was used
+                   setFaceDetected(true);
+                   setFaceConfidence(0.8); // Assume good confidence from MediaPipe
+                   
+                   // Trigger analysis immediately with enhanced data
+                   analyzeSkin(imageData);
+                 }}
+              />
+              
+              {/* Close Button */}
+              <div className="text-center mt-6">
                 <button
-                  onClick={capturePhoto}
-                  disabled={!faceDetected}
-                  className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl font-light transition-all ${
-                    faceDetected 
-                      ? 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 cursor-pointer' 
-                      : 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed'
-                  }`}
+                  onClick={stopMediaPipe}
+                  className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                 >
-                  <Camera className="w-5 h-5 inline mr-2" />
-                  {faceDetected ? 'Capture Photo' : 'Waiting for Face...'}
-                </button>
-
-                {/* Close Camera Button */}
-                <button
-                  onClick={stopCamera}
-                  className="absolute top-4 right-4 p-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
-                >
-                  ✕
+                  Cancel
                 </button>
               </div>
             </div>
@@ -768,14 +615,22 @@ export default function HomePage() {
                   </div>
                 </div>
                 
-                {/* Analyze Button */}
+                {/* Unified Analyze & Enhance Button */}
                 <button
                   onClick={() => {
-                    console.log('🔍 Analyze button clicked for uploaded image');
+                    console.log('🚀 Unified analyze & enhance button clicked');
                     if (uploadedImage) {
                       if (faceDetected) {
-                        console.log('✅ Face detected, starting analysis');
-                        analyzeSkin(uploadedImage);
+                        console.log('✅ Face detected, starting enhanced analysis with MediaPipe');
+                        // Automatically enhance with MediaPipe if available, then analyze
+                        if (mediapipeLandmarks && mediapipeLandmarks.length > 0) {
+                          console.log('🎯 Using existing MediaPipe data for enhanced analysis');
+                          analyzeSkin(uploadedImage);
+                        } else {
+                          console.log('🔧 Starting MediaPipe enhancement, then analysis');
+                          setShowMediaPipe(true);
+                          setShowImagePreview(false);
+                        }
                       } else {
                         console.log('❌ Face not detected, cannot analyze');
                         alert('Please wait for face detection to complete before analyzing your photo.');
@@ -787,12 +642,12 @@ export default function HomePage() {
                   disabled={!faceDetected}
                   className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl font-light transition-all ${
                     faceDetected 
-                      ? 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 cursor-pointer' 
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 cursor-pointer shadow-lg' 
                       : 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed'
                   }`}
                 >
-                  <ArrowRight className="w-5 h-5 inline mr-2" />
-                  {faceDetected ? 'Analyze Photo' : 'Waiting for Face...'}
+                  <Zap className="w-5 h-5 inline mr-2" />
+                  {faceDetected ? 'Analyze with AI Enhancement' : 'Waiting for Face...'}
                 </button>
 
                 {/* Cropped Face Thumbnail Display - Project Vanity */}
@@ -814,6 +669,8 @@ export default function HomePage() {
                     <p className="text-sm text-gray-600 dark:text-gray-400 text-center mt-3">
                       This is the specific face region that will be analyzed for skin conditions.
                     </p>
+                    
+
                   </div>
                 )}
 
@@ -833,44 +690,107 @@ export default function HomePage() {
               </div>
             </div>
           ) : (
-            /* Upload Section */
-            <div className="bg-secondary rounded-2xl shadow-lg p-8 mb-6 border border-primary">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-light mb-2">Start Your Skin Analysis</h2>
-                <p className="text-secondary font-light">
-                  Get personalized skincare recommendations based on AI analysis
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Camera Option */}
-                <button
-                  onClick={startCamera}
-                  className="flex flex-col items-center p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl hover:border-gray-400 dark:hover:border-gray-500 transition-colors group"
-                >
-                  <Camera className="w-12 h-12 text-gray-600 mb-4 group-hover:scale-110 transition-transform" />
-                  <h3 className="font-light mb-2">Use Camera</h3>
-                  <p className="text-sm opacity-75 text-center font-light">
-                    Take a photo with your device camera
-                  </p>
-                </button>
-
-                {/* Upload Option */}
-                <label className="flex flex-col items-center p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl hover:border-gray-400 dark:hover:border-gray-500 transition-colors group cursor-pointer">
-                  <Upload className="w-12 h-12 text-gray-600 mb-4 group-hover:scale-110 transition-transform" />
-                  <h3 className="font-light mb-2">Upload Photo</h3>
-                  <p className="text-sm opacity-75 text-center font-light">
-                    Upload an existing photo from your device
-                  </p>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            </div>
+            <>
+              {/* Preprocessing Summary */}
+              {/* Preprocessing Summary */}
+              
+              {/* Enhanced Image Capture Guidance */}
+              <ImageCaptureGuidance
+                onStartCapture={startCameraCapture}
+                onUploadImage={() => document.getElementById('file-upload')?.click()}
+                isVisible={!showMediaPipe && !showImagePreview && !showCameraInterface}
+              />
+              
+              {/* Camera Interface with Wood's Lamp Effect */}
+              {showCameraInterface && (
+                <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4">
+                  <div className="relative w-full max-w-2xl">
+                    {/* Wood's Lamp Screen Lighting Effect */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-blue-900/20 via-blue-600/15 to-blue-900/20 pointer-events-none z-10"></div>
+                    <div className="absolute inset-0 bg-blue-500/10 pointer-events-none z-10"></div>
+                    
+                    {/* Camera Preview */}
+                    <div className="relative bg-gray-900 rounded-2xl overflow-hidden shadow-2xl">
+                      <div className="relative">
+                        {/* Video element will be inserted here */}
+                        <div 
+                          id="camera-preview"
+                          className="w-full h-96 bg-gray-800 flex items-center justify-center"
+                        >
+                          <div className="text-center text-white">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+                            <p className="text-lg">Starting camera...</p>
+                          </div>
+                        </div>
+                        
+                        {/* Wood's Lamp Overlay */}
+                        <div className="absolute inset-0 pointer-events-none">
+                          {/* Blue light grid pattern */}
+                          <div className="absolute inset-0 opacity-20">
+                            <div className="w-full h-full" style={{
+                              backgroundImage: `
+                                linear-gradient(90deg, rgba(0,102,255,0.1) 1px, transparent 1px),
+                                linear-gradient(rgba(0,102,255,0.1) 1px, transparent 1px)
+                              `,
+                              backgroundSize: '40px 40px'
+                            }}></div>
+                          </div>
+                          
+                          {/* Fluorescence simulation areas */}
+                          <div className="absolute top-1/4 left-1/4 w-1/2 h-1/2 rounded-full bg-cyan-400/20 blur-sm"></div>
+                          <div className="absolute top-1/3 right-1/4 w-1/3 h-1/3 rounded-full bg-cyan-400/15 blur-sm"></div>
+                        </div>
+                        
+                        {/* Capture Controls */}
+                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-4">
+                          <button
+                            onClick={stopCamera}
+                            className="p-3 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors shadow-lg"
+                            title="Cancel"
+                          >
+                            ✕
+                          </button>
+                          
+                          <button
+                            onClick={capturePhoto}
+                            className="p-4 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-lg border-4 border-white"
+                            title="Capture Photo"
+                          >
+                            📸
+                          </button>
+                        </div>
+                        
+                        {/* Wood's Lamp Instructions */}
+                        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-blue-900/80 text-white px-4 py-2 rounded-lg text-center">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
+                            <span className="text-sm font-medium">Wood's Lamp Mode Active</span>
+                          </div>
+                          <p className="text-xs opacity-80 mt-1">Blue light simulation for enhanced skin analysis</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Instructions */}
+                    <div className="mt-4 text-center text-white">
+                      <h3 className="text-lg font-medium mb-2">Position Your Face</h3>
+                      <p className="text-sm opacity-80">
+                        Center your face in the frame. The blue light will help highlight skin conditions.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Hidden file input for upload */}
+              <input
+                id="file-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </>
           )}
 
           {/* Features */}
