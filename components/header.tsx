@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ShoppingCart, User } from 'lucide-react'
+import { ShoppingCart, User, Settings } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCart } from '@/hooks/useCart'
 import ThemeToggle from '@/components/theme-toggle'
@@ -17,6 +17,8 @@ export function Header({ showProductsTab = true, title }: HeaderProps) {
   const { state: authState } = useAuth()
   const { isAuthenticated } = useCart()
   const [showSignInModal, setShowSignInModal] = useState(false)
+  
+  // Force cache bust - v2.0.0 - Navigation buttons completely removed
 
   return (
     <>
@@ -40,17 +42,7 @@ export function Header({ showProductsTab = true, title }: HeaderProps) {
 
         {/* Navigation */}
         <nav className="flex items-center gap-4">
-          {showProductsTab && (
-            <Link href="/catalog" className="text-secondary no-underline text-sm font-medium p-3 rounded-xl transition-all duration-200 bg-secondary hover:bg-hover shadow-sm">
-              Products
-            </Link>
-          )}
-          <Link href="/training-dashboard" className="text-secondary no-underline text-sm font-medium p-3 rounded-xl transition-all duration-200 bg-secondary hover:bg-hover shadow-sm">
-            Training
-          </Link>
-          <Link href="/test-production-model" className="text-secondary no-underline text-sm font-medium p-3 rounded-xl transition-all duration-200 bg-secondary hover:bg-hover shadow-sm">
-            🧪 Test Model
-          </Link>
+          {/* Navigation buttons removed - settings wheel on right side handles functionality */}
         </nav>
 
         {/* Right Side Controls */}
@@ -59,6 +51,15 @@ export function Header({ showProductsTab = true, title }: HeaderProps) {
           <div className="flex-shrink-0">
             <ThemeToggle />
           </div>
+
+          {/* Settings */}
+          <Link 
+            href="/training-advanced" 
+            className="bg-secondary border-none text-primary cursor-pointer p-2 rounded-xl flex items-center justify-center w-8 h-8 hover:bg-hover transition-colors shadow-sm flex-shrink-0"
+            title="Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </Link>
 
           {/* Cart */}
           <button
