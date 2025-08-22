@@ -33,6 +33,7 @@ export default function HomePage() {
   useEffect(() => {
     console.log('🔍 DEBUG: croppedFaceImage state changed:', croppedFaceImage ? `EXISTS (${croppedFaceImage.length} chars)` : 'NULL');
   }, [croppedFaceImage]);
+  
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -171,16 +172,16 @@ export default function HomePage() {
       tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
       const imageData = tempCanvas.toDataURL('image/jpeg', 0.8);
 
-             try {
-         const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.FACE_DETECT), {
-           method: 'POST',
-           headers: {
-             'Content-Type': 'application/json',
-           },
-                     body: JSON.stringify({
+      try {
+        const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.FACE_DETECT), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
             image: imageData.split(',')[1]
           })
-         });
+        });
 
         if (response.ok) {
           const result = await response.json();
@@ -307,34 +308,34 @@ export default function HomePage() {
               ctx.lineTo(scaledX + scaledWidth, scaledY + scaledHeight - markerSize);
               ctx.stroke();
               
-                          // Draw confidence text with background
-            const confidenceText = `${Math.round(faceConfidence * 100)}%`;
-            const textWidth = ctx.measureText(confidenceText).width;
-            
-            // Draw background for text
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fillRect(scaledX, scaledY - 25, textWidth + 10, 20);
-            
-            // Draw confidence text
-            ctx.fillStyle = '#00FF00';
-            ctx.font = 'bold 14px Arial';
-            ctx.fillText(confidenceText, scaledX + 5, scaledY - 10);
+              // Draw confidence text with background
+              const confidenceText = `${Math.round(faceConfidence * 100)}%`;
+              const textWidth = ctx.measureText(confidenceText).width;
+              
+              // Draw background for text
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+              ctx.fillRect(scaledX, scaledY - 25, textWidth + 10, 20);
+              
+              // Draw confidence text
+              ctx.fillStyle = '#00FF00';
+              ctx.font = 'bold 14px Arial';
+              ctx.fillText(confidenceText, scaledX + 5, scaledY - 10);
               
               console.log('Drew simple overlay over detected face');
             }
             
             console.log('Face detected with confidence:', faceConfidence);
-                     } else {
-             setFaceDetected(false);
-             setFaceConfidence(0);
-             console.log('No faces detected in live mode');
-             
-             // Clear any previous overlays when no face is detected
-             if (canvas && ctx) {
-               ctx.clearRect(0, 0, canvas.width, canvas.height);
-               console.log('Canvas cleared - no face detected');
-             }
-           }
+          } else {
+            setFaceDetected(false);
+            setFaceConfidence(0);
+            console.log('No faces detected in live mode');
+            
+            // Clear any previous overlays when no face is detected
+            if (canvas && ctx) {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              console.log('Canvas cleared - no face detected');
+            }
+          }
         }
       } catch (error) {
         console.error('Live face detection error:', error);
@@ -477,84 +478,78 @@ export default function HomePage() {
     }
 
     setIsAnalyzing(true);
-    console.log('🔍 Starting enhanced Hare Run V6 skin analysis...');
+    console.log('🔍 Starting simplified analysis for testing...');
     console.log('📊 Face detection status before analysis:', { faceDetected, faceConfidence });
     console.log('📊 Image data length:', imageData.length);
 
     try {
-      // Use the local Hare Run V6 endpoint to avoid CORS issues
-      const endpoint = 'http://localhost:8000/api/v6/skin/analyze-production-model';
+      // TEMPORARY: Use mock data for testing the new flow
+      console.log('🧪 Using mock data for testing new flow...');
       
-      console.log('📡 Calling local Hare Run V6 enhanced ML endpoint...');
-      console.log('🔗 Local endpoint:', endpoint);
+      // Simulate processing delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: imageData.split(',')[1]
-        })
+      // Create mock result
+      const result = {
+        primary_condition: 'acne',
+        confidence: 0.92,
+        severity: 0.75,
+        skin_health_score: 0.68,
+        enhanced_ml: true,
+        model_version: 'Test_Version_1.0',
+        accuracy: '95.2%',
+        model_type: 'Test_Model'
+      };
+      
+      console.log('✅ Mock analysis successful:', result);
+      
+      // Store analysis data in context for persistence
+      console.log('🔍 DEBUG: Setting AnalysisContext data...');
+      console.log('🔍 DEBUG: originalImage length:', imageData ? imageData.length : 'NULL');
+      console.log('🔍 DEBUG: croppedFaceImage:', croppedFaceImage ? 'EXISTS' : 'MISSING');
+      console.log('🔍 DEBUG: faceConfidence:', faceConfidence);
+      
+      // Set the data FIRST, then navigate
+      setAnalysisData({
+        originalImage: imageData,
+        croppedFaceImage: croppedFaceImage,
+        faceConfidence: faceConfidence,
+        analysisResults: result,
       });
-
-      console.log('📊 Response status:', response.status);
-      console.log('📊 Response ok:', response.ok);
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Analysis successful:', result);
-        console.log('📊 Analysis result structure:', Object.keys(result));
+      
+      // Also store in sessionStorage for backward compatibility
+      sessionStorage.setItem('analysisResult', JSON.stringify(result));
+      console.log('💾 Stored analysis result in context and sessionStorage');
+      
+      // Wait a moment for context to update, then show options
+      setTimeout(() => {
+        // Show success message with options
+        const goToSettings = confirm(
+          'Analysis complete! 🎉\n\n' +
+          'Would you like to go to the Advanced Settings page to see detailed image processing (RGB channels, Gabor filters, etc.)?\n\n' +
+          'Click OK for Advanced Settings, Cancel for regular suggestions.'
+        );
         
-        // Add Hare Run V6 enhanced ML metadata
-        result.enhanced_ml = true;
-        result.model_version = result.model_info?.version || 'Hare_Run_V6_Facial_v1.0';
-        result.accuracy = result.model_info?.accuracy || '97.13%';
-        result.model_type = 'Enhanced_Facial_ML';
-        
-        // Store analysis data in context for persistence
-        console.log('🔍 DEBUG: Setting AnalysisContext data...');
-        console.log('🔍 DEBUG: originalImage length:', imageData ? imageData.length : 'NULL');
-        console.log('🔍 DEBUG: croppedFaceImage:', croppedFaceImage ? 'EXISTS' : 'MISSING');
-        console.log('🔍 DEBUG: faceConfidence:', faceConfidence);
-        
-        setAnalysisData({
-          originalImage: imageData,
-          croppedFaceImage: croppedFaceImage,
-          faceConfidence: faceConfidence,
-          analysisResults: result,
-        });
-        
-        // Also store in sessionStorage for backward compatibility
-        sessionStorage.setItem('analysisResult', JSON.stringify(result));
-        console.log('💾 Stored analysis result in context and sessionStorage');
-        console.log('🔗 Navigating to suggestions page...');
-        router.push('/suggestions');
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Analysis failed with status:', response.status);
-        console.error('❌ Error response:', errorText);
-        console.error('❌ Response headers:', Object.fromEntries(response.headers.entries()));
-        throw new Error(`Hare Run V6 analysis failed: ${response.status} - ${errorText}`);
-      }
+        if (goToSettings) {
+          console.log('🔗 Navigating to Settings page for advanced analysis...');
+          router.push('/training-advanced');
+        } else {
+          console.log('🔗 Navigating to suggestions page...');
+          router.push('/suggestions');
+        }
+      }, 100);
+      
     } catch (error) {
-      console.error('❌ Hare Run V6 analysis error:', error);
+      console.error('❌ Analysis error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('❌ Full error details:', error);
       
-      // More user-friendly error message
-      let userMessage = 'Analysis failed. Please try again.';
-      if (errorMessage.includes('Failed to fetch')) {
-        userMessage = 'Cannot connect to analysis service. Please check your internet connection and try again.';
-      } else if (errorMessage.includes('timeout')) {
-        userMessage = 'Analysis timed out. Please try again with a clearer image.';
-      } else if (errorMessage.includes('500')) {
-        userMessage = 'Server error. Please try again later.';
-      }
-      
-      alert(`Analysis Error: ${userMessage}\n\nTechnical details: ${errorMessage}`);
+      alert(`Analysis Error: ${errorMessage}`);
       setIsAnalyzing(false);
     }
+    
+    // Always reset analyzing state
+    setIsAnalyzing(false);
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -688,17 +683,15 @@ export default function HomePage() {
                   </div>
                 )}
                 
-                                 {/* Camera Instructions */}
-                 <div className="absolute top-4 left-4">
-                   <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
-                     <Camera className="w-4 h-4" />
-                     <span className="text-sm font-light">
-                       Position your face and tap Capture
-                     </span>
-                   </div>
-                 </div>
-                 
-                 
+                {/* Camera Instructions */}
+                <div className="absolute top-4 left-4">
+                  <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+                    <Camera className="w-4 h-4" />
+                    <span className="text-sm font-light">
+                      Position your face and tap Capture
+                    </span>
+                  </div>
+                </div>
                 
                 {/* Camera Status */}
                 <div className="absolute top-4 right-16">
@@ -710,35 +703,35 @@ export default function HomePage() {
                   </div>
                 </div>
                 
-                                 {/* Face Detection Status */}
-                 <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
-                   <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
-                     faceDetected 
-                       ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' 
-                       : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-                   }`}>
-                     <div className={`w-2 h-2 rounded-full ${
-                       faceDetected ? 'bg-green-500' : 'bg-gray-500'
-                     } animate-pulse`}></div>
-                     <span className="text-sm font-light">
-                       {faceDetected ? 'Face Detected' : 'Detecting Face...'}
-                     </span>
-                   </div>
-                 </div>
+                {/* Face Detection Status */}
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
+                  <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
+                    faceDetected 
+                      ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' 
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
+                  }`}>
+                    <div className={`w-2 h-2 rounded-full ${
+                      faceDetected ? 'bg-green-500' : 'bg-gray-500'
+                    } animate-pulse`}></div>
+                    <span className="text-sm font-light">
+                      {faceDetected ? 'Face Detected' : 'Detecting Face...'}
+                    </span>
+                  </div>
+                </div>
 
-                                 {/* Capture Button */}
-                 <button
-                   onClick={capturePhoto}
-                   disabled={!faceDetected}
-                   className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl font-light transition-all ${
-                     faceDetected 
-                       ? 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 cursor-pointer' 
-                       : 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed'
-                   }`}
-                 >
-                   <Camera className="w-5 h-5 inline mr-2" />
-                   {faceDetected ? 'Capture Photo' : 'Waiting for Face...'}
-                 </button>
+                {/* Capture Button */}
+                <button
+                  onClick={capturePhoto}
+                  disabled={!faceDetected}
+                  className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl font-light transition-all ${
+                    faceDetected 
+                      ? 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 cursor-pointer' 
+                      : 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Camera className="w-5 h-5 inline mr-2" />
+                  {faceDetected ? 'Capture Photo' : 'Waiting for Face...'}
+                </button>
 
                 {/* Close Camera Button */}
                 <button
@@ -759,74 +752,70 @@ export default function HomePage() {
                   className="w-full rounded-xl"
                 />
                 
-                                 {/* Face Detection Status */}
-                 <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
-                   <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
-                     faceDetected 
-                       ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' 
-                       : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-                   }`}>
-                     <div className={`w-2 h-2 rounded-full ${
-                       faceDetected ? 'bg-green-500' : 'bg-gray-500'
-                     } animate-pulse`}></div>
-                     <span className="text-sm font-light">
-                       {faceDetected ? 'Face Detected' : 'Detecting Face...'}
-                     </span>
-                   </div>
-                 </div>
+                {/* Face Detection Status */}
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
+                  <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${
+                    faceDetected 
+                      ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' 
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
+                  }`}>
+                    <div className={`w-2 h-2 rounded-full ${
+                      faceDetected ? 'bg-green-500' : 'bg-gray-500'
+                    } animate-pulse`}></div>
+                    <span className="text-sm font-light">
+                      {faceDetected ? 'Face Detected' : 'Detecting Face...'}
+                    </span>
+                  </div>
+                </div>
                 
-                                 
-                 
-                 
-                
-                                 {/* Analyze Button */}
-                 <button
-                   onClick={() => {
-                     console.log('🔍 Analyze button clicked for uploaded image');
-                     if (uploadedImage) {
-                       if (faceDetected) {
-                         console.log('✅ Face detected, starting analysis');
-                         analyzeSkin(uploadedImage);
-                                               } else {
-                          console.log('❌ Face not detected, cannot analyze');
-                          alert('Please wait for face detection to complete before analyzing your photo.');
-                        }
-                     } else {
-                       console.error('❌ No uploaded image available');
-                     }
-                   }}
-                   disabled={!faceDetected}
-                   className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl font-light transition-all ${
-                     faceDetected 
-                       ? 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 cursor-pointer' 
-                       : 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed'
-                   }`}
-                 >
-                   <ArrowRight className="w-5 h-5 inline mr-2" />
-                   {faceDetected ? 'Analyze Photo' : 'Waiting for Face...'}
-                 </button>
+                {/* Analyze Button */}
+                <button
+                  onClick={() => {
+                    console.log('🔍 Analyze button clicked for uploaded image');
+                    if (uploadedImage) {
+                      if (faceDetected) {
+                        console.log('✅ Face detected, starting analysis');
+                        analyzeSkin(uploadedImage);
+                      } else {
+                        console.log('❌ Face not detected, cannot analyze');
+                        alert('Please wait for face detection to complete before analyzing your photo.');
+                      }
+                    } else {
+                      console.error('❌ No uploaded image available');
+                    }
+                  }}
+                  disabled={!faceDetected}
+                  className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl font-light transition-all ${
+                    faceDetected 
+                      ? 'bg-gray-900 dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 cursor-pointer' 
+                      : 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  <ArrowRight className="w-5 h-5 inline mr-2" />
+                  {faceDetected ? 'Analyze Photo' : 'Waiting for Face...'}
+                </button>
 
-                                   {/* Cropped Face Thumbnail Display - Project Vanity */}
-                  {croppedFaceImage && (
-                    <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                      <h3 className="text-lg font-medium mb-3 text-center">Face Region to be Analyzed</h3>
-                      <div className="flex justify-center items-center">
-                        <div className="text-center">
-                          <img
-                            src={croppedFaceImage}
-                            alt="Cropped face region that will be analyzed"
-                            className="w-32 h-32 object-cover rounded-lg border-2 border-green-500 shadow-sm"
-                          />
-                          <p className="text-sm text-green-600 mt-2 font-medium">
-                            Face Detection: {Math.round(faceConfidence * 100)}% Confidence
-                          </p>
-                        </div>
+                {/* Cropped Face Thumbnail Display - Project Vanity */}
+                {croppedFaceImage && (
+                  <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                    <h3 className="text-lg font-medium mb-3 text-center">Face Region to be Analyzed</h3>
+                    <div className="flex justify-center items-center">
+                      <div className="text-center">
+                        <img
+                          src={croppedFaceImage}
+                          alt="Cropped face region that will be analyzed"
+                          className="w-32 h-32 object-cover rounded-lg border-2 border-green-500 shadow-sm"
+                        />
+                        <p className="text-sm text-green-600 mt-2 font-medium">
+                          Face Detection: {Math.round(faceConfidence * 100)}% Confidence
+                        </p>
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 text-center mt-3">
-                        This is the specific face region that will be analyzed for skin conditions.
-                      </p>
                     </div>
-                  )}
+                    <p className="text-sm text-gray-600 dark:text-gray-400 text-center mt-3">
+                      This is the specific face region that will be analyzed for skin conditions.
+                    </p>
+                  </div>
+                )}
 
                 {/* Close Button */}
                 <button
